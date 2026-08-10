@@ -134,9 +134,37 @@ function nimi(arvo: Laukaus): string {
   cursor: not-allowed;
 }
 
+/*
+ * Napakymppi erottuu täytettynä, ei pelkällä reunuksella.
+ *
+ * Näppäintä etsitään kesken sarjan, kirkkaassa valossa ja kiireessä. Aiemmin se erosi
+ * naapureistaan vain vihreällä tekstillä ja reunuksella — saman kokoisena ja
+ * painoisena kuin numerot ympärillään, jolloin sen löytäminen vaati numeroiden
+ * lukemista. Täytetty tausta ja isompi merkki löytyvät yhdellä vilkaisulla.
+ *
+ * Merkki pysyy tähtenä (`NAPA_NAYTTO`), koska sama merkki näkyy tuloskortin ruuduissa
+ * ja napalaskurissa. Ohutviivainen bullseye haalistuu pienessä ruudussa, joten yksi
+ * täytetty merkki toimii molemmissa paikoissa paremmin kuin kaksi eri merkkiä.
+ */
 .nappain--napa {
-  color: var(--vari-korostus);
+  background: var(--vari-korostus);
   border-color: var(--vari-korostus);
+  /*
+   * Tekstin väri on taustaväri eikä valkoinen: tumma teema kääntää korostuksen
+   * vaaleaksi vihreäksi, jolloin valkoinen teksti jäisi lukukelvottomaksi.
+   */
+  color: var(--vari-tausta);
+  font-size: 1.7rem;
+  /* Isompi merkki ei saa kasvattaa näppäintä naapureitaan korkeammaksi. */
+  line-height: 1;
+}
+/*
+ * Oma painallustila. Yleinen `.nappain:active` vaalentaa taustan, jolloin
+ * taustanvärinen merkki katoaisi siihen — käännetään värit toisin päin.
+ */
+.nappain--napa:active {
+  background: var(--vari-korostus-himmea);
+  color: var(--vari-korostus);
 }
 .nappain--ohi {
   color: var(--vari-teksti-himmea);
