@@ -20,6 +20,21 @@ yksityiskohdat ovat README-tiedostossa — täällä on vain se mitä radalla ta
 
 > **Älä päivitä sovellusta kisapäivänä.** Katso alta kohta *Päivitysilmoitus*.
 
+### Jos Android varoittaa asennuksesta
+
+Puhelin voi asennuksen yhteydessä väittää sovellusta vaaralliseksi tai kertoa, että
+siitä puuttuu turvaominaisuuksia. Valitse **Lisätiedot** ja sen jälkeen **Asenna
+kuitenkin**.
+
+Varoitus on odotettu eikä kerro sovelluksesta mitään. Selain rakentaa sovelluksesta
+laitekohtaisen paketin, joka asennetaan Play-kaupan ulkopuolelta, ja Play Protect
+varoittaa jokaisesta sellaisesta paketista jota se ei ennestään tunne. Pienen
+sovelluksen pakettia se ei tunne.
+
+Jos jätät asennuksen tekemättä, sovellus jää tavalliseksi selainvälilehdeksi. Silloin
+se ei toimi yhtä varmasti ilman verkkoyhteyttä, ja selain saattaa poistaa kirjatut
+tulokset tilan säästämiseksi. Asennus kannattaa siis tehdä varoituksesta huolimatta.
+
 ---
 
 ## Kisan aikana

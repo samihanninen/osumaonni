@@ -155,6 +155,13 @@ Sovellus kannattaa asentaa kotivalikkoon (*Lisää Koti-valikkoon* / *Asenna sov
 - selain karsii tallennettuja tietoja epätodennäköisemmin kuin tavallisessa välilehdessä
 - sovellus avautuu omana ikkunanaan ilman selaimen osoitepalkkia
 
+**Androidilla asennus voi antaa Play Protect -varoituksen** — puhelin väittää sovellusta
+vaaralliseksi tai kertoo puuttuvista turvaominaisuuksista. Valitse *Lisätiedot* →
+*Asenna kuitenkin*. Varoitus on odotettu: selain rakentaa sovelluksesta laitekohtaisen
+paketin, joka asennetaan Play-kaupan ulkopuolelta, ja Play Protect varoittaa jokaisesta
+paketista jota se ei ennestään tunne. Varoituksen saisi pois vain julkaisemalla
+sovelluksen Play-kaupassa, mikä toisi mukanaan toisen jakelukanavan ylläpidettäväksi.
+
 ### Päivittäminen — älä kesken kisan
 
 Päivitykset eivät asennu itsestään: uudesta versiosta tulee ilmoitus, ja päivityksen
