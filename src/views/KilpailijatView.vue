@@ -270,25 +270,54 @@ function poista(id: string) {
   margin: 0.35rem 0 0.6rem;
   padding: 0.6rem 0.85rem 0.35rem;
 }
+/*
+ * Ruudukko, ei rivittyvä lista.
+ *
+ * Aseluokkavalitsin ilmestyy vasta rastituksen myötä ja leventää kohdan noin
+ * kaksinkertaiseksi. Rivittyvässä listassa se muutti sarakkeiden määrää: neljä lajia
+ * mahtui puhelimessa yhdelle riville rastittamattomina, mutta jo yksi rasti pakotti ne
+ * kahdelle. Osio kasvoi 52 pikseliä rastia kohti, lajit hyppäsivät riviltä toiselle ja
+ * kaikki alapuolella liikkui mukana — myös se ruutu, jota oltiin seuraavaksi
+ * napauttamassa. Kilpailijat kirjataan kiireessä listalta, joten väärän ruudun
+ * osuminen on todellinen virhe eikä vain kauneusvirhe.
+ *
+ * Ruudukossa sarakkeiden määrä riippuu vain näytön leveydestä, joten rastitus ei
+ * rivitä mitään uudelleen. 8rem on kapein leveys, johon lajin nimi ja aseluokkavalitsin
+ * mahtuvat rinnakkain; sitä kapeammalla auto-fit pudottaa yhteen sarakkeeseen.
+ */
 .lajilista {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 1.25rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: 0.15rem 0.6rem;
 }
 .laji {
   display: flex;
   align-items: center;
+  /*
+   * Valitsin heti lajin perään, ei sarakkeen toiseen laitaan. Lajitunnukset ovat
+   * yhtä leveitä, joten valitsimet asettuvat silti samaan linjaan — mutta kumpi
+   * valitsin kuuluu millekin lajille näkyy yhdellä silmäyksellä.
+   */
   gap: 0.4rem;
+  /*
+   * Korkeus ei saa riippua siitä, onko laji rastittu. Valitsin (36px) mahtuu nimen
+   * kosketuskohteen (44px) viereen, joten rivi pysyy samana kummassakin tilassa.
+   */
+  min-height: 44px;
 }
 .laji select {
+  /* Kutistuu tarvittaessa mieluummin kuin työntää ruudukon reunojen yli. */
+  flex: 0 1 auto;
+  min-width: 0;
   width: auto;
   min-height: 36px;
-  padding: 0.2rem 0.4rem;
+  padding: 0.2rem 0.3rem;
   font-size: 0.9rem;
 }
 .valinta {
   display: flex;
   align-items: center;
+  flex: 0 0 auto;
   gap: 0.35rem;
   /* Riittävän iso kosketuskohde */
   min-height: 44px;
