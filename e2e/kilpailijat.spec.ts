@@ -58,20 +58,33 @@ test.describe('lajivalinta kapealla näytöllä', () => {
 
     const eka = page.locator('.lista .rivi').first()
     const ruudut = eka.locator('.laji input[type="checkbox"]')
-    const toinen = page.locator('.lista .rivi').nth(1)
+
+    // `page.evaluate` ei odota kuten lokaattorit, joten kortit on odotettava erikseen.
+    await expect(page.locator('.lista .rivi')).toHaveCount(2)
 
     /*
-     * Sijainnit dokumentin koordinaatistossa. `boundingBox` on näkymäikkunaan nähden, ja
-     * ruudun napautus vierittää sivua — se yksin muuttaisi arvoja ilman että mikään on
-     * asettunut uudelleen. Vierityksen lisääminen tekee mittauksesta vierityksestä
-     * riippumattoman, jolloin testi mittaa nimenomaan asettelun muutosta.
+     * Sijainnit mitataan ensimmäisen kortin yläreunaan nähden, ei sivun tai
+     * näkymäikkunan.
+     *
+     * Absoluuttinen mittaus antaisi vääriä hälytyksiä kahdesta syystä. Napautus
+     * vierittää sivua, ja tuotantoversiossa service worker herää hetken kuluttua
+     * latauksesta, jolloin "toimii ilman verkkoyhteyttä" -ilmoitus ilmestyy sisällön
+     * yläpuolelle ja työntää kaiken alaspäin. Kumpikaan ei liity lajivalintaan, mutta
+     * molemmat siirtävät ruutuja: CI:ssä juuri jälkimmäinen kaatoi tämän testin
+     * 80 pikselillä. Kortin sisäiset etäisyydet muuttuvat vain jos asettelu
+     * todella asettuu uudelleen.
      */
-    const paikat = async () => ({
-      ruudut: await ruudut.evaluateAll((n) =>
-        n.map((e) => e.getBoundingClientRect().y + window.scrollY),
-      ),
-      toinen: await toinen.evaluate((e) => e.getBoundingClientRect().y + window.scrollY),
-    })
+    const paikat = () =>
+      page.evaluate(() => {
+        const kortit = document.querySelectorAll('.lista .rivi')
+        const ylareuna = kortit[0]!.getBoundingClientRect().y
+        return {
+          ruudut: [...kortit[0]!.querySelectorAll('.laji input[type="checkbox"]')].map(
+            (e) => e.getBoundingClientRect().y - ylareuna,
+          ),
+          toinen: kortit[1]!.getBoundingClientRect().y - ylareuna,
+        }
+      })
 
     const alku = await paikat()
 
