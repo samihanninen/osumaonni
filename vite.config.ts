@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { fileURLToPath, URL } from 'node:url'
 
 import { defineConfig } from 'vite'
@@ -5,8 +6,21 @@ import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
 import { VitePWA } from 'vite-plugin-pwa'
 
+/*
+ * Versionumero luetaan package.jsonista, jotta se on yhdessä paikassa. Numero näkyy
+ * sovelluksen alalaidassa: kun kaksi laitetta ei saa yhdistettyä tuloksiaan, ensimmäinen
+ * kysymys on kummassa on mikäkin versio, eikä siihen voi vastata ilman että numero on
+ * näkyvissä. Samasta syystä se on myös vikailmoituksissa käyttökelpoinen tieto.
+ */
+const { version: sovellusVersio } = JSON.parse(
+  readFileSync(fileURLToPath(new URL('./package.json', import.meta.url)), 'utf8'),
+) as { version: string }
+
 // https://vite.dev/config/
 export default defineConfig({
+  define: {
+    __SOVELLUS_VERSIO__: JSON.stringify(sovellusVersio),
+  },
   /*
    * Served from https://samihanninen.github.io/osumaonni/ — the trailing slash matters.
    *

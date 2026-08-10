@@ -256,6 +256,18 @@ test.describe('perustoiminnot', () => {
     await expect(page.getByText('Tiedot tallentuvat vain tähän laitteeseen')).toBeVisible()
   })
 
+  /*
+   * Versionumero korvataan käännösaikana, joten tämä testataan nimenomaan valmiista
+   * buildista: yksikkötesti ei paljastaisi, jos `define` toimisi vain kehityksessä.
+   * Ilman numeroa laitteiden versioita ei voi verrata silloin kun QR-siirto ei toimi.
+   */
+  test('versionumero näkyy sivun alalaidassa', async ({ page }) => {
+    await avaaTyhjana(page)
+    const alapalkki = page.locator('.alapalkki')
+    await expect(alapalkki).toContainText(/v\d+\.\d+\.\d+/)
+    await expect(alapalkki).not.toContainText('SOVELLUS_VERSIO')
+  })
+
   test('tuntematon osoite näyttää virhesivun', async ({ page }) => {
     await avaaTyhjana(page, '/#/ei-ole-olemassa')
     await expect(page.getByRole('heading', { name: 'Sivua ei löytynyt' })).toBeVisible()
