@@ -60,9 +60,10 @@ Jos tuloksia kirjataan useammalla laitteella:
 Yhdistäminen ei tarvitse verkkoyhteyttä — QR-koodi siirtää tiedot laitteesta toiseen
 suoraan.
 
-> Kaikissa laitteissa on oltava **sama versio** sovelluksesta. Jos versiot eroavat,
-> sovellus kertoo siitä eikä lue koodia. Päivittäkää silloin kaikki laitteet — mutta
-> mieluiten ennen kisaa, ei kesken sen.
+> Kaikissa laitteissa on oltava **sama versio** sovelluksesta. Versio näkyy jokaisen
+> sivun alalaidassa, esimerkiksi `v1.0.0`. Jos versiot eroavat, sovellus kertoo siitä
+> eikä lue koodia. Päivittäkää silloin kaikki laitteet — mutta mieluiten ennen kisaa,
+> ei kesken sen.
 
 ---
 
@@ -79,7 +80,8 @@ suoraan.
 - **Linkit eivät toimi, näkymä ei aukea.** Sulje sovellus kokonaan ja avaa uudelleen.
 - **Tulokset näyttävät kadonneen.** Älä syötä mitään uutta. Sulje sovellus ja avaa
   uudelleen — vasta sitten arvioi tilanne.
-- **QR-koodi ei mene läpi.** Tarkista että molemmissa laitteissa on sama versio.
+- **QR-koodi ei mene läpi.** Tarkista että molemmissa laitteissa on sama versio. Numero
+  näkyy sivun alalaidassa.
 - **Kamera ei käynnisty.** Anna selaimelle kameran käyttöoikeus laitteen asetuksista.
 - **Vienti ei onnistu.** Kokeile latausta jakamisen sijaan, tai päinvastoin.
 

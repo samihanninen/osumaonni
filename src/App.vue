@@ -4,6 +4,7 @@ import { RouterLink, RouterView } from 'vue-router'
 import TallennusVaroitus from '@/components/TallennusVaroitus.vue'
 import PaivitysIlmoitus from '@/components/PaivitysIlmoitus.vue'
 import { useLaiteStore } from '@/stores/laite'
+import { VERSIO } from '@/core/versio'
 
 const laite = useLaiteStore()
 
@@ -38,6 +39,16 @@ const laji = computed(() => laite.viimeinenLaji || 'RA1')
     <TallennusVaroitus />
     <RouterView />
   </main>
+
+  <!--
+    Versio näkyy joka sivulla, koska sitä kysytään juuri silloin kun jokin ei toimi:
+    QR-koodi ei mene laitteesta toiseen, tai käyttäjä ilmoittaa viasta. Alalaidassa se
+    ei vie tilaa varsinaiselta työltä, mutta löytyy vierittämällä mistä tahansa.
+  -->
+  <footer class="alapalkki">
+    <p>OsumaOnni <span class="versio">v{{ VERSIO }}</span></p>
+    <p class="vinkki">Saman kisan laitteissa on syytä olla sama versio.</p>
+  </footer>
 </template>
 
 <style scoped>
@@ -134,6 +145,37 @@ const laji = computed(() => laite.viimeinenLaji || 'RA1')
   max-width: 1100px;
   margin: 0 auto;
   padding: 1rem;
+}
+
+.alapalkki {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1rem 1rem 2rem;
+  border-top: 1px solid var(--vari-reuna);
+  color: var(--vari-teksti-himmea);
+  font-size: 0.8rem;
+  text-align: center;
+}
+.alapalkki p {
+  margin: 0;
+}
+/* Numero on se osa jota luetaan ääneen toiselle laitteelle, joten se erottuu. */
+.versio {
+  font-weight: 600;
+  color: var(--vari-teksti);
+}
+.vinkki {
+  margin-top: 0.25rem;
+}
+
+/* Tulosteessa versio kertoo millä ohjelmalla tuloste on tehty; vinkki on turha. */
+@media print {
+  .alapalkki {
+    border-top: none;
+  }
+  .vinkki {
+    display: none;
+  }
 }
 
 @media (min-width: 768px) {
