@@ -195,9 +195,7 @@ test.describe('taulukkosyöttö', () => {
 test.describe('syöttötavan automaattinen valinta', () => {
   /** Onko laitteessa hiiri tai ohjauslevy eli käytännössä oikea näppäimistö? */
   async function tarkkaOsoitin(page: import('@playwright/test').Page) {
-    return page.evaluate(
-      () => window.matchMedia('(min-width: 768px) and (pointer: fine)').matches,
-    )
+    return page.evaluate(() => window.matchMedia('(min-width: 768px) and (pointer: fine)').matches)
   }
 
   // Kaksi erillistä testiä yhden ehtolauseen sijaan: näin ohitetut tapaukset näkyvät

@@ -304,9 +304,7 @@ describe('palojen kerääminen', () => {
     keraaja.lisaa(palat[0]!)
 
     expect(keraaja.valmis()).toBe(false)
-    expect(keraaja.puuttuvat()).toEqual(
-      Array.from({ length: palat.length - 1 }, (_, i) => i + 2),
-    )
+    expect(keraaja.puuttuvat()).toEqual(Array.from({ length: palat.length - 1 }, (_, i) => i + 2))
     expect(() => keraaja.pura()).toThrow(/Kaikkia osia ei ole luettu/)
   })
 

@@ -64,7 +64,10 @@ function lueMeta(wb: Workbook) {
   }
 
   const parit = new Map<string, string>()
-  const rakenteet = new Map<Laji, { kilpasarjoja: number; laukauksiaSarjassa: number; tulosSaanto: TulosSaanto }>()
+  const rakenteet = new Map<
+    Laji,
+    { kilpasarjoja: number; laukauksiaSarjassa: number; tulosSaanto: TulosSaanto }
+  >()
 
   ws.eachRow((rivi) => {
     const a = teksti(rivi.getCell(1)).trim()

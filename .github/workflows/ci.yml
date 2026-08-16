@@ -28,6 +28,12 @@ jobs:
       - name: Tyylintarkistus
         run: npm run lint
 
+      # Muotoilu tarkistetaan erikseen: eslint-config-prettier sammuttaa muotoilusäännöt
+      # eslintistä, joten ilman tätä askelta muotoiluajautuma ei näy missään. Ajautuma
+      # kostautuu vasta myöhemmin, kun se sekoittuu asiamuutosten diffiin.
+      - name: Muotoilun tarkistus
+        run: npm run format:check
+
       - name: Tyyppitarkistus
         run: npm run type-check
 

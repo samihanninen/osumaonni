@@ -50,17 +50,26 @@ describe('jakotuen tunnistus', () => {
   })
 
   it('canShare ratkaisee yksittäisen tiedoston jakamisen', () => {
-    asetaJakotuki(() => true, () => Promise.resolve())
+    asetaJakotuki(
+      () => true,
+      () => Promise.resolve(),
+    )
     expect(tukeeTiedostonJakoa(luoTiedosto(new ArrayBuffer(4), 'a.xlsx'))).toBe(true)
 
-    asetaJakotuki(() => false, () => Promise.resolve())
+    asetaJakotuki(
+      () => false,
+      () => Promise.resolve(),
+    )
     expect(tukeeTiedostonJakoa(luoTiedosto(new ArrayBuffer(4), 'a.xlsx'))).toBe(false)
   })
 
   it('canSharen poikkeus tulkitaan tuen puutteeksi', () => {
-    asetaJakotuki(() => {
-      throw new Error('ei käy')
-    }, () => Promise.resolve())
+    asetaJakotuki(
+      () => {
+        throw new Error('ei käy')
+      },
+      () => Promise.resolve(),
+    )
     expect(tukeeTiedostonJakoa(luoTiedosto(new ArrayBuffer(4), 'a.xlsx'))).toBe(false)
   })
 })

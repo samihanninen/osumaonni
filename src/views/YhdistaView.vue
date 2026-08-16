@@ -72,7 +72,11 @@ function luoLahete() {
     const paketti =
       sisalto.value === 'taysi'
         ? rakennaTayspaketti(kisa.value, tunnisteet())
-        : rakennaOsapaketti(kisa.value, tunnisteet(), (valitutLajit.value.length > 0 ? { lajit: valitutLajit.value } : {}))
+        : rakennaOsapaketti(
+            kisa.value,
+            tunnisteet(),
+            valitutLajit.value.length > 0 ? { lajit: valitutLajit.value } : {},
+          )
     palat.value = paketoi(paketti)
     palaIndeksi.value = 0
   } catch (e) {
@@ -122,15 +126,16 @@ const saapuva = ref<Siirtopaketti | null>(null)
 const liitettyTeksti = ref('')
 const lukija = useTemplateRef<InstanceType<typeof QrLukija>>('lukija')
 
-const yhteenveto = computed(() =>
-  saapuva.value ? kuvaaPaketti(saapuva.value, kisa.value) : null,
-)
+const yhteenveto = computed(() => (saapuva.value ? kuvaaPaketti(saapuva.value, kisa.value) : null))
 
 const ristiriidat = ref<Ristiriita[]>([])
 const valinnat = ref(new Map<string, RistiriidanValinta>())
-const esikatselu = ref<{ lisatyt: number; paivitetyt: number; samat: number; vanhempi: boolean } | null>(
-  null,
-)
+const esikatselu = ref<{
+  lisatyt: number
+  paivitetyt: number
+  samat: number
+  vanhempi: boolean
+} | null>(null)
 
 function kasitteleKoodi(teksti: string) {
   virhe.value = ''
@@ -286,8 +291,8 @@ function laukauksetTekstina(laukaukset: (number | '*' | '-' | null)[]): string {
   <section class="sivu">
     <h1>Yhdistä tulokset</h1>
     <p>
-      Usean kirjaajan tulokset saa koottua yhdelle laitteelle. Siirto tapahtuu QR-koodilla,
-      linkillä tai tiedostolla — omaa palvelinta ei ole missään näistä.
+      Usean kirjaajan tulokset saa koottua yhdelle laitteelle. Siirto tapahtuu QR-koodilla, linkillä
+      tai tiedostolla — omaa palvelinta ei ole missään näistä.
     </p>
 
     <div class="valilehdet" role="tablist">
@@ -322,8 +327,8 @@ function laukauksetTekstina(laukaukset: (number | '*' | '-' | null)[]): string {
         <h2>Mitä lähetetään</h2>
 
         <p class="ero">
-          Ero on siinä, <strong>mitä vastaanottajalle tapahtuu</strong>: koko kisa korvaa
-          hänen tietonsa, vain tulokset sulautetaan niihin.
+          Ero on siinä, <strong>mitä vastaanottajalle tapahtuu</strong>: koko kisa korvaa hänen
+          tietonsa, vain tulokset sulautetaan niihin.
         </p>
 
         <label class="valinta">
@@ -332,11 +337,11 @@ function laukauksetTekstina(laukaukset: (number | '*' | '-' | null)[]): string {
             <strong>Koko kisa — aloita tästä</strong>
             <small>
               Kilpailijat, asetukset ja tulokset. Vastaanottajan tiedot
-              <strong>korvataan kokonaan</strong>, ja hänen laitteelleen tulee sama kisa
-              kuin sinulla.
+              <strong>korvataan kokonaan</strong>, ja hänen laitteelleen tulee sama kisa kuin
+              sinulla.
               <br />
-              Käytä tätä kun annat kisan seuraavalle kirjaajalle, ja aina ensimmäisenä kun
-              otat toisen laitteen mukaan.
+              Käytä tätä kun annat kisan seuraavalle kirjaajalle, ja aina ensimmäisenä kun otat
+              toisen laitteen mukaan.
             </small>
           </span>
         </label>
@@ -346,12 +351,12 @@ function laukauksetTekstina(laukaukset: (number | '*' | '-' | null)[]): string {
           <span>
             <strong>Vain tulokset</strong>
             <small>
-              Pelkät laukaukset, ei kilpailijoita eikä asetuksia. Vastaanottajan omat
-              kirjaukset <strong>säilyvät</strong> ja tulokset yhdistetään niihin.
+              Pelkät laukaukset, ei kilpailijoita eikä asetuksia. Vastaanottajan omat kirjaukset
+              <strong>säilyvät</strong> ja tulokset yhdistetään niihin.
               <br />
               Käytä tätä kun useampi kirjaa yhtä aikaa —
-              <strong>edellyttää, että molemmilla on sama kisa</strong> eli koko kisa on
-              lähetetty ensin.
+              <strong>edellyttää, että molemmilla on sama kisa</strong> eli koko kisa on lähetetty
+              ensin.
             </small>
           </span>
         </label>
@@ -379,20 +384,15 @@ function laukauksetTekstina(laukaukset: (number | '*' | '-' | null)[]): string {
       <section v-if="laheteValmis" class="kortti lohko">
         <h2>QR-koodi</h2>
         <p v-if="palat.length > 1" class="vihje">
-          Tulokset on jaettu <strong>{{ palat.length }} osaan</strong>. Yksi iso koodi
-          olisi puhelimelle vaikea lukea, joten näytä osat vuorotellen — vastaanottaja voi
-          lukea ne missä järjestyksessä tahansa, ja sovellus kertoo mitä vielä puuttuu.
+          Tulokset on jaettu <strong>{{ palat.length }} osaan</strong>. Yksi iso koodi olisi
+          puhelimelle vaikea lukea, joten näytä osat vuorotellen — vastaanottaja voi lukea ne missä
+          järjestyksessä tahansa, ja sovellus kertoo mitä vielä puuttuu.
         </p>
 
         <QrKoodi :teksti="nykyinenPala" />
 
         <div v-if="palat.length > 1" class="palanavigointi">
-          <button
-            type="button"
-            class="nappi"
-            :disabled="palaIndeksi === 0"
-            @click="palaIndeksi--"
-          >
+          <button type="button" class="nappi" :disabled="palaIndeksi === 0" @click="palaIndeksi--">
             ‹ Edellinen
           </button>
           <span class="palalaskuri">Osa {{ palaIndeksi + 1 }} / {{ palat.length }}</span>
@@ -408,20 +408,13 @@ function laukauksetTekstina(laukaukset: (number | '*' | '-' | null)[]): string {
 
         <h3>Muut tavat</h3>
         <div class="napit">
-          <button
-            v-if="jakolinkki"
-            type="button"
-            class="nappi"
-            @click="kopioiLinkki"
-          >
+          <button v-if="jakolinkki" type="button" class="nappi" @click="kopioiLinkki">
             Kopioi jakolinkki
           </button>
           <button v-if="voiJakaa" type="button" class="nappi" @click="jaaKoodi">
             Jaa tiedostona
           </button>
-          <button type="button" class="nappi" @click="lataaKoodiTiedostona">
-            Lataa tiedosto
-          </button>
+          <button type="button" class="nappi" @click="lataaKoodiTiedostona">Lataa tiedosto</button>
         </div>
         <p class="vihje">
           <template v-if="jakolinkki">
@@ -436,8 +429,8 @@ function laukauksetTekstina(laukaukset: (number | '*' | '-' | null)[]): string {
         <template v-if="sisalto === 'taysi'">
           <h3>Luovutus</h3>
           <p class="vihje">
-            Kun vastaanottaja on lukenut koodin, merkitse tämä laite luovutetuksi. Silloin
-            sama kisa ei jatku vahingossa kahdella laitteella eri suuntiin.
+            Kun vastaanottaja on lukenut koodin, merkitse tämä laite luovutetuksi. Silloin sama kisa
+            ei jatku vahingossa kahdella laitteella eri suuntiin.
           </p>
           <button type="button" class="nappi" :disabled="laite.luovutettu" @click="luovuta">
             {{ laite.luovutettu ? 'Merkitty luovutetuksi' : 'Merkitse luovutetuksi' }}
@@ -463,7 +456,12 @@ function laukauksetTekstina(laukaukset: (number | '*' | '-' | null)[]): string {
           placeholder="Liitä tähän saamasi koodi tai linkki"
         ></textarea>
         <div class="napit">
-          <button type="button" class="nappi" :disabled="!liitettyTeksti.trim()" @click="liitaTeksti">
+          <button
+            type="button"
+            class="nappi"
+            :disabled="!liitettyTeksti.trim()"
+            @click="liitaTeksti"
+          >
             Lue liitetty koodi
           </button>
         </div>
@@ -497,55 +495,48 @@ function laukauksetTekstina(laukaukset: (number | '*' | '-' | null)[]): string {
         <div v-if="yhteenveto?.eriKisa && saapuva.tyyppi === 'osa'" class="huomio huomio--varoitus">
           <p>
             <strong>Koodi kuuluu eri kisaan.</strong>
-            Näin käy, kun molemmille laitteille on perustettu oma kisa. Suositeltu tapa on
-            lähettää ensin <em>koko kisa</em> toiselle laitteelle, jolloin molemmilla on
-            sama kisa ja kilpailijat vastaavat toisiaan.
+            Näin käy, kun molemmille laitteille on perustettu oma kisa. Suositeltu tapa on lähettää
+            ensin <em>koko kisa</em> toiselle laitteelle, jolloin molemmilla on sama kisa ja
+            kilpailijat vastaavat toisiaan.
           </p>
           <p v-if="!salliEriKisa" class="ohitus">
             Voit myös yhdistää silti: kilpailijat tunnistetaan silloin nimen ja yhdistyksen
             perusteella, ja eri tavalla kirjoitetut nimet päätyvät eri kilpailijoiksi.
           </p>
-          <button
-            v-if="!salliEriKisa"
-            type="button"
-            class="nappi"
-            @click="hyvaksyEriKisa"
-          >
+          <button v-if="!salliEriKisa" type="button" class="nappi" @click="hyvaksyEriKisa">
             Yhdistä silti
           </button>
           <p v-else class="ohitus">
-            <strong>Yhdistetään nimien perusteella.</strong> Tarkista tulos yhdistämisen
-            jälkeen.
+            <strong>Yhdistetään nimien perusteella.</strong> Tarkista tulos yhdistämisen jälkeen.
           </p>
         </div>
 
         <p v-if="esikatselu?.vanhempi" class="huomio huomio--varoitus">
-          <strong>Saapuvassa kisassa on vähemmän kirjattuja laukauksia kuin tässä laitteessa.</strong>
+          <strong
+            >Saapuvassa kisassa on vähemmän kirjattuja laukauksia kuin tässä laitteessa.</strong
+          >
           Se voi olla vanhempi tilanne — jatkaminen korvaisi uudemmat tulokset.
         </p>
 
         <p v-if="saapuva.tyyppi === 'taysi'" class="huomio huomio--varoitus">
-          Koko kisa korvaa tämän laitteen tiedot
-          ({{ store.kilpailijoita }} kilpailijaa). Toimintoa ei voi peruuttaa.
+          Koko kisa korvaa tämän laitteen tiedot ({{ store.kilpailijoita }} kilpailijaa). Toimintoa
+          ei voi peruuttaa.
         </p>
         <p v-else-if="esikatselu" class="yhteenvetoteksti">
-          {{ esikatselu.paivitetyt }} kilpasarjaa saa uutta tietoa,
-          {{ esikatselu.samat }} on jo samanlaisia,
-          {{ esikatselu.lisatyt }} uutta kilpailijaa.
+          {{ esikatselu.paivitetyt }} kilpasarjaa saa uutta tietoa, {{ esikatselu.samat }} on jo
+          samanlaisia, {{ esikatselu.lisatyt }} uutta kilpailijaa.
         </p>
 
         <!-- Ristiriidat: käyttäjä päättää, mitään ei korvata huomaamatta. -->
         <template v-if="ristiriidat.length > 0">
           <h3>Ristiriidat ({{ ristiriidat.length }})</h3>
           <p class="vihje">
-            Molemmat laitteet ovat kirjanneet saman kilpasarjan eri tavalla. Valitse kumpi
-            jää voimaan. Mitään ei korvata ennen vahvistusta.
+            Molemmat laitteet ovat kirjanneet saman kilpasarjan eri tavalla. Valitse kumpi jää
+            voimaan. Mitään ei korvata ennen vahvistusta.
           </p>
 
           <div class="napit">
-            <button type="button" class="nappi" @click="valitseKaikki('oma')">
-              Kaikki omat
-            </button>
+            <button type="button" class="nappi" @click="valitseKaikki('oma')">Kaikki omat</button>
             <button type="button" class="nappi" @click="valitseKaikki('saapuva')">
               Kaikki saapuvat
             </button>
@@ -555,7 +546,9 @@ function laukauksetTekstina(laukaukset: (number | '*' | '-' | null)[]): string {
             <li v-for="r in ristiriidat" :key="r.avain" class="ristiriita">
               <p class="ristiriita-otsikko">
                 <strong>{{ r.nimi }}</strong>
-                <span class="ristiriita-paikka">{{ r.laji }} · kilpasarja {{ r.kilpasarja + 1 }}</span>
+                <span class="ristiriita-paikka"
+                  >{{ r.laji }} · kilpasarja {{ r.kilpasarja + 1 }}</span
+                >
               </p>
               <div class="vaihtoehdot">
                 <button
@@ -594,9 +587,7 @@ function laukauksetTekstina(laukaukset: (number | '*' | '-' | null)[]): string {
           </button>
           <button type="button" class="nappi" @click="tyhjennaVastaanotto">Peruuta</button>
         </div>
-        <p v-if="!kaikkiRatkaistu" class="vihje">
-          Ratkaise ensin kaikki ristiriidat.
-        </p>
+        <p v-if="!kaikkiRatkaistu" class="vihje">Ratkaise ensin kaikki ristiriidat.</p>
       </section>
     </template>
 

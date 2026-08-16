@@ -173,7 +173,9 @@ describe('sijoitukset — sijat 9:stä eteenpäin', () => {
     // Yhdeksän parempaa, sitten kaksi samalla tuloksella mutta eri iskemämäärillä.
     const kilpailijat: Kilpailija[] = []
     for (let i = 0; i < 8; i++) {
-      kilpailijat.push(ampuja({ nimi: `Kärki${i} Ampuja${i}`, sarjat: [tasainen(10), tasainen(10)] }))
+      kilpailijat.push(
+        ampuja({ nimi: `Kärki${i} Ampuja${i}`, sarjat: [tasainen(10), tasainen(10)] }),
+      )
     }
     // Näillä molemmilla 50 pistettä, mutta eri iskemämäärä.
     kilpailijat.push(

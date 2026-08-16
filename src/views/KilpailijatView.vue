@@ -58,8 +58,8 @@ function poista(id: string) {
   <section class="sivu">
     <h1>Kilpailijat</h1>
     <p>
-      Kirjaa nimi ja yhdistys kertaalleen, ja valitse lajit joihin kilpailija osallistuu.
-      Aseluokka valitaan lajikohtaisesti, koska se seuraa käytettyä asetta.
+      Kirjaa nimi ja yhdistys kertaalleen, ja valitse lajit joihin kilpailija osallistuu. Aseluokka
+      valitaan lajikohtaisesti, koska se seuraa käytettyä asetta.
     </p>
 
     <form class="kortti lisays" @submit.prevent="lisaa">
@@ -189,11 +189,7 @@ function poista(id: string) {
                     type="checkbox"
                     :checked="osallistuu(k.id, laji)"
                     @change="
-                      vaihdaOsallistuminen(
-                        k.id,
-                        laji,
-                        ($event.target as HTMLInputElement).checked,
-                      )
+                      vaihdaOsallistuminen(k.id, laji, ($event.target as HTMLInputElement).checked)
                     "
                   />
                   <span>{{ laji }}</span>

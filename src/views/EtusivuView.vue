@@ -77,8 +77,8 @@ const osiot = computed(() => [
 
     <p class="huomio huomio--varoitus tietosuoja">
       <strong>Tiedot tallentuvat vain tähän laitteeseen.</strong>
-      Mitään ei lähetetä verkkoon. Vie tulokset tiedostoon säännöllisesti — selaimen
-      tietojen tyhjentäminen poistaa kirjatut tulokset.
+      Mitään ei lähetetä verkkoon. Vie tulokset tiedostoon säännöllisesti — selaimen tietojen
+      tyhjentäminen poistaa kirjatut tulokset.
     </p>
 
     <nav class="osiot" aria-label="Sovelluksen osiot">
