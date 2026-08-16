@@ -2,7 +2,12 @@ import { describe, it, expect } from 'vitest'
 import type { Kilpailija, Kilpasarja, Laji, Luokka } from '@/types/kisa'
 import { LAJIT } from '../lajit'
 import { sijoitukset, vertaaNimia, TARKAN_TULKKAUKSEN_RAJA } from '../sijoitukset'
-import { yhdistysLaji, yhdistysYhteistulos, JOUKKUEEN_KOKO } from '../yhdistykset'
+import {
+  yhdistysLaji,
+  yhdistysYhteistulos,
+  onJoukkuekilpailu,
+  JOUKKUEEN_KOKO,
+} from '../yhdistykset'
 import { kokonaiskilpailu } from '../kokonaiskilpailu'
 
 let seuraavaId = 0
@@ -442,5 +447,21 @@ describe('kisan omat rakenteet laskennassa', () => {
     expect(rivi.lajipisteet.RA1).toBe(200)
     expect(rivi.lajipisteet.RA2).toBe(162)
     expect(rivi.pisteet).toBe(362)
+  })
+})
+
+/*
+ * Säännöt kaikissa neljässä lajissa: "Mikäli joukkuekilpailu järjestetään, on siitä
+ * mainittava kilpailukutsussa." Yhdistyskilpailu ei siis ole automaattinen.
+ */
+describe('yhdistyskilpailun valinnaisuus', () => {
+  it('puuttuva asetus tarkoittaa päällä', () => {
+    expect(onJoukkuekilpailu({})).toBe(true)
+    expect(onJoukkuekilpailu({ joukkuekilpailu: undefined })).toBe(true)
+  })
+
+  it('vain nimenomainen epätosi sammuttaa sen', () => {
+    expect(onJoukkuekilpailu({ joukkuekilpailu: false })).toBe(false)
+    expect(onJoukkuekilpailu({ joukkuekilpailu: true })).toBe(true)
   })
 })

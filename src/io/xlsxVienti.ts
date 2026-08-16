@@ -3,7 +3,7 @@ import type { Kilpailija, Kisa, Laji, Laukaus, Luokka } from '@/types/kisa'
 import { LAJI_KOODIT, LUOKAT, LUOKKA_NIMET } from '@/core/lajit'
 import { laskeLaji } from '@/core/laskenta'
 import { sijoitukset } from '@/core/sijoitukset'
-import { yhdistysLaji, yhdistysYhteistulos } from '@/core/yhdistykset'
+import { onJoukkuekilpailu, yhdistysLaji, yhdistysYhteistulos } from '@/core/yhdistykset'
 import { kokonaiskilpailu } from '@/core/kokonaiskilpailu'
 import {
   ENSIMMAINEN_DATARIVI,
@@ -327,16 +327,23 @@ function kirjoitaSijoitukset(wb: Workbook, kisa: Kisa, laji: Laji) {
 function kirjoitaYhdistykset(wb: Workbook, kisa: Kisa) {
   const ws = wb.addWorksheet(YHDISTYKSET_VALILEHTI)
   const parhaita = kisa.asetukset.laskettavatParhaat
+  // Jos joukkuekilpailua ei järjestetä, sitä ei myöskään kirjoiteta tiedostoon: tuloste
+  // ei saa esittää kilpailua, jota ei ole ollut.
+  const yhdistykset = onJoukkuekilpailu(kisa.asetukset)
 
   ws.mergeCells(1, 1, 1, 7)
   const otsikko = ws.getCell(1, 1)
-  otsikko.value = 'Yhdistys- ja kokonaiskilpailu'
+  otsikko.value = yhdistykset ? 'Yhdistys- ja kokonaiskilpailu' : 'Kokonaiskilpailu'
   tyylitaOtsikko(otsikko, true)
 
-  ws.getCell(2, 1).value = `Lajitulos = parhaiden ${parhaita} kilpailijan summa. Tilannekuva.`
+  ws.getCell(2, 1).value = yhdistykset
+    ? `Lajitulos = parhaiden ${parhaita} kilpailijan summa. Tilannekuva.`
+    : 'Yhdistyskilpailua ei järjestetty. Tilannekuva.'
   ws.getCell(2, 1).font = { size: 9, italic: true, color: { argb: 'FF62626C' } }
 
   let rivi = 4
+  if (!yhdistykset) return kirjoitaKokonaiskilpailu(ws, kisa, rivi)
+
   ws.getCell(rivi, 1).value = 'Yhteistulos'
   ws.getCell(rivi, 1).font = { bold: true, size: 11 }
   rivi++
@@ -393,6 +400,12 @@ function kirjoitaYhdistykset(wb: Workbook, kisa: Kisa) {
     rivi++
   }
 
+  kirjoitaKokonaiskilpailu(ws, kisa, rivi)
+}
+
+/** Kokonaiskilpailu kirjoitetaan aina, myös ilman yhdistyskilpailua. */
+function kirjoitaKokonaiskilpailu(ws: Worksheet, kisa: Kisa, aloitusRivi: number) {
+  let rivi = aloitusRivi
   ws.getCell(rivi, 1).value = 'Kokonaiskilpailu — henkilökohtainen'
   ws.getCell(rivi, 1).font = { bold: true, size: 11 }
   rivi++
@@ -443,6 +456,7 @@ function kirjoitaKisatiedot(wb: Workbook, kisa: Kisa) {
     ['Tuomari', t.tuomari],
     ['Kirjuri', t.kirjuri],
     ['Laskettavat parhaat', kisa.asetukset.laskettavatParhaat],
+    ['Yhdistyskilpailu', onJoukkuekilpailu(kisa.asetukset) ? 'Järjestetään' : 'Ei järjestetä'],
     ['Muistiinpanot', t.muistiinpanot],
   ]
 
@@ -468,6 +482,9 @@ function kirjoitaMeta(wb: Workbook, kisa: Kisa, aika: string) {
     ['vientiAika', aika],
     ['kisaId', kisa.kisaId],
     ['laskettavatParhaat', kisa.asetukset.laskettavatParhaat],
+    // Kirjoitetaan aina, myös oletusarvo: muuten tuonti ei erota "ei järjestetty"
+    // vanhemmalla versiolla tehdystä tiedostosta, jossa tietoa ei ollut lainkaan.
+    ['joukkuekilpailu', onJoukkuekilpailu(kisa.asetukset) ? 'kylla' : 'ei'],
   ]
   parit.forEach(([avain, arvo], i) => {
     ws.getCell(i + 1, 1).value = avain

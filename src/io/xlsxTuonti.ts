@@ -278,6 +278,9 @@ export async function tuoKisa(tavut: ArrayBuffer): Promise<TuontiYhteenveto> {
     kisatiedot: lueKisatiedot(wb),
     asetukset: {
       laskettavatParhaat: Number.isFinite(parhaat) && parhaat > 0 ? Math.trunc(parhaat) : 3,
+      // Puuttuva tieto tarkoittaa päällä: vanhemmalla versiolla viedyssä tiedostossa
+      // yhdistyskilpailu oli aina mukana.
+      joukkuekilpailu: parit.get('joukkuekilpailu') !== 'ei',
       lajiMaaritykset,
     },
     kilpailijat,
