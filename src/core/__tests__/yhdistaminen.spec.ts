@@ -27,7 +27,10 @@ function kloonaa<T>(arvo: T): T {
 }
 
 /** Luo kisan, jossa on annetut kilpailijat RA1-lajissa. */
-function luoKisa(nimet: [string, string][]): { store: ReturnType<typeof useKisaStore>; kisa: Kisa } {
+function luoKisa(nimet: [string, string][]): {
+  store: ReturnType<typeof useKisaStore>
+  kisa: Kisa
+} {
   const store = useKisaStore()
   for (const [etunimi, sukunimi] of nimet) {
     const k = store.lisaaKilpailija({ etunimi, sukunimi, yhdistys: 'Nupures' })
@@ -259,9 +262,7 @@ describe('yhdistäminen — ristiriidat', () => {
 
   it('valinta "oma" säilyttää oman tuloksen', () => {
     const { store, id, paketti } = ristiriitaTilanne()
-    const valinnat = new Map<string, RistiriidanValinta>([
-      [ristiriidanAvain(id, 'RA1', 0), 'oma'],
-    ])
+    const valinnat = new Map<string, RistiriidanValinta>([[ristiriidanAvain(id, 'RA1', 0), 'oma']])
 
     const tulos = yhdista(store.kisa, paketti, { valinnat })
     expect(tulos.ristiriidat).toHaveLength(0)
@@ -333,9 +334,9 @@ describe('yhdistäminen — kilpailijat ja tuomarin merkinnät', () => {
     b.store.asetaRangaistukset(id, 'RA1', 0)
     const paketti = rakennaOsapaketti(b.kisa, TUNNISTEET)
 
-    expect(yhdista(store.kisa, paketti).kisa.kilpailijat[0]!.osallistumiset.RA1!.rangaistuksia).toBe(
-      4,
-    )
+    expect(
+      yhdista(store.kisa, paketti).kisa.kilpailijat[0]!.osallistumiset.RA1!.rangaistuksia,
+    ).toBe(4)
   })
 
   it('hylkäys säilyy kummalta laitteelta tahansa', () => {

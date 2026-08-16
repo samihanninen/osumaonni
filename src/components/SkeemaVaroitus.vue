@@ -23,10 +23,10 @@ const nakyy = computed(() => store.skeemaTila === 'uudempi' || store.skeemaTila 
         <strong>Laitteen kisa on tallennettu uudemmalla sovellusversiolla.</strong>
         Sitä ei avattu, koska tämä versio ei tunne sen rakennetta (tallennusmuoto
         {{ store.skeemaVersio }}).
-        <strong>Tiedot ovat tallessa eikä niitä ole poistettu.</strong> Kisa avautuu itsestään,
-        kun laitteessa on taas uudempi sovellusversio. Versiota ei voi valita itse, joten
-        kerro asiasta kisan järjestäjälle — älä kirjaa tuloksia tähän tyhjään kisaan äläkä
-        tyhjennä selaimen tietoja.
+        <strong>Tiedot ovat tallessa eikä niitä ole poistettu.</strong> Kisa avautuu itsestään, kun
+        laitteessa on taas uudempi sovellusversio. Versiota ei voi valita itse, joten kerro asiasta
+        kisan järjestäjälle — älä kirjaa tuloksia tähän tyhjään kisaan äläkä tyhjennä selaimen
+        tietoja.
       </template>
       <template v-else>
         <strong>Laitteelle tallennettua kisaa ei voitu lukea.</strong>

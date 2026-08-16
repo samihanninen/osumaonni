@@ -115,8 +115,7 @@ function sijaTeksti(sija: number): string {
 
     <h2 class="tulososio">{{ otsikko }}</h2>
     <p class="selite">
-      Tasatuloksen ratkaisee iskemien määrä, sitten napakympit, kympit, ysit ja niin
-      edelleen.
+      Tasatuloksen ratkaisee iskemien määrä, sitten napakympit, kympit, ysit ja niin edelleen.
       <template v-if="maaritys.tulosSaanto === 'paras'">
         Tarvittaessa myös huonompi kilpasarja.
       </template>
@@ -127,7 +126,8 @@ function sijaTeksti(sija: number): string {
     </p>
 
     <p v-if="rivit.length === 0" class="tulossa">
-      Ei tuloksia. <RouterLink :to="{ name: 'syotto', params: { laji } }">Syötä tuloksia</RouterLink>.
+      Ei tuloksia.
+      <RouterLink :to="{ name: 'syotto', params: { laji } }">Syötä tuloksia</RouterLink>.
     </p>
 
     <div v-else class="taulukko-kehys taulukko-kehys--kiinnita">
@@ -148,13 +148,17 @@ function sijaTeksti(sija: number): string {
           <tr
             v-for="rivi in rivit"
             :key="rivi.kilpailija.id"
-            :class="{ 'rivi--hylatty': rivi.tulos.hylatty, 'rivi--kolme': rivi.sija <= 3 && rivi.sija > 0 }"
+            :class="{
+              'rivi--hylatty': rivi.tulos.hylatty,
+              'rivi--kolme': rivi.sija <= 3 && rivi.sija > 0,
+            }"
           >
             <td class="numero sija">
               {{ sijaTeksti(rivi.sija) }}<span v-if="rivi.jaettu" class="jaettu">.</span>
             </td>
             <th scope="row" class="nimi">
-              {{ rivi.kilpailija.sukunimi }}<span class="etunimi">, {{ rivi.kilpailija.etunimi }}</span>
+              {{ rivi.kilpailija.sukunimi
+              }}<span class="etunimi">, {{ rivi.kilpailija.etunimi }}</span>
             </th>
             <td>{{ rivi.kilpailija.yhdistys || '—' }}</td>
             <td>{{ rivi.kilpailija.ikasarja }}</td>

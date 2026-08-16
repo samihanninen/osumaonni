@@ -4,13 +4,7 @@ import { storeToRefs } from 'pinia'
 import { useKisaStore } from '@/stores/kisa'
 import { useLaiteStore } from '@/stores/laite'
 import { lataaTiedosto, lueTiedosto } from '@/io/lataa'
-import {
-  jaaTiedosto,
-  jakoKaytettavissa,
-  luoTiedosto,
-  luonnosTeksti,
-  mailtoOsoite,
-} from '@/io/jaa'
+import { jaaTiedosto, jakoKaytettavissa, luoTiedosto, luonnosTeksti, mailtoOsoite } from '@/io/jaa'
 import { LAJI_KOODIT } from '@/core/lajit'
 import type { TuontiYhteenveto } from '@/io/xlsxTuonti'
 
@@ -210,8 +204,8 @@ const eriKisa = computed(
   <section class="sivu">
     <h1>Vienti ja tuonti</h1>
     <p>
-      Tulokset tallentuvat vain tähän laitteeseen. Vie ne tiedostoon säännöllisesti, niin
-      virheet voi korjata jälkikäteen myös silloin, kun selaimen muisti on tyhjentynyt.
+      Tulokset tallentuvat vain tähän laitteeseen. Vie ne tiedostoon säännöllisesti, niin virheet
+      voi korjata jälkikäteen myös silloin, kun selaimen muisti on tyhjentynyt.
     </p>
 
     <p v-if="virhe" class="huomio huomio--virhe">{{ virhe }}</p>
@@ -220,8 +214,8 @@ const eriKisa = computed(
     <section class="lohko kortti">
       <h2>Vie Excel-tiedostoon</h2>
       <p class="selite">
-        Tiedosto sisältää muokattavat tuloskortit aidoin Excel-kaavoin: kun korjaat
-        laukauksen, summat ja kilpailutulos laskeutuvat uudelleen.
+        Tiedosto sisältää muokattavat tuloskortit aidoin Excel-kaavoin: kun korjaat laukauksen,
+        summat ja kilpailutulos laskeutuvat uudelleen.
       </p>
 
       <dl class="tiedot">
@@ -266,28 +260,26 @@ const eriKisa = computed(
       </p>
 
       <p v-if="voiJakaa" class="vihje jakovihje">
-        <strong>Jaa Excel-tiedosto</strong> avaa puhelimen oman jakovalikon, josta tiedoston
-        voi lähettää suoraan sähköpostilla, WhatsAppilla tai muulla valitsemallasi tavalla
-        — aitona liitetiedostona. Jos laite ei tue jakamista, tiedosto ladataan sen sijaan.
+        <strong>Jaa Excel-tiedosto</strong> avaa puhelimen oman jakovalikon, josta tiedoston voi
+        lähettää suoraan sähköpostilla, WhatsAppilla tai muulla valitsemallasi tavalla — aitona
+        liitetiedostona. Jos laite ei tue jakamista, tiedosto ladataan sen sijaan.
       </p>
       <details v-else class="sahkoposti">
         <summary>Lähettäminen sähköpostilla</summary>
         <p class="vihje">
           Tällä laitteella tiedosto pitää liittää viestiin itse: selaimen
-          <code>mailto:</code>-linkki ei voi sisältää liitettä. Lataa tiedosto ensin, avaa
-          sitten valmis luonnos ja liitä ladattu tiedosto siihen.
+          <code>mailto:</code>-linkki ei voi sisältää liitettä. Lataa tiedosto ensin, avaa sitten
+          valmis luonnos ja liitä ladattu tiedosto siihen.
         </p>
-        <button type="button" class="nappi" @click="avaaSahkoposti">
-          Avaa sähköpostiluonnos
-        </button>
+        <button type="button" class="nappi" @click="avaaSahkoposti">Avaa sähköpostiluonnos</button>
       </details>
     </section>
 
     <section class="lohko kortti">
       <h2>Tuo Excel-tiedostosta</h2>
       <p class="selite">
-        Tuonti lukee <strong>vain nimet ja laukaukset</strong> tuloskortti-välilehdiltä ja
-        laskee kaiken muun uudelleen. Näin käsin tehdyt korjaukset menevät varmasti läpi.
+        Tuonti lukee <strong>vain nimet ja laukaukset</strong> tuloskortti-välilehdiltä ja laskee
+        kaiken muun uudelleen. Näin käsin tehdyt korjaukset menevät varmasti läpi.
       </p>
 
       <label class="tiedostovalinta">
@@ -324,8 +316,8 @@ const eriKisa = computed(
         </dl>
 
         <p class="huomio huomio--varoitus">
-          Tuonti <strong>korvaa</strong> tällä laitteella olevat tulokset
-          ({{ store.kilpailijoita }} kilpailijaa). Toimintoa ei voi peruuttaa.
+          Tuonti <strong>korvaa</strong> tällä laitteella olevat tulokset ({{ store.kilpailijoita }}
+          kilpailijaa). Toimintoa ei voi peruuttaa.
         </p>
 
         <div class="napit">

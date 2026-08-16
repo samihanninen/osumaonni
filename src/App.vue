@@ -49,7 +49,9 @@ const laji = computed(() => laite.viimeinenLaji || 'RA1')
     ei vie tilaa varsinaiselta työltä, mutta löytyy vierittämällä mistä tahansa.
   -->
   <footer class="alapalkki">
-    <p>OsumaOnni <span class="versio">v{{ VERSIO }}</span></p>
+    <p>
+      OsumaOnni <span class="versio">v{{ VERSIO }}</span>
+    </p>
     <p class="vinkki">Saman kisan laitteissa on syytä olla sama versio.</p>
   </footer>
 </template>

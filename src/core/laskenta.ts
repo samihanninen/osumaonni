@@ -209,9 +209,7 @@ export function laskeLaji(
   const bruttoPisteet = peruste.pisteet
   const rangaistuksia = osallistuminen.rangaistuksia ?? 0
   const hylatty = osallistuminen.hylatty === true
-  const pisteet = hylatty
-    ? 0
-    : Math.max(0, bruttoPisteet - rangaistuksia * RANGAISTUS_PISTEET)
+  const pisteet = hylatty ? 0 : Math.max(0, bruttoPisteet - rangaistuksia * RANGAISTUS_PISTEET)
 
   return {
     laji,

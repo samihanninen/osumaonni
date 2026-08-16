@@ -139,7 +139,10 @@ describe('YhdistaView — lähettäminen', () => {
     kirjaa(store, a.id, [9, 9, 9])
 
     const wrapper = await asenna()
-    await wrapper.findAll('button').find((b) => b.text() === 'Luo siirtokoodi')!.trigger('click')
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === 'Luo siirtokoodi')!
+      .trigger('click')
 
     const qr = wrapper.get('.qr-tynka')
     expect(qr.text()).toMatch(/^OO1\./)
@@ -150,7 +153,10 @@ describe('YhdistaView — lähettäminen', () => {
     kirjaa(store, a.id, [9, 9, 9])
 
     const wrapper = await asenna()
-    await wrapper.findAll('button').find((b) => b.text() === 'Luo siirtokoodi')!.trigger('click')
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === 'Luo siirtokoodi')!
+      .trigger('click')
 
     expect(wrapper.findAll('button').some((b) => b.text() === 'Kopioi jakolinkki')).toBe(true)
     // QR on ainoa tapa, jossa tiedot eivät poistu paikalta — se on kerrottava.
@@ -164,13 +170,19 @@ describe('YhdistaView — lähettäminen', () => {
     const wrapper = await asenna()
     // Valitaan arvon perusteella, ei järjestyksen: järjestys voi muuttua.
     await wrapper.find('input[type="radio"][value="taysi"]').setValue()
-    await wrapper.findAll('button').find((b) => b.text() === 'Luo siirtokoodi')!.trigger('click')
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === 'Luo siirtokoodi')!
+      .trigger('click')
 
     expect(wrapper.text()).toContain('korvataan kokonaan')
 
     const laite = useLaiteStore()
     expect(laite.luovutettu).toBe(false)
-    await wrapper.findAll('button').find((b) => b.text() === 'Merkitse luovutetuksi')!.trigger('click')
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === 'Merkitse luovutetuksi')!
+      .trigger('click')
     expect(laite.luovutettu).toBe(true)
   })
 })
@@ -194,7 +206,10 @@ describe('YhdistaView — vastaanottaminen', () => {
     expect(wrapper.text()).toContain('Koje 2')
     expect(wrapper.text()).not.toContain('Ristiriidat')
 
-    await wrapper.findAll('button').find((b) => b.text() === 'Yhdistä tulokset')!.trigger('click')
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === 'Yhdistä tulokset')!
+      .trigger('click')
 
     const osallistuminen = store.kilpailija(a.id)!.osallistumiset.RA1!
     expect(laskeLaji('RA1', LAJIT.RA1, osallistuminen).pisteet).toBe(100)
@@ -251,7 +266,10 @@ describe('YhdistaView — vastaanottaminen', () => {
     await liita(wrapper, palat)
 
     await wrapper.findAll('.ristiriita .vaihtoehto')[0]!.trigger('click')
-    await wrapper.findAll('button').find((b) => b.text() === 'Yhdistä tulokset')!.trigger('click')
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === 'Yhdistä tulokset')!
+      .trigger('click')
 
     expect(store.kilpailija(a.id)!.osallistumiset.RA1!.kilpasarjat[0]!.laukaukset[0]).toBe(9)
   })
@@ -270,10 +288,16 @@ describe('YhdistaView — vastaanottaminen', () => {
     await liita(wrapper, palat)
     expect(wrapper.text()).toContain('Ristiriidat (2)')
 
-    await wrapper.findAll('button').find((x) => x.text() === 'Kaikki saapuvat')!.trigger('click')
+    await wrapper
+      .findAll('button')
+      .find((x) => x.text() === 'Kaikki saapuvat')!
+      .trigger('click')
     await wrapper.vm.$nextTick()
 
-    await wrapper.findAll('button').find((x) => x.text() === 'Yhdistä tulokset')!.trigger('click')
+    await wrapper
+      .findAll('button')
+      .find((x) => x.text() === 'Yhdistä tulokset')!
+      .trigger('click')
     expect(store.kilpailija(a.id)!.osallistumiset.RA1!.kilpasarjat[0]!.laukaukset[0]).toBe(10)
     expect(store.kilpailija(b.id)!.osallistumiset.RA1!.kilpasarjat[0]!.laukaukset[0]).toBe(7)
   })
@@ -325,7 +349,10 @@ describe('YhdistaView — vastaanottaminen', () => {
     expect(wrapper.text()).not.toContain('Koodi kuuluu eri kisaan')
     expect(wrapper.text()).toContain('Koko kisa korvaa tämän laitteen tiedot')
 
-    await wrapper.findAll('button').find((b) => b.text() === 'Korvaa tiedot')!.trigger('click')
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === 'Korvaa tiedot')!
+      .trigger('click')
     expect(store.kisa.kisaId).toBe('TOINENKISA')
     expect(store.kilpailija(a.id)).toBeDefined()
   })
@@ -355,7 +382,10 @@ describe('YhdistaView — vastaanottaminen', () => {
     await liita(wrapper, palat)
 
     expect(wrapper.text()).toContain('Koko kisa korvaa tämän laitteen tiedot')
-    await wrapper.findAll('button').find((x) => x.text() === 'Korvaa tiedot')!.trigger('click')
+    await wrapper
+      .findAll('button')
+      .find((x) => x.text() === 'Korvaa tiedot')!
+      .trigger('click')
 
     expect(store.kilpailijoita).toBe(3)
     // Vastaanottaja jatkaa kirjaamista, joten lukitus purkautuu.

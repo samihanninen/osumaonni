@@ -215,7 +215,9 @@ function taulukkoHylatty(id: string, hylatty: boolean) {
         kilpailijan kohdalla. Se on siksi taitettuna, jotta pystytila jää kortille.
       -->
       <details class="tapavalinta">
-        <summary class="tapa-otsikko">Syöttötapa: {{ taulukossa ? 'taulukko' : 'näppäimistö' }}</summary>
+        <summary class="tapa-otsikko">
+          Syöttötapa: {{ taulukossa ? 'taulukko' : 'näppäimistö' }}
+        </summary>
         <div class="tapanapit" role="group" aria-label="Syöttötapa">
           <button
             type="button"

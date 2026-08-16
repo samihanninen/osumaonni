@@ -50,9 +50,7 @@ watch(
   () => [props.aktiivinenSarja, props.aktiivinenLaukaus, props.kilpailija.id],
   () => {
     void nextTick(() => {
-      const el = document.getElementById(
-        ruudunId(props.aktiivinenSarja, props.aktiivinenLaukaus),
-      )
+      const el = document.getElementById(ruudunId(props.aktiivinenSarja, props.aktiivinenLaukaus))
       el?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
     })
   },
@@ -137,9 +135,7 @@ watch(
     </footer>
   </article>
 
-  <p v-else class="huomio huomio--virhe">
-    Kilpailija ei osallistu lajiin {{ laji }}.
-  </p>
+  <p v-else class="huomio huomio--virhe">Kilpailija ei osallistu lajiin {{ laji }}.</p>
 </template>
 
 <style scoped>

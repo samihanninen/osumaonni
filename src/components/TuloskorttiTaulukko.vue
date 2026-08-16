@@ -38,7 +38,9 @@ function ruudunId(id: string, sarja: number, laukaus: number): string {
 }
 
 /** Litteä indeksi: mahdollistaa siirtymisen sarjan rajan yli samalla rivillä. */
-const laukauksiaRivilla = computed(() => props.maaritys.kilpasarjoja * props.maaritys.laukauksiaSarjassa)
+const laukauksiaRivilla = computed(
+  () => props.maaritys.kilpasarjoja * props.maaritys.laukauksiaSarjassa,
+)
 
 function siirryRuutuun(rivi: number, litteaIndeksi: number) {
   const rivit = props.kilpailijat.length
@@ -234,9 +236,7 @@ function poistuRuudusta() {
                 :aria-label="`${k.sukunimi}: aseluokka`"
                 :disabled="lukittu"
                 :value="k.osallistumiset[laji]?.luokka"
-                @change="
-                  emit('luokka', k.id, ($event.target as HTMLSelectElement).value as Luokka)
-                "
+                @change="emit('luokka', k.id, ($event.target as HTMLSelectElement).value as Luokka)"
               >
                 <option v-for="l in LUOKAT" :key="l" :value="l">{{ LUOKKA_NIMET[l] }}</option>
               </select>
@@ -311,8 +311,8 @@ function poistuRuudusta() {
 
   <p class="ohje">
     Kirjoita <strong>1–10</strong>, <strong>*</strong> napakymppi, <strong>-</strong> tai
-    <strong>0</strong> ohilaukaus. Nuolinäppäimet ja Enter siirtävät ruudusta toiseen.
-    Kympin saat kirjoittamalla <strong>1</strong> ja <strong>0</strong>.
+    <strong>0</strong> ohilaukaus. Nuolinäppäimet ja Enter siirtävät ruudusta toiseen. Kympin saat
+    kirjoittamalla <strong>1</strong> ja <strong>0</strong>.
   </p>
 </template>
 

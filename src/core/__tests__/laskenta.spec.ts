@@ -146,7 +146,14 @@ describe('RA1/RA3/RA4 — parempi sarja otetaan huomioon', () => {
   it('pistetasatilanteessa paremmaksi valitaan sarja, jossa on enemmän napakymppejä', () => {
     // Molemmissa 100 pistettä, mutta toisessa enemmän napakymppejä.
     const kymppeja = Array.from({ length: 10 }, () => 10)
-    const napoja: Kilpasarja = [...Array.from({ length: 5 }, () => 10 as const), '*', '*', '*', '*', '*']
+    const napoja: Kilpasarja = [
+      ...Array.from({ length: 5 }, () => 10 as const),
+      '*',
+      '*',
+      '*',
+      '*',
+      '*',
+    ]
     const t = laskeLaji('RA1', LAJIT.RA1, osallistuminen([kymppeja, napoja]))
     expect(t.pisteet).toBe(100)
     expect(t.laskevaSarja).toBe(1)
@@ -227,9 +234,13 @@ describe('rangaistukset ja hylkäys', () => {
   })
 
   it('tulos ei mene negatiiviseksi', () => {
-    const t = laskeLaji('RA1', LAJIT.RA1, osallistuminen([sarja([5], 10), sarja([], 10)], {
-      rangaistuksia: 10,
-    }))
+    const t = laskeLaji(
+      'RA1',
+      LAJIT.RA1,
+      osallistuminen([sarja([5], 10), sarja([], 10)], {
+        rangaistuksia: 10,
+      }),
+    )
     expect(t.pisteet).toBe(0)
   })
 
@@ -246,7 +257,11 @@ describe('rangaistukset ja hylkäys', () => {
 })
 
 describe('tasatulosperusteiden vertailu (säännön kohdat 1–2)', () => {
-  const peruste = (iskemat: number, navat: number, jakauma: Partial<Record<number, number>> = {}) => {
+  const peruste = (
+    iskemat: number,
+    navat: number,
+    jakauma: Partial<Record<number, number>> = {},
+  ) => {
     const arvojakauma = Array.from({ length: 11 }, () => 0)
     for (const [arvo, maara] of Object.entries(jakauma)) arvojakauma[Number(arvo)] = maara ?? 0
     return { pisteet: 0, iskemat, navat, arvojakauma }

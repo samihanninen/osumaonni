@@ -27,8 +27,7 @@
   --m05-ruskea: #4b3f2f;
 
   --reunapyoristys: 10px;
-  --varjo:
-    0 1px 2px rgb(0 0 0 / 6%), 0 2px 8px rgb(0 0 0 / 4%);
+  --varjo: 0 1px 2px rgb(0 0 0 / 6%), 0 2px 8px rgb(0 0 0 / 4%);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -50,8 +49,7 @@
     --m05-hiekka: #6f6a52;
     --m05-ruskea: #2f2820;
 
-    --varjo:
-      0 1px 2px rgb(0 0 0 / 40%), 0 2px 8px rgb(0 0 0 / 25%);
+    --varjo: 0 1px 2px rgb(0 0 0 / 40%), 0 2px 8px rgb(0 0 0 / 25%);
   }
 }
 

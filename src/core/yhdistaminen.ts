@@ -73,9 +73,7 @@ export function ristiriidanAvain(kilpailijaId: string, laji: Laji, kilpasarja: n
 
 /** Kilpailijan tunnistus nimen ja yhdistyksen perusteella, kun tunniste ei täsmää. */
 function nimiAvain(sukunimi: string, etunimi: string, yhdistys: string): string {
-  return [sukunimi, etunimi, yhdistys]
-    .map((osa) => osa.trim().toLocaleLowerCase('fi'))
-    .join('|')
+  return [sukunimi, etunimi, yhdistys].map((osa) => osa.trim().toLocaleLowerCase('fi')).join('|')
 }
 
 /**

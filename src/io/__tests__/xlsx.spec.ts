@@ -287,10 +287,7 @@ describe('kierros: käsin tehdyt korjaukset', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
   /** Muokkaa yhtä laukaussolua kuten järjestäjä tekisi Excelissä. */
-  async function muokkaaJaTuo(
-    tavut: ArrayBuffer,
-    muokkaus: (ws: ExcelJS.Worksheet) => void,
-  ) {
+  async function muokkaaJaTuo(tavut: ArrayBuffer, muokkaus: (ws: ExcelJS.Worksheet) => void) {
     const wb = new ExcelJS.Workbook()
     await wb.xlsx.load(tavut)
     muokkaa(wb, muokkaus)

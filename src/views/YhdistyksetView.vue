@@ -140,8 +140,7 @@ const onTuloksia = computed(() => yhteistulos.value.length > 0)
       <section class="lajiosio">
         <h2>Kokonaiskilpailu — henkilökohtainen</h2>
         <p class="selite">
-          Kilpailijan tulosten summa kaikista lajeista. Tasatuloksen ratkaisee parempi
-          RA2:n tulos.
+          Kilpailijan tulosten summa kaikista lajeista. Tasatuloksen ratkaisee parempi RA2:n tulos.
         </p>
         <div class="taulukko-kehys">
           <table>
@@ -170,7 +169,8 @@ const onTuloksia = computed(() => yhteistulos.value.length > 0)
                 </td>
                 <td class="numero yhteensa">{{ rivi.pisteet }}</td>
                 <td class="numero">
-                  {{ rivi.lajeja }}<span v-if="rivi.kaikkiLajit" class="taysi" title="Kaikki lajit">✓</span>
+                  {{ rivi.lajeja
+                  }}<span v-if="rivi.kaikkiLajit" class="taysi" title="Kaikki lajit">✓</span>
                 </td>
               </tr>
             </tbody>

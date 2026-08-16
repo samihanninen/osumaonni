@@ -27,7 +27,11 @@ const OTSIKKO_TAYTTO = 'FFE6F2EB'
 const OTSIKKO_TAYTTO_TUMMA = 'FF1F6F4A'
 
 function tyylitaOtsikko(cell: Cell, tumma = false) {
-  cell.font = { bold: true, size: tumma ? 12 : 10, color: { argb: tumma ? 'FFFFFFFF' : 'FF1C1C1F' } }
+  cell.font = {
+    bold: true,
+    size: tumma ? 12 : 10,
+    color: { argb: tumma ? 'FFFFFFFF' : 'FF1C1C1F' },
+  }
   cell.fill = {
     type: 'pattern',
     pattern: 'solid',

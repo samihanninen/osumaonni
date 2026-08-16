@@ -321,7 +321,12 @@ export class PalojenKeraaja {
     const uusi = !this.palat.has(pala.jarjestys)
     this.palat.set(pala.jarjestys, pala.data)
 
-    return { valmis: this.palat.size === this.maara, luettu: this.palat.size, maara: this.maara, uusi }
+    return {
+      valmis: this.palat.size === this.maara,
+      luettu: this.palat.size,
+      maara: this.maara,
+      uusi,
+    }
   }
 
   /** Puuttuvien palojen järjestysnumerot. */
