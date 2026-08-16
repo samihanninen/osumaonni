@@ -198,6 +198,23 @@ describe('kierros: vienti → tuonti', () => {
     expect(kisa.asetukset.laskettavatParhaat).toBe(4)
   })
 
+  /*
+   * Ilman tätä tiedostoon vietäisiin "ei järjestetä", mutta tuonti palauttaisi
+   * yhdistyskilpailun päälle — ja tuloksiin ilmestyisi kilpailu jota ei ollut.
+   */
+  it('säilyttää tiedon siitä ettei yhdistyskilpailua järjestetä', async () => {
+    const { store } = rakennaKisa()
+    store.asetaJoukkuekilpailu(false)
+    const { kisa } = await kierrata(store.kisa)
+    expect(kisa.asetukset.joukkuekilpailu).toBe(false)
+  })
+
+  it('vanha tiedosto ilman tietoa tulkitaan järjestetyksi', async () => {
+    const { store } = rakennaKisa()
+    const { kisa } = await kierrata(store.kisa)
+    expect(kisa.asetukset.joukkuekilpailu).toBe(true)
+  })
+
   it('yhdistää saman kilpailijan lajit yhdeksi kilpailijaksi', async () => {
     const { store } = rakennaKisa()
     const { kisa, kilpailijoita } = await kierrata(store.kisa)

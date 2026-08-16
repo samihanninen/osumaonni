@@ -4,7 +4,7 @@ import { RouterLink } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useKisaStore } from '@/stores/kisa'
 import { LAJI_KOODIT, LUOKAT, LUOKKA_NIMET } from '@/core/lajit'
-import { yhdistysLaji, yhdistysYhteistulos } from '@/core/yhdistykset'
+import { onJoukkuekilpailu, yhdistysLaji, yhdistysYhteistulos } from '@/core/yhdistykset'
 import { kokonaiskilpailu } from '@/core/kokonaiskilpailu'
 import type { Laji, Luokka } from '@/types/kisa'
 
@@ -18,33 +18,48 @@ const parhaita = computed(() => kisa.value.asetukset.laskettavatParhaat)
 
 const optiot = computed(() => ({
   parhaita: parhaita.value,
+  // Kisan omat rakenteet, ei sääntöjen oletuksia: järjestäjä on voinut muokata niitä.
+  maaritykset: kisa.value.asetukset.lajiMaaritykset,
   ...(luokka.value === 'kaikki' ? {} : { luokka: luokka.value }),
 }))
 
 const yhteistulos = computed(() => yhdistysYhteistulos(kisa.value.kilpailijat, optiot.value))
 
 function lajiTulokset(laji: Laji) {
-  return yhdistysLaji(kisa.value.kilpailijat, laji, {
-    ...optiot.value,
-    maaritys: kisa.value.asetukset.lajiMaaritykset[laji],
-  })
+  return yhdistysLaji(kisa.value.kilpailijat, laji, optiot.value)
 }
 
-const henkilokohtainen = computed(() => kokonaiskilpailu(kisa.value.kilpailijat))
+const henkilokohtainen = computed(() =>
+  kokonaiskilpailu(kisa.value.kilpailijat, {
+    maaritykset: kisa.value.asetukset.lajiMaaritykset,
+  }),
+)
 
-const onTuloksia = computed(() => yhteistulos.value.length > 0)
+/**
+ * Yhdistyskilpailu on säännöissä vapaaehtoinen, joten se voi olla pois päältä. Silloin
+ * sivulle jää pelkkä kokonaiskilpailu, eikä tyhjyyttä arvioida yhdistysten perusteella.
+ */
+const naytaYhdistykset = computed(() => onJoukkuekilpailu(kisa.value.asetukset))
+
+const onTuloksia = computed(() =>
+  naytaYhdistykset.value ? yhteistulos.value.length > 0 : henkilokohtainen.value.length > 0,
+)
 </script>
 
 <template>
   <section class="sivu">
-    <h1>Yhdistys- ja kokonaiskilpailu</h1>
-    <p>
+    <h1>{{ naytaYhdistykset ? 'Yhdistys- ja kokonaiskilpailu' : 'Kokonaiskilpailu' }}</h1>
+    <p v-if="naytaYhdistykset">
       Yhdistyksen lajitulos on parhaiden {{ parhaita }} kilpailijan summa. Sääntöjen mukaan
       joukkueen koko on 3 ampujaa; määrää voi muuttaa
       <RouterLink to="/kisatiedot">kisatiedoissa</RouterLink>.
     </p>
+    <p v-else>
+      Yhdistyskilpailua ei järjestetä tässä kisassa. Sen voi ottaa käyttöön
+      <RouterLink to="/kisatiedot">kisatiedoissa</RouterLink>.
+    </p>
 
-    <div class="suodatin">
+    <div v-if="naytaYhdistykset" class="suodatin">
       <span class="suodatin-otsikko">Aseluokka</span>
       <div class="napit" role="group" aria-label="Aseluokka">
         <button
@@ -73,8 +88,8 @@ const onTuloksia = computed(() => yhteistulos.value.length > 0)
     </p>
 
     <template v-else>
-      <h2>Yhteistulos</h2>
-      <div class="taulukko-kehys">
+      <h2 v-if="naytaYhdistykset">Yhteistulos</h2>
+      <div v-if="naytaYhdistykset" class="taulukko-kehys">
         <table>
           <thead>
             <tr>
@@ -99,7 +114,7 @@ const onTuloksia = computed(() => yhteistulos.value.length > 0)
         </table>
       </div>
 
-      <section v-for="laji in LAJI_KOODIT" :key="laji" class="lajiosio">
+      <section v-for="laji in naytaYhdistykset ? LAJI_KOODIT : []" :key="laji" class="lajiosio">
         <h2>{{ laji }}</h2>
         <p v-if="lajiTulokset(laji).length === 0" class="tyhja">Ei tuloksia tässä lajissa.</p>
         <div v-else class="taulukko-kehys">

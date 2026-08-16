@@ -37,6 +37,7 @@ export function tyhjaKisa(): Kisa {
     },
     asetukset: {
       laskettavatParhaat: 3,
+      joukkuekilpailu: true,
       lajiMaaritykset: oletusLajiMaaritykset(),
     },
     kilpailijat: [],
@@ -258,6 +259,11 @@ export const useKisaStore = defineStore(
       kisa.value.asetukset.laskettavatParhaat = Math.max(1, Math.trunc(maara))
     }
 
+    /** Järjestetäänkö yhdistys- ja joukkuekilpailu? Säännöissä se on vapaaehtoinen. */
+    function asetaJoukkuekilpailu(paalla: boolean) {
+      kisa.value.asetukset.joukkuekilpailu = paalla
+    }
+
     /**
      * Muuttaa lajin rakennetta ja sovittaa olemassa olevat kilpasarjat uuteen mittaan.
      * Lyhentäminen poistaa laukauksia lopusta, joten kutsuja vastaa varmistuksesta.
@@ -327,6 +333,7 @@ export const useKisaStore = defineStore(
       asetaLaukaus,
       tyhjennaKilpasarja,
       asetaLaskettavatParhaat,
+      asetaJoukkuekilpailu,
       asetaLajiMaaritys,
       palautaOletusRakenteet,
       korvaaKisa,

@@ -104,6 +104,14 @@ export interface Kisatiedot {
 export interface Asetukset {
   /** Yhdistys- ja joukkuekilpailussa laskettavien parhaiden kilpailijoiden määrä. */
   laskettavatParhaat: number
+  /**
+   * Järjestetäänkö yhdistys- ja joukkuekilpailu? Säännöt: "Mikäli joukkuekilpailu
+   * järjestetään, on siitä mainittava kilpailukutsussa" — se ei siis ole automaattinen.
+   *
+   * Valinnainen kenttä, jotta ennen tätä tallennetut kisat latautuvat ennallaan.
+   * Puuttuva arvo tarkoittaa päällä, koska niin sovellus on siihen asti toiminut.
+   */
+  joukkuekilpailu?: boolean
   /** Lajikohtaiset rakenteet. Ylikirjoittaa oletukset, jos säännöt muuttuvat. */
   lajiMaaritykset: Record<Laji, LajiMaaritys>
 }

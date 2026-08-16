@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useKisaStore } from '@/stores/kisa'
 import { LAJI_KOODIT, laukauksiaYhteensa, suurinTulos } from '@/core/lajit'
+import { onJoukkuekilpailu } from '@/core/yhdistykset'
 import KisanPaattaminen from '@/components/KisanPaattaminen.vue'
 import type { Laji, TulosSaanto } from '@/types/kisa'
 
@@ -74,7 +75,29 @@ function paivitaSaanto(laji: Laji, arvo: string) {
 
     <fieldset>
       <legend>Yhdistyskilpailu</legend>
-      <div class="kentta parhaat">
+
+      <!--
+        Säännöissä joukkuekilpailu on vapaaehtoinen ja kilpailukutsussa mainittava, joten
+        se on valinta eikä oletus. Pois päältä se piiloutuu myös tuloksista ja viennistä,
+        jottei kisasta synny tulosta jota ei ole järjestetty.
+      -->
+      <div class="kentta">
+        <label class="valinta">
+          <input
+            type="checkbox"
+            :checked="onJoukkuekilpailu(asetukset)"
+            @change="store.asetaJoukkuekilpailu(($event.target as HTMLInputElement).checked)"
+          />
+          <span>Yhdistys- ja joukkuekilpailu järjestetään</span>
+        </label>
+        <span class="vihje">
+          Sääntöjen mukaan joukkuekilpailusta on mainittava kilpailukutsussa. Jos sitä ei
+          järjestetä, poista rasti — tulokset ja vienti näyttävät silloin vain henkilökohtaiset
+          tulokset.
+        </span>
+      </div>
+
+      <div v-if="onJoukkuekilpailu(asetukset)" class="kentta parhaat">
         <label for="parhaat">Laskettavien parhaiden määrä</label>
         <input
           id="parhaat"
@@ -197,6 +220,19 @@ function paivitaSaanto(laji: Laji, arvo: string) {
   height: 1px;
   overflow: hidden;
   clip-path: inset(50%);
+}
+/* Sama hahmo kuin muiden näkymien valinnoissa: riittävä kosketuskohde radalla. */
+.valinta {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 44px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.valinta input {
+  width: 1.15rem;
+  height: 1.15rem;
 }
 td select {
   min-width: 13rem;

@@ -2,7 +2,12 @@ import { describe, it, expect } from 'vitest'
 import type { Kilpailija, Kilpasarja, Laji, Luokka } from '@/types/kisa'
 import { LAJIT } from '../lajit'
 import { sijoitukset, vertaaNimia, TARKAN_TULKKAUKSEN_RAJA } from '../sijoitukset'
-import { yhdistysLaji, yhdistysYhteistulos, JOUKKUEEN_KOKO } from '../yhdistykset'
+import {
+  yhdistysLaji,
+  yhdistysYhteistulos,
+  onJoukkuekilpailu,
+  JOUKKUEEN_KOKO,
+} from '../yhdistykset'
 import { kokonaiskilpailu } from '../kokonaiskilpailu'
 
 let seuraavaId = 0
@@ -385,5 +390,78 @@ describe('RA2 sijoitukset käyttävät summaa', () => {
     expect(rivit[1]!.tulos.pisteet).toBe(144)
     // Molemmilla 18 iskemää ja ei napoja; kympit ratkaisevat.
     expect(rivit[0]!.kilpailija.etunimi).toBe('Epatasainen')
+  })
+})
+
+/*
+ * Järjestäjä voi muokata lajien rakennetta asetuksista. Muokkaus vaikutti aiemmin vain
+ * lajikohtaisiin sijoituksiin: kokonaiskilpailu ja yhdistysten yhteistulos laskivat
+ * sääntöjen oletuksilla, joten sama kisa saattoi näyttää kahta eri tulosta yhtä aikaa.
+ */
+describe('kisan omat rakenteet laskennassa', () => {
+  /** RA1 summana parhaan sarjan sijaan — kuten jos sääntö olisi muuttunut. */
+  const muokatut = { ...LAJIT, RA1: { ...LAJIT.RA1, tulosSaanto: 'summa' as const } }
+
+  function kaksiTaytta() {
+    return ampuja({
+      nimi: 'A Yksi',
+      yhdistys: 'Nupures',
+      sarjat: [],
+      lajit: { RA1: [tasainen(10), tasainen(10)] },
+    })
+  }
+
+  it('kokonaiskilpailu käyttää kisan rakenteita eikä oletuksia', () => {
+    const kilpailijat = [kaksiTaytta()]
+
+    expect(kokonaiskilpailu(kilpailijat)[0]!.pisteet).toBe(100)
+    expect(kokonaiskilpailu(kilpailijat, { maaritykset: muokatut })[0]!.pisteet).toBe(200)
+  })
+
+  it('yhdistysten yhteistulos käyttää kisan rakenteita eikä oletuksia', () => {
+    const kilpailijat = [kaksiTaytta()]
+
+    expect(yhdistysYhteistulos(kilpailijat)[0]!.pisteet).toBe(100)
+    expect(yhdistysYhteistulos(kilpailijat, { maaritykset: muokatut })[0]!.pisteet).toBe(200)
+  })
+
+  /*
+   * Rakenteet poimitaan lajikohtaisesti. Aiemmin yhteen lajiin tarkoitettu rakenne
+   * välittyi sellaisenaan kaikkiin lajeihin, jolloin RA2:n summa olisi laskettu RA1:n
+   * säännöllä.
+   */
+  it('yhteistulos poimii rakenteen lajikohtaisesti', () => {
+    const kilpailijat = [
+      ampuja({
+        nimi: 'B Kaksi',
+        yhdistys: 'Nupures',
+        sarjat: [],
+        lajit: {
+          RA1: [tasainen(10), tasainen(10)], // summa 200 muokatuilla
+          RA2: [tasainen(9, 6), tasainen(9, 6), tasainen(9, 6)], // summa 162 aina
+        },
+      }),
+    ]
+
+    const rivi = yhdistysYhteistulos(kilpailijat, { maaritykset: muokatut })[0]!
+    expect(rivi.lajipisteet.RA1).toBe(200)
+    expect(rivi.lajipisteet.RA2).toBe(162)
+    expect(rivi.pisteet).toBe(362)
+  })
+})
+
+/*
+ * Säännöt kaikissa neljässä lajissa: "Mikäli joukkuekilpailu järjestetään, on siitä
+ * mainittava kilpailukutsussa." Yhdistyskilpailu ei siis ole automaattinen.
+ */
+describe('yhdistyskilpailun valinnaisuus', () => {
+  it('puuttuva asetus tarkoittaa päällä', () => {
+    expect(onJoukkuekilpailu({})).toBe(true)
+    expect(onJoukkuekilpailu({ joukkuekilpailu: undefined })).toBe(true)
+  })
+
+  it('vain nimenomainen epätosi sammuttaa sen', () => {
+    expect(onJoukkuekilpailu({ joukkuekilpailu: false })).toBe(false)
+    expect(onJoukkuekilpailu({ joukkuekilpailu: true })).toBe(true)
   })
 })

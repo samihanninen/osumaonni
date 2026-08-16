@@ -1,14 +1,30 @@
-import type { Kilpailija, Laji, LajiMaaritys, Luokka } from '@/types/kisa'
+import type { Asetukset, Kilpailija, Laji, LajiMaaritys, Luokka } from '@/types/kisa'
 import { LAJIT, LAJI_KOODIT } from './lajit'
 import { laskeLaji } from './laskenta'
 
 /**
  * Yhdistys- ja joukkuekilpailu.
  *
- * Sääntöjen mukaan joukkueen koko on 3 ampujaa, joten laskettavien parhaiden oletusarvo
- * on 3. Joukkue H on avoin kaikille ikään ja sukupuoleen katsomatta.
+ * Kaikkien neljän lajin kohta 2 (versiot 1.6 / 2025) sanoo saman:
+ * "Sarjat: H, H50. Joukkue H, kaikki ampujat ikään ja sukupuoleen katsomatta.
+ * Joukkueen koko on 3 ampujaa."
+ *
+ * Joukkuekilpailua **ei siis jaeta ikäsarjoihin** — H50-ampuja kerryttää pisteitä samaan
+ * joukkueeseen kuin muutkin. Tämä laskenta ei siksi katso `ikasarja`-kenttää lainkaan,
+ * eikä sitä pidä lisätä tänne ilman sääntömuutosta.
+ *
+ * Joukkuekilpailu on myös vapaaehtoinen: "Mikäli joukkuekilpailu järjestetään, on siitä
+ * mainittava kilpailukutsussa." Siksi se on kisakohtainen asetus.
  */
 export const JOUKKUEEN_KOKO = 3
+
+/**
+ * Onko yhdistys- ja joukkuekilpailu käytössä? Puuttuva asetus tarkoittaa päällä, koska
+ * niin sovellus toimi ennen kuin asetus oli olemassa.
+ */
+export function onJoukkuekilpailu(asetukset: Pick<Asetukset, 'joukkuekilpailu'>): boolean {
+  return asetukset.joukkuekilpailu !== false
+}
 
 export interface YhdistysLajiTulos {
   yhdistys: string
@@ -52,7 +68,12 @@ export interface YhdistysOptiot {
   parhaita?: number
   /** Rajaa laskenta yhteen aseluokkaan. Ilman rajausta kaikki luokat lasketaan yhteen. */
   luokka?: Luokka
-  maaritys?: LajiMaaritys
+  /**
+   * Kisan lajikohtaiset rakenteet. Ilman näitä käytetään sääntöjen oletuksia, jolloin
+   * järjestäjän muokkaama tulossääntö ei vaikuttaisi laskentaan. Kutsujan on annettava
+   * nämä aina, kun käytettävissä on kisan omat asetukset.
+   */
+  maaritykset?: Record<Laji, LajiMaaritys>
 }
 
 /**
@@ -64,7 +85,8 @@ export function yhdistysLaji(
   laji: Laji,
   optiot: YhdistysOptiot = {},
 ): (YhdistysLajiTulos & { sija: number; jaettu: boolean })[] {
-  const { parhaita = JOUKKUEEN_KOKO, luokka, maaritys = LAJIT[laji] } = optiot
+  const { parhaita = JOUKKUEEN_KOKO, luokka } = optiot
+  const maaritys = optiot.maaritykset?.[laji] ?? LAJIT[laji]
 
   const ryhmat = new Map<string, { kilpailija: Kilpailija; pisteet: number }[]>()
 
@@ -101,7 +123,13 @@ export function yhdistysLaji(
   return lisaaSijat(tulokset)
 }
 
-/** Laskee yhdistysten yhteistuloksen kaikista lajeista. */
+/**
+ * Laskee yhdistysten yhteistuloksen kaikista lajeista.
+ *
+ * Optiot välitetään sellaisenaan lajikohtaiseen laskentaan, joka poimii `maaritykset`-
+ * taulusta oikean lajin rakenteen. Näin sama rakenne ei voi vahingossa päteä kaikkiin
+ * lajeihin.
+ */
 export function yhdistysYhteistulos(
   kilpailijat: Kilpailija[],
   optiot: YhdistysOptiot = {},

@@ -1,4 +1,4 @@
-import type { Kilpailija, Laji } from '@/types/kisa'
+import type { Kilpailija, Laji, LajiMaaritys } from '@/types/kisa'
 import { LAJIT, LAJI_KOODIT } from './lajit'
 import { laskeLaji } from './laskenta'
 import { vertaaNimia, TARKAN_TULKKAUKSEN_RAJA } from './sijoitukset'
@@ -6,9 +6,21 @@ import { vertaaNimia, TARKAN_TULKKAUKSEN_RAJA } from './sijoitukset'
 /**
  * Kokonaiskilpailu — kilpailijan yhteistulos kaikista lajeista.
  *
- * Sääntöjen tasatuloskohta 4 kaikissa neljässä lajissa: "Kokonaiskilpailussa parempi
- * RA2:n tulos ratkaisee voittajan." (RA1:n ja RA3:n vanhemmissa versioissa sama kohta
- * on kirjoitettu muotoon "PA2:n tulos", mutta tarkoittaa samaa.)
+ * Tasatulossääntö versioiden 1.6 (2025) mukaan. Kohdan numero ja lajin nimi vaihtelevat
+ * asiakirjoittain, mutta sisältö on sama:
+ *
+ * - RA1 kohta 15.A.4: "Kokonaiskilpailussa parempi **PA2**:n tulos ratkaisee voittajan."
+ * - RA2 kohta 15.3:   "Kokonaiskilpailussa parempi **RA2**:n tulos ratkaisee voittajan."
+ * - RA3 kohta 15.4:   "Kokonaiskilpailussa parempi **PA2**:n tulos ratkaisee voittajan."
+ * - RA4 kohta 15.4:   "Kokonaiskilpailussa parempi **PA2**:n tulos ratkaisee voittajan."
+ *
+ * PA2 tulkitaan RA2:ksi: RA2 on ainoa laji, jonka omissa säännöissä kohta on kirjoitettu
+ * muotoon "RA2". RA2:n luettelossa on kolme kohtaa neljän sijaan, koska siitä puuttuu
+ * huonomman kilpasarjan vertailu — se on summalaji, jossa kaikki sarjat lasketaan.
+ *
+ * Säännöt eivät määrittele, mistä lajeista kokonaiskilpailu muodostuu; kokonaiskilpailu
+ * mainitaan asiakirjoissa vain tässä tasatuloskohdassa. Kaikkien lajien summaaminen on
+ * siis tämän sovelluksen tulkinta, ei sääntöteksti.
  */
 
 export interface KokonaisRivi {
@@ -30,13 +42,19 @@ export interface KokonaisOptiot {
    * kisa näyttää silloin osittaisen tilanteen.
    */
   vaadiKaikkiLajit?: boolean
+  /**
+   * Kisan lajikohtaiset rakenteet. Ilman näitä käytetään sääntöjen oletuksia, jolloin
+   * järjestäjän muokkaama tulossääntö ei vaikuttaisi laskentaan. Kutsujan on annettava
+   * nämä aina, kun käytettävissä on kisan omat asetukset.
+   */
+  maaritykset?: Record<Laji, LajiMaaritys>
 }
 
 export function kokonaiskilpailu(
   kilpailijat: Kilpailija[],
   optiot: KokonaisOptiot = {},
 ): KokonaisRivi[] {
-  const { vaadiKaikkiLajit = false } = optiot
+  const { vaadiKaikkiLajit = false, maaritykset } = optiot
 
   const rivit: Omit<KokonaisRivi, 'sija' | 'jaettu'>[] = []
 
@@ -51,7 +69,7 @@ export function kokonaiskilpailu(
     for (const laji of LAJI_KOODIT) {
       const osallistuminen = k.osallistumiset[laji]
       if (!osallistuminen) continue
-      const tulos = laskeLaji(laji, LAJIT[laji], osallistuminen)
+      const tulos = laskeLaji(laji, maaritykset?.[laji] ?? LAJIT[laji], osallistuminen)
       if (!tulos.aloitettu) continue
       // Turvallisuusrike sulkee kilpailijan pois koko kilpailusta.
       if (tulos.hylatty) {
