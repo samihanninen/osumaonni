@@ -109,7 +109,8 @@ export interface Asetukset {
 }
 
 export interface Kisa {
-  schemaVersion: 1
+  /** Tallennusmuodon versio, ks. `@/core/skeema`. Kasvaa rakenteen muuttuessa. */
+  schemaVersion: number
   kisaId: string
   kisatiedot: Kisatiedot
   asetukset: Asetukset

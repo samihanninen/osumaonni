@@ -13,6 +13,7 @@ import type {
 import { LAJIT, LAJI_KOODIT, tyhjatKilpasarjat } from '@/core/lajit'
 import { laskeLaji } from '@/core/laskenta'
 import { lyhytTunnus, uusiId } from '@/core/tunnus'
+import { KISA_SKEEMA_VERSIO, lueTallennettu, type LuentaTulos } from '@/core/skeema'
 import { useLaiteStore } from './laite'
 
 function oletusLajiMaaritykset(): Record<Laji, LajiMaaritys> {
@@ -22,7 +23,7 @@ function oletusLajiMaaritykset(): Record<Laji, LajiMaaritys> {
 
 export function tyhjaKisa(): Kisa {
   return {
-    schemaVersion: 1,
+    schemaVersion: KISA_SKEEMA_VERSIO,
     kisaId: lyhytTunnus(),
     kisatiedot: {
       nimi: '',
@@ -42,10 +43,68 @@ export function tyhjaKisa(): Kisa {
   }
 }
 
+/** localStorage-avain, jonka persistedstate johtaa storen tunnuksesta. */
+const TALLENNUSAVAIN = 'kisa'
+
+/** Talteen otettujen tallennusten avainten alku. */
+export const VARMUUSKOPIO_ETULIITE = `${TALLENNUSAVAIN}-varmuuskopio`
+
+/**
+ * Laitteella olevat varmuuskopiot.
+ *
+ * Kopiot sisältävät kilpailijoiden nimet ja yhdistykset eli henkilötietoja, joten ne
+ * kuuluvat poistettaviin, kun kisan tiedot poistetaan laitteelta. Muuten sovellus
+ * lupaisi tyhjentäneensä laitteen ja jättäisi silti nimet muistiin.
+ */
+export function varmuuskopioAvaimet(): string[] {
+  try {
+    return Object.keys(localStorage).filter((avain) => avain.startsWith(VARMUUSKOPIO_ETULIITE))
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Viimeisimmän luennan tulos. Moduulitasolla, koska tallennuksia on laitteessa yksi ja
+ * luenta tapahtuu hydratoinnissa eli storen alustuksen jälkeen — setup-funktion sisäinen
+ * ref olisi jo palautettu siinä vaiheessa, kun tulos selviää.
+ */
+const luenta = ref<LuentaTulos>({ tila: 'tyhja' })
+
+/**
+ * Ottaa talteen tallennuksen, jota ei voitu ottaa käyttöön.
+ *
+ * Tämä on koko versioinnin tarkoitus. Kun sovellus ei ymmärrä laitteella olevaa
+ * tallennusta, se aloittaa tyhjästä kisasta — ja ensimmäinen kirjattu laukaus
+ * kirjoittaisi tuntemattoman tallennuksen päälle. Kopio otetaan siis ennen kuin
+ * mitään ehtii tapahtua, jotta tulokset ovat kaivettavissa myös jälkikäteen.
+ *
+ * Avain sisältää löydetyn version, joten eri syistä syntyneet kopiot eivät korvaa
+ * toisiaan. Olemassa olevaa kopiota ei kirjoiteta yli: ensimmäinen talteenotto on
+ * lähempänä alkuperäistä kuin myöhempi.
+ */
+function otaTalteen(raaka: string, tulos: LuentaTulos) {
+  const avain =
+    tulos.loydettyVersio === undefined
+      ? `${TALLENNUSAVAIN}-varmuuskopio-rikki`
+      : `${TALLENNUSAVAIN}-varmuuskopio-v${tulos.loydettyVersio}`
+  try {
+    if (localStorage.getItem(avain) === null) localStorage.setItem(avain, raaka)
+  } catch {
+    // Tila voi olla täynnä tai kirjoitus estetty. Kopio on lisävarmistus, ei ehto
+    // sovelluksen käynnistymiselle, joten epäonnistuminen ei saa kaataa hydratointia.
+  }
+}
+
 export const useKisaStore = defineStore(
   'kisa',
   () => {
     const kisa = ref<Kisa>(tyhjaKisa())
+
+    /** Miten laitteella ollut tallennus luettiin. Käyttöliittymä varoittaa hylätystä. */
+    const skeemaTila = computed(() => luenta.value.tila)
+    /** Hylätystä tallennuksesta löytynyt versionumero, jos se oli luettavissa. */
+    const skeemaVersio = computed(() => luenta.value.loydettyVersio ?? null)
 
     // ---------- Johdetut tiedot ----------
 
@@ -248,6 +307,8 @@ export const useKisaStore = defineStore(
 
     return {
       kisa,
+      skeemaTila,
+      skeemaVersio,
       yhdistysEhdotukset,
       kilpailijoita,
       onTietoja,
@@ -272,5 +333,47 @@ export const useKisaStore = defineStore(
       aloitaUusi,
     }
   },
-  { persist: true },
+  {
+    persist: {
+      /*
+       * `pick` rajaa tallennuksen nimenomaan kisaan. Ilman sitä jokainen storeen
+       * myöhemmin lisätty apuarvo valuisi localStorageen ja kasvattaisi rakennetta,
+       * jonka versiointi lupaa pitää tunnettuna.
+       */
+      pick: ['kisa'],
+      serializer: {
+        /**
+         * Kirjoitettuun tallennukseen leimataan aina tämän version numero. Näin
+         * tiedostossa oleva versio kertoo, mikä sen todella kirjoitti — eikä luennan
+         * tarvitse päätellä sitä rakenteesta.
+         */
+        serialize: (tila) => {
+          const kisa = (tila as { kisa?: Kisa }).kisa
+          return JSON.stringify(
+            kisa ? { ...tila, kisa: { ...kisa, schemaVersion: KISA_SKEEMA_VERSIO } } : tila,
+          )
+        },
+
+        /**
+         * Lukee tallennuksen versioinnin kautta. Tuntematonta ei hydratoida: silloin
+         * palautetaan tyhjä tila, jolloin store jää `tyhjaKisa()`-arvoonsa ja
+         * alkuperäinen tallennus otetaan talteen ennen kuin sen päälle kirjoitetaan.
+         */
+        deserialize: (raaka) => {
+          const tulos = lueTallennettu(raaka)
+          luenta.value = tulos
+          if (!tulos.tallennettu) {
+            if (tulos.tila !== 'tyhja') otaTalteen(raaka, tulos)
+            return {}
+          }
+          return tulos.tallennettu
+        },
+      },
+    },
+  },
 )
+
+/** Vain testejä varten: nollaa moduulitasoisen luentatilan. */
+export function nollaaLuentaTila() {
+  luenta.value = { tila: 'tyhja' }
+}

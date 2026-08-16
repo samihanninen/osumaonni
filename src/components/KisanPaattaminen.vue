@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { useKisaStore } from '@/stores/kisa'
+import { useKisaStore, varmuuskopioAvaimet } from '@/stores/kisa'
 import { useLaiteStore } from '@/stores/laite'
 
 /**
@@ -46,7 +46,8 @@ function tyhjennaTallennus(avaimet: string[]) {
 function aloitaUusiKisa() {
   store.aloitaUusi()
   laite.nollaaKisakohtaiset()
-  tyhjennaTallennus(['kisa'])
+  // Varmuuskopiot sisältävät kilpailijoiden nimiä, joten ne poistuvat kisan mukana.
+  tyhjennaTallennus(['kisa', ...varmuuskopioAvaimet()])
   vahvistettava.value = null
   ilmoitus.value = 'Kisan tiedot poistettu. Voit aloittaa uuden kisan.'
 }
@@ -54,7 +55,7 @@ function aloitaUusiKisa() {
 function poistaKaikki() {
   store.aloitaUusi()
   laite.nollaaLaite()
-  tyhjennaTallennus(['kisa', 'laite'])
+  tyhjennaTallennus(['kisa', 'laite', ...varmuuskopioAvaimet()])
   vahvistettava.value = null
   ilmoitus.value = 'Kaikki tiedot poistettu tältä laitteelta.'
 }
@@ -72,8 +73,7 @@ function poistaKaikki() {
       <p class="tilanne" :class="{ varoitus: viemattaJaljella }">
         <template v-if="viety">Tulokset viety tiedostoon {{ muotoile(viety) }}.</template>
         <template v-else>
-          <strong>Tuloksia ei ole viety tiedostoon.</strong> Poistaminen hävittää ne
-          lopullisesti.
+          <strong>Tuloksia ei ole viety tiedostoon.</strong> Poistaminen hävittää ne lopullisesti.
         </template>
       </p>
 
@@ -86,8 +86,7 @@ function poistaKaikki() {
         <div class="kuvaus">
           <strong>Aloita uusi kisa</strong>
           <small>
-            Poistaa kilpailijat ja tulokset. Laitteen asetukset, kuten syöttötapa,
-            säilyvät.
+            Poistaa kilpailijat ja tulokset. Laitteen asetukset, kuten syöttötapa, säilyvät.
           </small>
         </div>
         <template v-if="vahvistettava !== 'uusi'">
@@ -113,8 +112,8 @@ function poistaKaikki() {
         <div class="kuvaus">
           <strong>Poista kaikki tiedot tältä laitteelta</strong>
           <small>
-            Poistaa myös laitteen nimen ja tunnisteen. Käytä tätä, kun laite ei jää sinulle
-            — esimerkiksi lainattu puhelin.
+            Poistaa myös laitteen nimen ja tunnisteen. Käytä tätä, kun laite ei jää sinulle —
+            esimerkiksi lainattu puhelin.
           </small>
         </div>
         <template v-if="vahvistettava !== 'kaikki'">

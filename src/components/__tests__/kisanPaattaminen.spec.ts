@@ -132,6 +132,36 @@ describe('KisanPaattaminen', () => {
     expect(localStorage.getItem('laite')).toBeNull()
   })
 
+  /*
+   * Talteen otetuissa tallennuksissa on kilpailijoiden nimiä. Jos ne jäisivät laitteelle,
+   * sovellus lupaisi tyhjentäneensä laitteen ja jättäisi silti henkilötiedot muistiin.
+   */
+  it('poistaa myös talteen otetut varmuuskopiot', async () => {
+    lisaaTuloksia()
+    localStorage.setItem('kisa-varmuuskopio-v2', '{"kisa":{"kilpailijat":[]}}')
+    localStorage.setItem('kisa-varmuuskopio-rikki', '{ rikki')
+
+    const wrapper = mount(KisanPaattaminen, { global: globaalit })
+    await nappi(wrapper, 'Poista kaikki tiedot').trigger('click')
+    await nappi(wrapper, 'Kyllä, poista kaikki').trigger('click')
+
+    expect(localStorage.getItem('kisa-varmuuskopio-v2')).toBeNull()
+    expect(localStorage.getItem('kisa-varmuuskopio-rikki')).toBeNull()
+  })
+
+  it('uusi kisa poistaa varmuuskopiot mutta säilyttää laiteasetukset', async () => {
+    lisaaTuloksia()
+    laite.nimea('Koje 1')
+    localStorage.setItem('kisa-varmuuskopio-v2', '{"kisa":{"kilpailijat":[]}}')
+
+    const wrapper = mount(KisanPaattaminen, { global: globaalit })
+    await nappi(wrapper, 'Aloita uusi kisa').trigger('click')
+    await nappi(wrapper, 'Kyllä, poista kisan tiedot').trigger('click')
+
+    expect(localStorage.getItem('kisa-varmuuskopio-v2')).toBeNull()
+    expect(laite.laiteNimi).toBe('Koje 1')
+  })
+
   it('kahta vahvistusta ei voi olla auki yhtä aikaa', async () => {
     lisaaTuloksia()
     const wrapper = mount(KisanPaattaminen, { global: globaalit })
