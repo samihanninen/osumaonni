@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { useKisaStore } from '@/stores/kisa'
+import { useKisaStore, varmuuskopioAvaimet } from '@/stores/kisa'
 import { useLaiteStore } from '@/stores/laite'
 
 /**
@@ -46,7 +46,8 @@ function tyhjennaTallennus(avaimet: string[]) {
 function aloitaUusiKisa() {
   store.aloitaUusi()
   laite.nollaaKisakohtaiset()
-  tyhjennaTallennus(['kisa'])
+  // Varmuuskopiot sisältävät kilpailijoiden nimiä, joten ne poistuvat kisan mukana.
+  tyhjennaTallennus(['kisa', ...varmuuskopioAvaimet()])
   vahvistettava.value = null
   ilmoitus.value = 'Kisan tiedot poistettu. Voit aloittaa uuden kisan.'
 }
@@ -54,7 +55,7 @@ function aloitaUusiKisa() {
 function poistaKaikki() {
   store.aloitaUusi()
   laite.nollaaLaite()
-  tyhjennaTallennus(['kisa', 'laite'])
+  tyhjennaTallennus(['kisa', 'laite', ...varmuuskopioAvaimet()])
   vahvistettava.value = null
   ilmoitus.value = 'Kaikki tiedot poistettu tältä laitteelta.'
 }

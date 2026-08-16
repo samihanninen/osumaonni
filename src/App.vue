@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { RouterLink, RouterView } from 'vue-router'
 import TallennusVaroitus from '@/components/TallennusVaroitus.vue'
+import SkeemaVaroitus from '@/components/SkeemaVaroitus.vue'
 import PaivitysIlmoitus from '@/components/PaivitysIlmoitus.vue'
 import { useLaiteStore } from '@/stores/laite'
 import { VERSIO } from '@/core/versio'
@@ -35,6 +36,8 @@ const laji = computed(() => laite.viimeinenLaji || 'RA1')
   </header>
 
   <main id="sisalto" class="sisalto">
+    <!-- Ensimmäisenä: hylätty tallennus selittää tyhjän kisan, muut huomautukset eivät. -->
+    <SkeemaVaroitus />
     <PaivitysIlmoitus />
     <TallennusVaroitus />
     <RouterView />
