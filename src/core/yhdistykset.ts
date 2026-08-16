@@ -52,7 +52,12 @@ export interface YhdistysOptiot {
   parhaita?: number
   /** Rajaa laskenta yhteen aseluokkaan. Ilman rajausta kaikki luokat lasketaan yhteen. */
   luokka?: Luokka
-  maaritys?: LajiMaaritys
+  /**
+   * Kisan lajikohtaiset rakenteet. Ilman näitä käytetään sääntöjen oletuksia, jolloin
+   * järjestäjän muokkaama tulossääntö ei vaikuttaisi laskentaan. Kutsujan on annettava
+   * nämä aina, kun käytettävissä on kisan omat asetukset.
+   */
+  maaritykset?: Record<Laji, LajiMaaritys>
 }
 
 /**
@@ -64,7 +69,8 @@ export function yhdistysLaji(
   laji: Laji,
   optiot: YhdistysOptiot = {},
 ): (YhdistysLajiTulos & { sija: number; jaettu: boolean })[] {
-  const { parhaita = JOUKKUEEN_KOKO, luokka, maaritys = LAJIT[laji] } = optiot
+  const { parhaita = JOUKKUEEN_KOKO, luokka } = optiot
+  const maaritys = optiot.maaritykset?.[laji] ?? LAJIT[laji]
 
   const ryhmat = new Map<string, { kilpailija: Kilpailija; pisteet: number }[]>()
 
@@ -101,7 +107,13 @@ export function yhdistysLaji(
   return lisaaSijat(tulokset)
 }
 
-/** Laskee yhdistysten yhteistuloksen kaikista lajeista. */
+/**
+ * Laskee yhdistysten yhteistuloksen kaikista lajeista.
+ *
+ * Optiot välitetään sellaisenaan lajikohtaiseen laskentaan, joka poimii `maaritykset`-
+ * taulusta oikean lajin rakenteen. Näin sama rakenne ei voi vahingossa päteä kaikkiin
+ * lajeihin.
+ */
 export function yhdistysYhteistulos(
   kilpailijat: Kilpailija[],
   optiot: YhdistysOptiot = {},

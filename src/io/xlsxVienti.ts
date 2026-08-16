@@ -349,7 +349,10 @@ function kirjoitaYhdistykset(wb: Workbook, kisa: Kisa) {
   })
   rivi++
 
-  for (const r of yhdistysYhteistulos(kisa.kilpailijat, { parhaita })) {
+  for (const r of yhdistysYhteistulos(kisa.kilpailijat, {
+    parhaita,
+    maaritykset: kisa.asetukset.lajiMaaritykset,
+  })) {
     ws.getCell(rivi, 1).value = r.sija
     ws.getCell(rivi, 2).value = r.yhdistys
     LAJI_KOODIT.forEach((laji, i) => {
@@ -363,7 +366,7 @@ function kirjoitaYhdistykset(wb: Workbook, kisa: Kisa) {
   for (const laji of LAJI_KOODIT) {
     const rivit = yhdistysLaji(kisa.kilpailijat, laji, {
       parhaita,
-      maaritys: kisa.asetukset.lajiMaaritykset[laji],
+      maaritykset: kisa.asetukset.lajiMaaritykset,
     })
     if (rivit.length === 0) continue
 
@@ -401,7 +404,9 @@ function kirjoitaYhdistykset(wb: Workbook, kisa: Kisa) {
     },
   )
   rivi++
-  for (const r of kokonaiskilpailu(kisa.kilpailijat)) {
+  for (const r of kokonaiskilpailu(kisa.kilpailijat, {
+    maaritykset: kisa.asetukset.lajiMaaritykset,
+  })) {
     ws.getCell(rivi, 1).value = r.sija
     ws.getCell(rivi, 2).value = r.kilpailija.sukunimi
     ws.getCell(rivi, 3).value = r.kilpailija.etunimi

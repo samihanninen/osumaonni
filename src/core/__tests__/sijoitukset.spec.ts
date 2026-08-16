@@ -387,3 +387,60 @@ describe('RA2 sijoitukset käyttävät summaa', () => {
     expect(rivit[0]!.kilpailija.etunimi).toBe('Epatasainen')
   })
 })
+
+/*
+ * Järjestäjä voi muokata lajien rakennetta asetuksista. Muokkaus vaikutti aiemmin vain
+ * lajikohtaisiin sijoituksiin: kokonaiskilpailu ja yhdistysten yhteistulos laskivat
+ * sääntöjen oletuksilla, joten sama kisa saattoi näyttää kahta eri tulosta yhtä aikaa.
+ */
+describe('kisan omat rakenteet laskennassa', () => {
+  /** RA1 summana parhaan sarjan sijaan — kuten jos sääntö olisi muuttunut. */
+  const muokatut = { ...LAJIT, RA1: { ...LAJIT.RA1, tulosSaanto: 'summa' as const } }
+
+  function kaksiTaytta() {
+    return ampuja({
+      nimi: 'A Yksi',
+      yhdistys: 'Nupures',
+      sarjat: [],
+      lajit: { RA1: [tasainen(10), tasainen(10)] },
+    })
+  }
+
+  it('kokonaiskilpailu käyttää kisan rakenteita eikä oletuksia', () => {
+    const kilpailijat = [kaksiTaytta()]
+
+    expect(kokonaiskilpailu(kilpailijat)[0]!.pisteet).toBe(100)
+    expect(kokonaiskilpailu(kilpailijat, { maaritykset: muokatut })[0]!.pisteet).toBe(200)
+  })
+
+  it('yhdistysten yhteistulos käyttää kisan rakenteita eikä oletuksia', () => {
+    const kilpailijat = [kaksiTaytta()]
+
+    expect(yhdistysYhteistulos(kilpailijat)[0]!.pisteet).toBe(100)
+    expect(yhdistysYhteistulos(kilpailijat, { maaritykset: muokatut })[0]!.pisteet).toBe(200)
+  })
+
+  /*
+   * Rakenteet poimitaan lajikohtaisesti. Aiemmin yhteen lajiin tarkoitettu rakenne
+   * välittyi sellaisenaan kaikkiin lajeihin, jolloin RA2:n summa olisi laskettu RA1:n
+   * säännöllä.
+   */
+  it('yhteistulos poimii rakenteen lajikohtaisesti', () => {
+    const kilpailijat = [
+      ampuja({
+        nimi: 'B Kaksi',
+        yhdistys: 'Nupures',
+        sarjat: [],
+        lajit: {
+          RA1: [tasainen(10), tasainen(10)], // summa 200 muokatuilla
+          RA2: [tasainen(9, 6), tasainen(9, 6), tasainen(9, 6)], // summa 162 aina
+        },
+      }),
+    ]
+
+    const rivi = yhdistysYhteistulos(kilpailijat, { maaritykset: muokatut })[0]!
+    expect(rivi.lajipisteet.RA1).toBe(200)
+    expect(rivi.lajipisteet.RA2).toBe(162)
+    expect(rivi.pisteet).toBe(362)
+  })
+})

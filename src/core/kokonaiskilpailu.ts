@@ -1,4 +1,4 @@
-import type { Kilpailija, Laji } from '@/types/kisa'
+import type { Kilpailija, Laji, LajiMaaritys } from '@/types/kisa'
 import { LAJIT, LAJI_KOODIT } from './lajit'
 import { laskeLaji } from './laskenta'
 import { vertaaNimia, TARKAN_TULKKAUKSEN_RAJA } from './sijoitukset'
@@ -30,13 +30,19 @@ export interface KokonaisOptiot {
    * kisa näyttää silloin osittaisen tilanteen.
    */
   vaadiKaikkiLajit?: boolean
+  /**
+   * Kisan lajikohtaiset rakenteet. Ilman näitä käytetään sääntöjen oletuksia, jolloin
+   * järjestäjän muokkaama tulossääntö ei vaikuttaisi laskentaan. Kutsujan on annettava
+   * nämä aina, kun käytettävissä on kisan omat asetukset.
+   */
+  maaritykset?: Record<Laji, LajiMaaritys>
 }
 
 export function kokonaiskilpailu(
   kilpailijat: Kilpailija[],
   optiot: KokonaisOptiot = {},
 ): KokonaisRivi[] {
-  const { vaadiKaikkiLajit = false } = optiot
+  const { vaadiKaikkiLajit = false, maaritykset } = optiot
 
   const rivit: Omit<KokonaisRivi, 'sija' | 'jaettu'>[] = []
 
@@ -51,7 +57,7 @@ export function kokonaiskilpailu(
     for (const laji of LAJI_KOODIT) {
       const osallistuminen = k.osallistumiset[laji]
       if (!osallistuminen) continue
-      const tulos = laskeLaji(laji, LAJIT[laji], osallistuminen)
+      const tulos = laskeLaji(laji, maaritykset?.[laji] ?? LAJIT[laji], osallistuminen)
       if (!tulos.aloitettu) continue
       // Turvallisuusrike sulkee kilpailijan pois koko kilpailusta.
       if (tulos.hylatty) {

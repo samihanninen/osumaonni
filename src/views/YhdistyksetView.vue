@@ -18,19 +18,22 @@ const parhaita = computed(() => kisa.value.asetukset.laskettavatParhaat)
 
 const optiot = computed(() => ({
   parhaita: parhaita.value,
+  // Kisan omat rakenteet, ei sääntöjen oletuksia: järjestäjä on voinut muokata niitä.
+  maaritykset: kisa.value.asetukset.lajiMaaritykset,
   ...(luokka.value === 'kaikki' ? {} : { luokka: luokka.value }),
 }))
 
 const yhteistulos = computed(() => yhdistysYhteistulos(kisa.value.kilpailijat, optiot.value))
 
 function lajiTulokset(laji: Laji) {
-  return yhdistysLaji(kisa.value.kilpailijat, laji, {
-    ...optiot.value,
-    maaritys: kisa.value.asetukset.lajiMaaritykset[laji],
-  })
+  return yhdistysLaji(kisa.value.kilpailijat, laji, optiot.value)
 }
 
-const henkilokohtainen = computed(() => kokonaiskilpailu(kisa.value.kilpailijat))
+const henkilokohtainen = computed(() =>
+  kokonaiskilpailu(kisa.value.kilpailijat, {
+    maaritykset: kisa.value.asetukset.lajiMaaritykset,
+  }),
+)
 
 const onTuloksia = computed(() => yhteistulos.value.length > 0)
 </script>
