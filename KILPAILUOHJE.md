@@ -95,6 +95,10 @@ suoraan.
 - **Linkit eivät toimi, näkymä ei aukea.** Sulje sovellus kokonaan ja avaa uudelleen.
 - **Tulokset näyttävät kadonneen.** Älä syötä mitään uutta. Sulje sovellus ja avaa
   uudelleen — vasta sitten arvioi tilanne.
+- **Sovellus ilmoittaa, ettei laitteen kisaa voitu avata.** Tiedot ovat tallessa: sovellus
+  ei poistanut niitä, vaan jätti ne koskematta. Älä kirjaa mitään tyhjään kisaan äläkä
+  tyhjennä selaimen tietoja. Kerro asiasta järjestäjälle ja kirjaa sillä välin toisella
+  laitteella.
 - **QR-koodi ei mene läpi.** Tarkista että molemmissa laitteissa on sama versio. Numero
   näkyy sivun alalaidassa.
 - **Kamera ei käynnisty.** Anna selaimelle kameran käyttöoikeus laitteen asetuksista.

@@ -51,6 +51,8 @@ käytettävissä puhelimella ampumaradalla. Tämä versio korjaa nämä kolme as
 - **Offline** — asennettavissa kotivalikkoon ja toimii ilman verkkoyhteyttä
 - **Kilpailupäivän ohje sovelluksen sisällä** — kisapäivän muistilista luettavissa myös
   radalla, jossa verkkoyhteyttä ei ole
+- **Tallennus ei ylikirjoitu huomaamatta** — sovellus lukee laitteelle tallennetun kisan
+  vain, jos se tunnistaa tallennuksen rakenteen; tuntematonta ei avata eikä kirjoiteta yli
 - **Vienti ja tuonti Excel-tiedostona** — tulokset saa ulos ja takaisin sisään
 
 ---
@@ -130,6 +132,33 @@ data; this is a deliberate exception to the app's local-only principle — you a
 durability over locality. Delete the file from the cloud once the results are no longer
 needed.*
 
+### Jos tallennettua kisaa ei voi avata
+
+Sovellus lukee laitteelle tallennetun kisan vain silloin, kun se tunnistaa tallennuksen
+rakenteen. Jos rakenne on tuntematon, kisaa **ei avata eikä sitä kirjoiteta yli**:
+sovellus aloittaa tyhjästä kisasta, ottaa vanhan tallennuksen talteen ja kertoo
+tilanteesta sivun ylälaidassa.
+
+Tavallisin syy on peruttu päivitys. Verkkosivusta on aina vain yksi julkaistu versio
+kerrallaan, joten virheellisen version peruminen tarkoittaa edellisen version
+julkaisemista uudelleen — ja silloin vanhempi sovellus kohtaa laitteella tallennuksen,
+jonka uudempi versio on kirjoittanut.
+
+Näin tilanteessa toimitaan:
+
+1. **Älä kirjaa tuloksia tyhjään kisaan** — tulokset menisivät eri kisaan kuin aiemmat.
+2. **Älä tyhjennä selaimen sivustotietoja.** Talteen otettu tallennus on laitteen
+   muistissa, ja tyhjentäminen poistaisi senkin.
+3. **Kerro asiasta järjestäjälle** ja kirjaa sillä välin toisella laitteella.
+
+Kisa avautuu itsestään, kun laitteessa on taas vähintään yhtä uusi versio kuin se, jolla
+tulokset kirjattiin. Yksittäinen käyttäjä ei voi valita versiota itse, joten korjaus
+tehdään julkaisemalla oikea versio uudelleen.
+
+ℹ️ Talteen otettu tallennus ei ole korvike tiedostovientiä — se on viimeinen turvaverkko
+sitä tilannetta varten, että tulokset olisivat muuten hävinneet huomaamatta. Vie tulokset
+Excel-tiedostoon niin kuin ennenkin.
+
 ### Kisan päättäminen ja tietojen poistaminen
 
 Kun kisa on ohi, tiedot poistetaan **Kisatiedot**-sivun alaosasta. Vaihtoehtoja on kaksi:
@@ -138,6 +167,9 @@ Kun kisa on ohi, tiedot poistetaan **Kisatiedot**-sivun alaosasta. Vaihtoehtoja 
   asetukset. Tämä on tavallinen valinta, kun sama laite jatkaa seuraavaan kisaan.
 - **Poista kaikki tiedot tältä laitteelta** — poistaa lisäksi laitteen nimen ja
   tunnisteen. Käytä tätä, kun laite ei jää sinulle, esimerkiksi lainatussa puhelimessa.
+
+Molemmat poistavat myös mahdolliset talteen otetut tallennukset (ks. *Jos tallennettua
+kisaa ei voi avata* yllä), koska niissäkin on kilpailijoiden nimiä.
 
 Molemmat vaativat erillisen vahvistuksen, ja sovellus kertoo ennen poistoa, onko
 tuloksia viety tiedostoon. Poistoa ei voi peruuttaa, joten **vie tulokset ensin** — viety
@@ -177,7 +209,10 @@ avauskerralla.
 
 Jos päivitys osoittautuu virheelliseksi, se perutaan keskitetysti julkaisemalla edellinen
 versio uudelleen — yksittäinen käyttäjä ei voi palata vanhaan versioon itse, koska
-verkkosivusta on aina vain yksi julkaistu versio kerrallaan.
+verkkosivusta on aina vain yksi julkaistu versio kerrallaan. Peruminen palauttaa
+sovelluksen, **mutta ei laitteelle jo kirjoitettuja tietoja**. Jos laitteella on tallennus
+uudemmalta versiolta, sovellus jättää sen koskematta ja kertoo siitä — ks. *Jos
+tallennettua kisaa ei voi avata* yllä.
 
 **Kaikissa kisan laitteissa on syytä olla sama versio.** Tulosten yhdistäminen QR-koodilla
 tarkistaa siirtomuodon version, ja eri versiot voivat kieltäytyä lukemasta toistensa
@@ -315,7 +350,7 @@ Osat voi lukea missä järjestyksessä tahansa, ja sovellus kertoo mitä vielä 
 |---|---|---|
 | Käyttöliittymä | [Vue 3](https://vuejs.org/) + TypeScript | Selkeä komponenttijako näppäimistön ja taulukon välillä |
 | Käännöstyökalu | [Vite](https://vite.dev/) | Nopea kehitys, `base`-polku GitHub Pagesille |
-| Tila | [Pinia](https://pinia.vuejs.org/) + [pinia-plugin-persistedstate](https://prazdevs.github.io/pinia-plugin-persistedstate/) | localStorage-tallennus ilman omaa koodia |
+| Tila | [Pinia](https://pinia.vuejs.org/) + [pinia-plugin-persistedstate](https://prazdevs.github.io/pinia-plugin-persistedstate/) | localStorage-tallennus valmiina; luennan versiointi on omaa koodia (`src/core/skeema.ts`), koska tulosten säilyminen ei ole kirjaston päätettävissä |
 | Reititys | [Vue Router](https://router.vuejs.org/) (hash-tila) | Toimii GitHub Pagesilla ilman uudelleenohjauskiertoteitä |
 | Offline | [vite-plugin-pwa](https://vite-pwa-org.netlify.app/) | Asennettava sovellus, toimii ilman verkkoa |
 | Excel-tiedostot | [ExcelJS](https://github.com/exceljs/exceljs) | Ainoa selainkirjasto joka **kirjoittaa** monivälilehtisen tiedoston kaavoineen ja **lukee** sen takaisin |

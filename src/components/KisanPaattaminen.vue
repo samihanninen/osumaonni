@@ -73,7 +73,8 @@ function poistaKaikki() {
       <p class="tilanne" :class="{ varoitus: viemattaJaljella }">
         <template v-if="viety">Tulokset viety tiedostoon {{ muotoile(viety) }}.</template>
         <template v-else>
-          <strong>Tuloksia ei ole viety tiedostoon.</strong> Poistaminen hävittää ne lopullisesti.
+          <strong>Tuloksia ei ole viety tiedostoon.</strong> Poistaminen hävittää ne
+          lopullisesti.
         </template>
       </p>
 
@@ -86,7 +87,8 @@ function poistaKaikki() {
         <div class="kuvaus">
           <strong>Aloita uusi kisa</strong>
           <small>
-            Poistaa kilpailijat ja tulokset. Laitteen asetukset, kuten syöttötapa, säilyvät.
+            Poistaa kilpailijat ja tulokset. Laitteen asetukset, kuten syöttötapa,
+            säilyvät.
           </small>
         </div>
         <template v-if="vahvistettava !== 'uusi'">
@@ -112,8 +114,8 @@ function poistaKaikki() {
         <div class="kuvaus">
           <strong>Poista kaikki tiedot tältä laitteelta</strong>
           <small>
-            Poistaa myös laitteen nimen ja tunnisteen. Käytä tätä, kun laite ei jää sinulle —
-            esimerkiksi lainattu puhelin.
+            Poistaa myös laitteen nimen ja tunnisteen. Käytä tätä, kun laite ei jää sinulle
+            — esimerkiksi lainattu puhelin.
           </small>
         </div>
         <template v-if="vahvistettava !== 'kaikki'">
