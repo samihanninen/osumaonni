@@ -11,6 +11,7 @@ import type {
   TulosSaanto,
 } from '@/types/kisa'
 import { LAJIT, LAJI_KOODIT } from '@/core/lajit'
+import { KISA_SKEEMA_VERSIO } from '@/core/skeema'
 import { jasennaLaukaus } from '@/core/laukaus'
 import { lyhytTunnus, uusiId } from '@/core/tunnus'
 import {
@@ -273,7 +274,9 @@ export async function tuoKisa(tavut: ArrayBuffer): Promise<TuontiYhteenveto> {
   const parhaat = Number(parit.get('laskettavatParhaat') ?? '3')
 
   const kisa: Kisa = {
-    schemaVersion: 1,
+    schemaVersion: KISA_SKEEMA_VERSIO,
+    // Tuonti lukee toistaiseksi vain RESUL-kisoja; mukautettu kisa tulee omana työnään.
+    tyyppi: 'resul',
     kisaId: parit.get('kisaId') || lyhytTunnus(),
     kisatiedot: lueKisatiedot(wb),
     asetukset: {

@@ -7,8 +7,32 @@
  * `kilpasarja` — pelkkää `sarja`-nimeä ei käytetä missään.
  */
 
-/** Ammuntalaji. */
+/**
+ * RESUL-kisan ammuntalaji. Suljettu joukko, koska nämä ovat virallisia lajeja
+ * sääntöineen — mukautetun kisan lajit eivät kuulu tähän tyyppiin.
+ */
 export type Laji = 'RA1' | 'RA2' | 'RA3' | 'RA4'
+
+/**
+ * Lajin tunniste tallennuksessa.
+ *
+ * RESUL-kisassa tunniste on lajikoodi (`RA1`…`RA4`), mukautetussa kisassa arvottu
+ * tunnus. Tunniste ei muutu, vaikka lajin näkyvä nimi vaihdettaisiin — muuten
+ * nimenvaihto irrottaisi jo kirjatut tulokset lajistaan.
+ */
+export type LajiId = string
+
+/**
+ * Kisan muoto.
+ *
+ * - `resul` — RA1–RA4 virallisine sääntöineen. Rakenne tulee säännöistä.
+ * - `mukautettu` — järjestäjän itse määrittelemät lajit.
+ *
+ * Kisa on aina yhtä muotoa. Sekamuotoinen kisa tekisi kokonaiskilpailusta
+ * tulkinnanvaraisen, eikä virallisen kisan tulos saa riippua siitä, mitä muuta samaan
+ * kisaan on lisätty.
+ */
+export type KisaTyyppi = 'resul' | 'mukautettu'
 
 /** Aseluokka. Avoimessa luokassa optiikka on sallittu, joten luokat kilpailevat erikseen. */
 export type Luokka = 'vakio' | 'avoin'
@@ -59,6 +83,41 @@ export interface LajiMaaritys {
   koelaukauksia: number
 }
 
+/**
+ * Yhden kilpasarjan rakenne mukautetussa kisassa.
+ *
+ * Sarjat määritellään yksitellen, koska ne voivat olla eri mittaisia ja tarkoittaa eri
+ * asiaa: kolmen asennon kisassa sarja on asento (makuu, polvi, pysty), kahden kierroksen
+ * kisassa pelkkä kierros. Nimi näkyy tuloskortissa, jotta kirjaaja tietää mitä ampuu.
+ */
+export interface Kilpasarjamaaritys {
+  /** Näkyvä nimi, esim. "Makuu". Tyhjänä sarjat numeroidaan. */
+  nimi?: string
+  laukauksia: number
+}
+
+/**
+ * Mukautetun kisan laji.
+ *
+ * Erillinen tyyppi `LajiMaaritys`:stä: RESUL-lajien rakenne on sääntöjen sanelema ja
+ * pysyy ennallaan, eikä mukautetun kisan vapaus saa vuotaa sinne.
+ */
+export interface MukautettuLaji {
+  /** Pysyvä tunniste. Ei muutu, vaikka koodi tai nimi vaihdettaisiin. */
+  id: LajiId
+  /** Lyhenne, joka näkyy välilehdillä ja Excelin sivunimissä, esim. "3-as". */
+  koodi: string
+  nimi: string
+  kilpasarjat: Kilpasarjamaaritys[]
+  tulosSaanto: TulosSaanto
+  /** Vapaaehtoiset kuvailutiedot; eivät vaikuta laskentaan. */
+  kuvaus?: string
+  ase?: string
+  etaisyys?: string
+  taulu?: string
+  asento?: string
+}
+
 /** Yhden kilpasarjan laukaukset ja yhdistämistä varten tarvittava jäljitystieto. */
 export interface KilpasarjaTiedot {
   laukaukset: Kilpasarja
@@ -87,7 +146,8 @@ export interface Kilpailija {
   sukunimi: string
   yhdistys: string
   ikasarja: IkaSarja
-  osallistumiset: Partial<Record<Laji, Osallistuminen>>
+  /** Avaimena lajin tunniste: RESUL-kisassa lajikoodi, mukautetussa lajin `id`. */
+  osallistumiset: Partial<Record<LajiId, Osallistuminen>>
 }
 
 export interface Kisatiedot {
@@ -119,8 +179,15 @@ export interface Asetukset {
 export interface Kisa {
   /** Tallennusmuodon versio, ks. `@/core/skeema`. Kasvaa rakenteen muuttuessa. */
   schemaVersion: number
+  /** Kisan muoto. Ratkaisee, mistä lajit tulevat ja mitä sääntöjä sovelletaan. */
+  tyyppi: KisaTyyppi
   kisaId: string
   kisatiedot: Kisatiedot
   asetukset: Asetukset
+  /**
+   * Mukautetun kisan lajit järjestyksessä. RESUL-kisassa tyhjä tai puuttuva: lajit
+   * tulevat silloin säännöistä eikä niitä tallenneta erikseen.
+   */
+  lajit?: MukautettuLaji[]
   kilpailijat: Kilpailija[]
 }
