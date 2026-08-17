@@ -4,6 +4,7 @@ import type {
   IkaSarja,
   Kilpailija,
   Kisa,
+  KisaTyyppi,
   Laji,
   LajiMaaritys,
   Laukaus,
@@ -21,9 +22,10 @@ function oletusLajiMaaritykset(): Record<Laji, LajiMaaritys> {
   return structuredClone(LAJIT)
 }
 
-export function tyhjaKisa(): Kisa {
+export function tyhjaKisa(tyyppi: KisaTyyppi = 'resul'): Kisa {
   return {
     schemaVersion: KISA_SKEEMA_VERSIO,
+    tyyppi,
     kisaId: lyhytTunnus(),
     kisatiedot: {
       nimi: '',

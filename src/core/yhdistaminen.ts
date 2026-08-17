@@ -1,6 +1,7 @@
 import type { Kilpailija, Kisa, Laji, Laukaus, Osallistuminen } from '@/types/kisa'
 import { merkitLaukauksiksi, type SiirtoRivi, type Siirtopaketti } from '@/io/siirto'
 import { LAJIT, LAJI_KOODIT } from './lajit'
+import { KISA_SKEEMA_VERSIO } from './skeema'
 import { uusiId } from './tunnus'
 
 /**
@@ -299,7 +300,10 @@ function rakennaKisaPaketista(paketti: Siirtopaketti): Kisa {
   }
 
   return {
-    schemaVersion: 1,
+    schemaVersion: KISA_SKEEMA_VERSIO,
+    // Puuttuva muoto tarkoittaa RESUL-kisaa; lähettäjä jättää sen pois oletustapauksessa.
+    tyyppi: paketti.kisaTyyppi ?? 'resul',
+    ...(paketti.mukautetutLajit ? { lajit: paketti.mukautetutLajit } : {}),
     kisaId: paketti.kisaId,
     kisatiedot: paketti.kisatiedot ?? {
       nimi: '',
@@ -348,6 +352,7 @@ export function laskeVersio(kisa: Kisa): number {
   let n = 0
   for (const k of kisa.kilpailijat) {
     for (const osallistuminen of Object.values(k.osallistumiset)) {
+      if (!osallistuminen) continue
       for (const sarja of osallistuminen.kilpasarjat) {
         for (const laukaus of sarja.laukaukset) {
           if (laukaus !== null && laukaus !== undefined) n++
