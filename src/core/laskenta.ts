@@ -1,7 +1,7 @@
 import {
   NAPAKYMPPI,
   type Kilpasarja,
-  type Laji,
+  type LajiId,
   type LajiMaaritys,
   type Laukaus,
   type Luokka,
@@ -142,7 +142,7 @@ function vertaaKilpasarjoja(a: KilpasarjaTulos, b: KilpasarjaTulos): number {
 
 /** Kilpailijan tulos yhdessä lajissa. */
 export interface LajiTulos {
-  laji: Laji
+  laji: LajiId
   luokka: Luokka
   /** Kaikkien kilpasarjojen tulokset syöttöjärjestyksessä. */
   sarjat: KilpasarjaTulos[]
@@ -177,8 +177,9 @@ export interface LajiTulos {
  * Rangaistukset vähennetään lopputuloksesta, ja hylätyn tulos on nolla.
  */
 export function laskeLaji(
-  laji: Laji,
-  maaritys: LajiMaaritys,
+  laji: LajiId,
+  /** Vain `tulosSaanto` luetaan, joten mukautetun lajin rakenne kelpaa sellaisenaan. */
+  maaritys: Pick<LajiMaaritys, 'tulosSaanto'>,
   osallistuminen: Osallistuminen,
 ): LajiTulos {
   const sarjat = osallistuminen.kilpasarjat.map((s) => laskeKilpasarja(s.laukaukset))

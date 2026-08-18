@@ -3,15 +3,18 @@ import { computed, ref } from 'vue'
 import type {
   IkaSarja,
   Kilpailija,
+  Kilpasarjamaaritys,
   Kisa,
   KisaTyyppi,
   Laji,
+  LajiId,
   LajiMaaritys,
   Laukaus,
   Luokka,
+  MukautettuLaji,
   Osallistuminen,
 } from '@/types/kisa'
-import { LAJIT, LAJI_KOODIT, tyhjatKilpasarjat } from '@/core/lajit'
+import { LAJIT, LAJI_KOODIT, kisanLajit } from '@/core/lajit'
 import { laskeLaji } from '@/core/laskenta'
 import { lyhytTunnus, uusiId } from '@/core/tunnus'
 import { KISA_SKEEMA_VERSIO, lueTallennettu, type LuentaTulos } from '@/core/skeema'
@@ -125,17 +128,18 @@ export const useKisaStore = defineStore(
     const kilpailijoita = computed(() => kisa.value.kilpailijat.length)
 
     /** Montako kilpailijaa osallistuu kyseiseen lajiin. */
-    function osallistujia(laji: Laji): number {
+    function osallistujia(laji: LajiId): number {
       return kisa.value.kilpailijat.filter((k) => k.osallistumiset[laji]).length
     }
 
     /** Kuinka moni lajin osallistuja on täysin kirjattu. */
-    function valmiita(laji: Laji): number {
-      const maaritys = kisa.value.asetukset.lajiMaaritykset[laji]
+    function valmiita(laji: LajiId): number {
+      const rakenne = kisanLajit(kisa.value).find((r) => r.id === laji)
+      if (!rakenne) return 0
       let n = 0
       for (const k of kisa.value.kilpailijat) {
         const o = k.osallistumiset[laji]
-        if (o && laskeLaji(laji, maaritys, o).valmis) n++
+        if (o && laskeLaji(laji, rakenne, o).valmis) n++
       }
       return n
     }
@@ -181,14 +185,23 @@ export const useKisaStore = defineStore(
 
     // ---------- Osallistumiset ----------
 
-    /** Lisää kilpailijan lajiin annetulla aseluokalla. */
-    function lisaaOsallistuminen(id: string, laji: Laji, luokka: Luokka = 'vakio') {
+    /**
+     * Lisää kilpailijan lajiin annetulla aseluokalla.
+     *
+     * Rakenne haetaan `kisanLajit`-sauman kautta, joten sama kutsu toimii sekä
+     * RESUL-lajille että mukautetulle lajille — myös silloin kun sarjat ovat eri
+     * mittaisia.
+     */
+    function lisaaOsallistuminen(id: string, laji: LajiId, luokka: Luokka = 'vakio') {
       const k = kilpailija(id)
       if (!k || k.osallistumiset[laji]) return
-      const maaritys = kisa.value.asetukset.lajiMaaritykset[laji]
+      const rakenne = kisanLajit(kisa.value).find((r) => r.id === laji)
+      if (!rakenne) return
       const osallistuminen: Osallistuminen = {
         luokka,
-        kilpasarjat: tyhjatKilpasarjat(maaritys).map((laukaukset) => ({ laukaukset })),
+        kilpasarjat: rakenne.kilpasarjat.map((s) => ({
+          laukaukset: Array.from({ length: s.laukauksia }, () => null),
+        })),
         rangaistuksia: 0,
         hylatty: false,
       }
@@ -196,28 +209,28 @@ export const useKisaStore = defineStore(
     }
 
     /** Poistaa osallistumisen ja sen tulokset. */
-    function poistaOsallistuminen(id: string, laji: Laji) {
+    function poistaOsallistuminen(id: string, laji: LajiId) {
       const k = kilpailija(id)
       if (!k) return
       delete k.osallistumiset[laji]
     }
 
-    function asetaLuokka(id: string, laji: Laji, luokka: Luokka) {
+    function asetaLuokka(id: string, laji: LajiId, luokka: Luokka) {
       const o = kilpailija(id)?.osallistumiset[laji]
       if (o) o.luokka = luokka
     }
 
-    function asetaRangaistukset(id: string, laji: Laji, maara: number) {
+    function asetaRangaistukset(id: string, laji: LajiId, maara: number) {
       const o = kilpailija(id)?.osallistumiset[laji]
       if (o) o.rangaistuksia = Math.max(0, Math.trunc(maara))
     }
 
-    function asetaHylatty(id: string, laji: Laji, hylatty: boolean) {
+    function asetaHylatty(id: string, laji: LajiId, hylatty: boolean) {
       const o = kilpailija(id)?.osallistumiset[laji]
       if (o) o.hylatty = hylatty
     }
 
-    function asetaHuomio(id: string, laji: Laji, huom: string) {
+    function asetaHuomio(id: string, laji: LajiId, huom: string) {
       const o = kilpailija(id)?.osallistumiset[laji]
       if (o) o.huom = huom
     }
@@ -230,7 +243,7 @@ export const useKisaStore = defineStore(
      */
     function asetaLaukaus(
       id: string,
-      laji: Laji,
+      laji: LajiId,
       kilpasarja: number,
       laukaus: number,
       arvo: Laukaus,
@@ -246,7 +259,7 @@ export const useKisaStore = defineStore(
     }
 
     /** Tyhjentää yhden kilpasarjan laukaukset. */
-    function tyhjennaKilpasarja(id: string, laji: Laji, kilpasarja: number) {
+    function tyhjennaKilpasarja(id: string, laji: LajiId, kilpasarja: number) {
       const o = kilpailija(id)?.osallistumiset[laji]
       const sarja = o?.kilpasarjat[kilpasarja]
       if (!sarja) return
@@ -294,6 +307,133 @@ export const useKisaStore = defineStore(
       }
     }
 
+    // ---------- Mukautetun kisan lajit ----------
+
+    /** Mukautetun kisan lajit. RESUL-kisassa tyhjä. */
+    const mukautetutLajit = computed(() => kisa.value.lajit ?? [])
+
+    function mukautettuLaji(id: LajiId): MukautettuLaji | undefined {
+      return kisa.value.lajit?.find((l) => l.id === id)
+    }
+
+    /**
+     * Montako kirjattua laukausta lajissa on? Käytetään varmistuksissa ennen muutosta,
+     * joka lyhentäisi sarjoja — kirjaaja ei voi arvioida menetystä ilman lukua.
+     */
+    function kirjattujaLaukauksia(id: LajiId): number {
+      let n = 0
+      for (const k of kisa.value.kilpailijat) {
+        for (const sarja of k.osallistumiset[id]?.kilpasarjat ?? []) {
+          for (const laukaus of sarja.laukaukset) if (laukaus !== null) n++
+        }
+      }
+      return n
+    }
+
+    /**
+     * Montako kirjattua laukausta katoaisi, jos lajin sarjat korvattaisiin annetuilla?
+     * Laskee sekä poistuvat sarjat että lyhenevien sarjojen hännät.
+     */
+    function menetettavatLaukaukset(id: LajiId, uudet: Kilpasarjamaaritys[]): number {
+      let n = 0
+      for (const k of kisa.value.kilpailijat) {
+        const sarjat = k.osallistumiset[id]?.kilpasarjat ?? []
+        sarjat.forEach((sarja, i) => {
+          const pituus = uudet[i]?.laukauksia ?? 0
+          for (let j = pituus; j < sarja.laukaukset.length; j++) {
+            if (sarja.laukaukset[j] !== null) n++
+          }
+        })
+      }
+      return n
+    }
+
+    /** Lisää uuden lajin mukautettuun kisaan ja palauttaa sen. */
+    function lisaaMukautettuLaji(tiedot: Partial<MukautettuLaji> = {}): MukautettuLaji {
+      if (!kisa.value.lajit) kisa.value.lajit = []
+      const jarjestys = kisa.value.lajit.length + 1
+      const uusi: MukautettuLaji = {
+        id: uusiId(),
+        koodi: tiedot.koodi?.trim() || `L${jarjestys}`,
+        nimi: tiedot.nimi?.trim() || `Laji ${jarjestys}`,
+        kilpasarjat: tiedot.kilpasarjat ?? [{ laukauksia: 10 }],
+        tulosSaanto: tiedot.tulosSaanto ?? 'summa',
+        ...(tiedot.kuvaus ? { kuvaus: tiedot.kuvaus } : {}),
+      }
+      kisa.value.lajit.push(uusi)
+      return uusi
+    }
+
+    /** Muuttaa lajin kuvailutietoja. Ei koske sarjoihin, ks. `asetaKilpasarjat`. */
+    function paivitaMukautettuLaji(
+      id: LajiId,
+      muutokset: Partial<Omit<MukautettuLaji, 'id' | 'kilpasarjat'>>,
+    ) {
+      const laji = mukautettuLaji(id)
+      if (!laji) return
+      Object.assign(laji, muutokset)
+      if (laji.koodi.trim() === '') laji.koodi = id.slice(0, 4)
+    }
+
+    /**
+     * Korvaa lajin kilpasarjat ja sovittaa kirjatut tulokset uuteen rakenteeseen.
+     *
+     * Lyhentäminen poistaa laukauksia lopusta, joten kutsujan on varmistettava muutos
+     * käyttäjältä — `menetettavatLaukaukset` kertoo mitä on vaarassa.
+     */
+    function asetaKilpasarjat(id: LajiId, sarjat: Kilpasarjamaaritys[]) {
+      const laji = mukautettuLaji(id)
+      if (!laji) return
+      laji.kilpasarjat = sarjat.map((s) => ({
+        ...(s.nimi?.trim() ? { nimi: s.nimi.trim() } : {}),
+        laukauksia: Math.max(1, Math.trunc(s.laukauksia) || 1),
+      }))
+
+      for (const k of kisa.value.kilpailijat) {
+        const o = k.osallistumiset[id]
+        if (!o) continue
+        while (o.kilpasarjat.length < laji.kilpasarjat.length)
+          o.kilpasarjat.push({ laukaukset: [] })
+        o.kilpasarjat.length = laji.kilpasarjat.length
+        laji.kilpasarjat.forEach((maaritys, i) => {
+          const sarja = o.kilpasarjat[i]
+          if (!sarja) return
+          while (sarja.laukaukset.length < maaritys.laukauksia) sarja.laukaukset.push(null)
+          sarja.laukaukset.length = maaritys.laukauksia
+        })
+      }
+    }
+
+    /** Poistaa lajin ja kaikki siihen kirjatut tulokset. */
+    function poistaMukautettuLaji(id: LajiId) {
+      const i = kisa.value.lajit?.findIndex((l) => l.id === id) ?? -1
+      if (i < 0) return
+      kisa.value.lajit?.splice(i, 1)
+      for (const k of kisa.value.kilpailijat) delete k.osallistumiset[id]
+    }
+
+    /** Siirtää lajia listassa. Järjestys on välilehtien järjestys. */
+    function siirraMukautettuLaji(id: LajiId, suunta: -1 | 1) {
+      const lajit = kisa.value.lajit
+      if (!lajit) return
+      const i = lajit.findIndex((l) => l.id === id)
+      const j = i + suunta
+      if (i < 0 || j < 0 || j >= lajit.length) return
+      const [siirretty] = lajit.splice(i, 1)
+      if (siirretty) lajit.splice(j, 0, siirretty)
+    }
+
+    /**
+     * Vaihtaa kisan muodon. Muoto ratkaisee mistä lajit tulevat, joten vaihto tekee
+     * kirjatuista tuloksista tulkitsemattomia — kutsuja vastaa varmistuksesta.
+     */
+    function asetaKisaTyyppi(tyyppi: KisaTyyppi) {
+      if (kisa.value.tyyppi === tyyppi) return
+      kisa.value.tyyppi = tyyppi
+      for (const k of kisa.value.kilpailijat) k.osallistumiset = {}
+      kisa.value.lajit = tyyppi === 'mukautettu' ? (kisa.value.lajit ?? []) : undefined
+    }
+
     /** Palauttaa lajien rakenteet sääntöjen mukaisiin oletuksiin. */
     function palautaOletusRakenteet() {
       for (const laji of LAJI_KOODIT) {
@@ -336,6 +476,16 @@ export const useKisaStore = defineStore(
       tyhjennaKilpasarja,
       asetaLaskettavatParhaat,
       asetaJoukkuekilpailu,
+      mukautetutLajit,
+      mukautettuLaji,
+      kirjattujaLaukauksia,
+      menetettavatLaukaukset,
+      lisaaMukautettuLaji,
+      paivitaMukautettuLaji,
+      asetaKilpasarjat,
+      poistaMukautettuLaji,
+      siirraMukautettuLaji,
+      asetaKisaTyyppi,
       asetaLajiMaaritys,
       palautaOletusRakenteet,
       korvaaKisa,
