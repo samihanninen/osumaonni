@@ -5,9 +5,9 @@ import { storeToRefs } from 'pinia'
 import { useKisaStore } from '@/stores/kisa'
 import { useLaiteStore } from '@/stores/laite'
 import { useTyopoyta } from '@/composables/useMediaKysely'
-import { LAJI_KOODIT, onLaji } from '@/core/lajit'
+import { kisanLajit, rakenteenLaukaukset } from '@/core/lajit'
 import { laskeLaji } from '@/core/laskenta'
-import type { Laji, Laukaus, Luokka } from '@/types/kisa'
+import type { LajiId, Laukaus, Luokka } from '@/types/kisa'
 import LaukausNappaimisto from '@/components/LaukausNappaimisto.vue'
 import KilpailijaKortti from '@/components/KilpailijaKortti.vue'
 import TuloskorttiTaulukko from '@/components/TuloskorttiTaulukko.vue'
@@ -19,13 +19,31 @@ const { kisa } = storeToRefs(store)
 
 const tyopoyta = useTyopoyta()
 
-const laji = computed<Laji>(() => {
+/** Kisan lajit muodosta riippumatta. Välilehdet ja reitin tarkistus nojaavat tähän. */
+const lajit = computed(() => kisanLajit(kisa.value))
+
+/** Reitin laji, tai kisan ensimmäinen jos reitissä on tuntematon tunniste. */
+const laji = computed<LajiId>(() => {
   const p = route.params.laji
   const arvo = Array.isArray(p) ? p[0] : p
-  return onLaji(arvo) ? arvo : 'RA1'
+  if (typeof arvo === 'string' && lajit.value.some((l) => l.id === arvo)) return arvo
+  return lajit.value[0]?.id ?? ''
 })
 
-const maaritys = computed(() => kisa.value.asetukset.lajiMaaritykset[laji.value])
+const rakenne = computed(() => lajit.value.find((l) => l.id === laji.value))
+
+/**
+ * Rakenne yhtenä rivinä. Tasamittaiset sarjat esitetään kertolaskuna kuten ennenkin —
+ * se kertoo enemmän kuin pelkkä summa — ja eri mittaiset luetellaan.
+ */
+const rakenneTeksti = computed(() => {
+  const r = rakenne.value
+  if (!r) return ''
+  const pituudet = r.kilpasarjat.map((s) => s.laukauksia)
+  const tasaiset = pituudet.every((p) => p === pituudet[0])
+  if (tasaiset) return `${pituudet.length} × ${pituudet[0]} laukausta`
+  return `${pituudet.join(' + ')} laukausta`
+})
 
 /** Lajin osallistujat sukunimen mukaan — sama järjestys kuin muissa listoissa. */
 const osallistujat = computed(() =>
@@ -142,11 +160,11 @@ function siirryKilpailijaan(indeksi: number) {
 function tila(k: (typeof osallistujat.value)[number]): string {
   const o = k.osallistumiset[laji.value]
   if (!o) return '—'
-  const tulos = laskeLaji(laji.value, maaritys.value, o)
+  const tulos = laskeLaji(laji.value, rakenne.value ?? { tulosSaanto: 'summa' }, o)
   if (tulos.valmis) return `valmis ${tulos.pisteet}`
   if (tulos.aloitettu) {
     const syotetty = tulos.sarjat.reduce((s, x) => s + x.syotetty, 0)
-    const kaikki = maaritys.value.kilpasarjoja * maaritys.value.laukauksiaSarjassa
+    const kaikki = rakenne.value ? rakenteenLaukaukset(rakenne.value) : 0
     return `${syotetty}/${kaikki}`
   }
   return 'tyhjä'
@@ -180,157 +198,170 @@ function taulukkoHylatty(id: string, hylatty: boolean) {
 
       <nav class="lajivalinta" aria-label="Laji">
         <RouterLink
-          v-for="l in LAJI_KOODIT"
-          :key="l"
-          :to="{ name: 'syotto', params: { laji: l } }"
+          v-for="l in lajit"
+          :key="l.id"
+          :to="{ name: 'syotto', params: { laji: l.id } }"
           class="lajinappi"
-          :class="{ 'lajinappi--valittu': l === laji }"
+          :class="{ 'lajinappi--valittu': l.id === laji }"
+          :title="l.nimi"
         >
-          {{ l }}
-          <small>{{ store.osallistujia(l) }}</small>
+          {{ l.koodi }}
+          <small>{{ store.osallistujia(l.id) }}</small>
         </RouterLink>
       </nav>
     </header>
 
-    <p class="lajitiedot">
-      {{ maaritys.kilpasarjoja }} × {{ maaritys.laukauksiaSarjassa }} laukausta
-      <span class="erotin" aria-hidden="true">·</span>
-      {{ maaritys.tulosSaanto === 'paras' ? 'parempi sarja' : 'sarjojen summa' }}
-    </p>
-
-    <p v-if="laite.luovutettu" class="huomio huomio--varoitus">
-      <strong>Tämä laite on luovuttanut kisan eteenpäin.</strong>
-      Syöttö on lukittu, jottei sama kisa haaraudu kahdelle laitteelle.
-      <button type="button" class="nappi jatka" @click="laite.jatkaSilti()">Jatka silti</button>
-    </p>
-
-    <p v-if="osallistujat.length === 0" class="tulossa">
-      Yksikään kilpailija ei osallistu lajiin {{ laji }}.
-      <RouterLink to="/kilpailijat">Lisää osallistujia</RouterLink>.
+    <!-- Mukautetussa kisassa lajit voi olla määrittelemättä; silloin ei ole mitään syötettävää. -->
+    <p v-if="!rakenne" class="tulossa">
+      Kisassa ei ole vielä lajeja.
+      <RouterLink to="/kisatiedot">Määrittele lajit kisatiedoissa</RouterLink>.
     </p>
 
     <template v-else>
-      <!--
+      <p class="lajitiedot">
+        {{ rakenneTeksti }}
+        <span class="erotin" aria-hidden="true">·</span>
+        {{ rakenne.tulosSaanto === 'paras' ? 'parempi sarja' : 'sarjojen summa' }}
+      </p>
+
+      <p v-if="laite.luovutettu" class="huomio huomio--varoitus">
+        <strong>Tämä laite on luovuttanut kisan eteenpäin.</strong>
+        Syöttö on lukittu, jottei sama kisa haaraudu kahdelle laitteelle.
+        <button type="button" class="nappi jatka" @click="laite.jatkaSilti()">Jatka silti</button>
+      </p>
+
+      <p v-if="osallistujat.length === 0" class="tulossa">
+        Yksikään kilpailija ei osallistu lajiin {{ laji }}.
+        <RouterLink to="/kilpailijat">Lisää osallistujia</RouterLink>.
+      </p>
+
+      <template v-else>
+        <!--
         Syöttötapa on laitekohtainen asetus, joka valitaan kerran — ei jokaisen
         kilpailijan kohdalla. Se on siksi taitettuna, jotta pystytila jää kortille.
       -->
-      <details class="tapavalinta">
-        <summary class="tapa-otsikko">
-          Syöttötapa: {{ taulukossa ? 'taulukko' : 'näppäimistö' }}
-        </summary>
-        <div class="tapanapit" role="group" aria-label="Syöttötapa">
-          <button
-            type="button"
-            class="tapanappi"
-            :class="{ 'tapanappi--valittu': laite.syottotapa === 'auto' }"
-            @click="laite.asetaSyottotapa('auto')"
-          >
-            Automaattinen
-          </button>
-          <button
-            type="button"
-            class="tapanappi"
-            :class="{ 'tapanappi--valittu': laite.syottotapa === 'nappaimisto' }"
-            @click="laite.asetaSyottotapa('nappaimisto')"
-          >
-            Näppäimistö
-          </button>
-          <button
-            type="button"
-            class="tapanappi"
-            :class="{ 'tapanappi--valittu': laite.syottotapa === 'taulukko' }"
-            @click="laite.asetaSyottotapa('taulukko')"
-          >
-            Taulukko
-          </button>
-        </div>
-      </details>
+        <details class="tapavalinta">
+          <summary class="tapa-otsikko">
+            Syöttötapa: {{ taulukossa ? 'taulukko' : 'näppäimistö' }}
+          </summary>
+          <div class="tapanapit" role="group" aria-label="Syöttötapa">
+            <button
+              type="button"
+              class="tapanappi"
+              :class="{ 'tapanappi--valittu': laite.syottotapa === 'auto' }"
+              @click="laite.asetaSyottotapa('auto')"
+            >
+              Automaattinen
+            </button>
+            <button
+              type="button"
+              class="tapanappi"
+              :class="{ 'tapanappi--valittu': laite.syottotapa === 'nappaimisto' }"
+              @click="laite.asetaSyottotapa('nappaimisto')"
+            >
+              Näppäimistö
+            </button>
+            <button
+              type="button"
+              class="tapanappi"
+              :class="{ 'tapanappi--valittu': laite.syottotapa === 'taulukko' }"
+              @click="laite.asetaSyottotapa('taulukko')"
+            >
+              Taulukko
+            </button>
+          </div>
+        </details>
 
-      <!-- Taulukkosyöttö: oikea näppäimistö ja hiiri -->
-      <TuloskorttiTaulukko
-        v-if="taulukossa"
-        :kilpailijat="osallistujat"
-        :laji="laji"
-        :maaritys="maaritys"
-        :lukittu="laite.luovutettu"
-        @syota="taulukkoSyota"
-        @luokka="taulukkoLuokka"
-        @rangaistukset="taulukkoRangaistukset"
-        @hylatty="taulukkoHylatty"
-      />
+        <!-- Taulukkosyöttö: oikea näppäimistö ja hiiri -->
+        <TuloskorttiTaulukko
+          v-if="taulukossa"
+          :kilpailijat="osallistujat"
+          :laji="laji"
+          :rakenne="rakenne"
+          :lukittu="laite.luovutettu"
+          @syota="taulukkoSyota"
+          @luokka="taulukkoLuokka"
+          @rangaistukset="taulukkoRangaistukset"
+          @hylatty="taulukkoHylatty"
+        />
 
-      <!-- Kosketussyöttö: laitteen omaa näppäimistöä ei avata lainkaan -->
-      <template v-else-if="nykyinen">
-        <!--
+        <!-- Kosketussyöttö: laitteen omaa näppäimistöä ei avata lainkaan -->
+        <template v-else-if="nykyinen">
+          <!--
           Suora siirtyminen kilpailijaan. Virheen korjaaminen jälkikäteen olisi muuten
           kymmenien napautusten päässä, jos kirjaaja on jo edennyt listalla eteenpäin.
         -->
-        <div class="valitsin">
-          <label class="valitsin-label" for="kilpailijavalinta">Kilpailija</label>
-          <select
-            id="kilpailijavalinta"
-            :value="kohdistus"
-            @change="siirryKilpailijaan(Number(($event.target as HTMLSelectElement).value))"
-          >
-            <option v-for="(k, i) in osallistujat" :key="k.id" :value="i">
-              {{ i + 1 }}. {{ k.sukunimi }}, {{ k.etunimi }} — {{ tila(k) }}
-            </option>
-          </select>
-          <span class="laskuri">{{ kohdistus + 1 }} / {{ osallistujat.length }}</span>
-        </div>
-
-        <KilpailijaKortti
-          :kilpailija="nykyinen"
-          :laji="laji"
-          :maaritys="maaritys"
-          :aktiivinen-sarja="aktiivinenSarja"
-          :aktiivinen-laukaus="aktiivinenLaukaus"
-          @valitse="valitseRuutu"
-        />
-
-        <LaukausNappaimisto
-          class="nappaimisto-alue"
-          :lukittu="laite.luovutettu"
-          @syota="syotaNappaimistolla"
-          @peruuta="peruuta"
-          @seuraava="vaihdaKilpailija(1)"
-          @edellinen="vaihdaKilpailija(-1)"
-        />
-
-        <details class="lisatiedot">
-          <summary>Sääntörikkeet ja hylkäys</summary>
-          <div class="lisakentat">
-            <div class="kentta">
-              <label :for="`rike-${nykyinen.id}`">Sääntörikkeitä (−2 p / kerta)</label>
-              <input
-                :id="`rike-${nykyinen.id}`"
-                type="number"
-                min="0"
-                max="20"
-                :disabled="laite.luovutettu"
-                :value="nykyinen.osallistumiset[laji]?.rangaistuksia ?? 0"
-                @change="
-                  store.asetaRangaistukset(
-                    nykyinen.id,
-                    laji,
-                    Number(($event.target as HTMLInputElement).value),
-                  )
-                "
-              />
-            </div>
-            <label class="valinta">
-              <input
-                type="checkbox"
-                :disabled="laite.luovutettu"
-                :checked="nykyinen.osallistumiset[laji]?.hylatty ?? false"
-                @change="
-                  store.asetaHylatty(nykyinen.id, laji, ($event.target as HTMLInputElement).checked)
-                "
-              />
-              <span>Hylätty (turvallisuusrike) — tulos mitätöidään</span>
-            </label>
+          <div class="valitsin">
+            <label class="valitsin-label" for="kilpailijavalinta">Kilpailija</label>
+            <select
+              id="kilpailijavalinta"
+              :value="kohdistus"
+              @change="siirryKilpailijaan(Number(($event.target as HTMLSelectElement).value))"
+            >
+              <option v-for="(k, i) in osallistujat" :key="k.id" :value="i">
+                {{ i + 1 }}. {{ k.sukunimi }}, {{ k.etunimi }} — {{ tila(k) }}
+              </option>
+            </select>
+            <span class="laskuri">{{ kohdistus + 1 }} / {{ osallistujat.length }}</span>
           </div>
-        </details>
+
+          <KilpailijaKortti
+            :kilpailija="nykyinen"
+            :laji="laji"
+            :rakenne="rakenne"
+            :aktiivinen-sarja="aktiivinenSarja"
+            :aktiivinen-laukaus="aktiivinenLaukaus"
+            @valitse="valitseRuutu"
+          />
+
+          <LaukausNappaimisto
+            class="nappaimisto-alue"
+            :lukittu="laite.luovutettu"
+            @syota="syotaNappaimistolla"
+            @peruuta="peruuta"
+            @seuraava="vaihdaKilpailija(1)"
+            @edellinen="vaihdaKilpailija(-1)"
+          />
+
+          <details class="lisatiedot">
+            <summary>Sääntörikkeet ja hylkäys</summary>
+            <div class="lisakentat">
+              <div class="kentta">
+                <label :for="`rike-${nykyinen.id}`">Sääntörikkeitä (−2 p / kerta)</label>
+                <input
+                  :id="`rike-${nykyinen.id}`"
+                  type="number"
+                  min="0"
+                  max="20"
+                  :disabled="laite.luovutettu"
+                  :value="nykyinen.osallistumiset[laji]?.rangaistuksia ?? 0"
+                  @change="
+                    store.asetaRangaistukset(
+                      nykyinen.id,
+                      laji,
+                      Number(($event.target as HTMLInputElement).value),
+                    )
+                  "
+                />
+              </div>
+              <label class="valinta">
+                <input
+                  type="checkbox"
+                  :disabled="laite.luovutettu"
+                  :checked="nykyinen.osallistumiset[laji]?.hylatty ?? false"
+                  @change="
+                    store.asetaHylatty(
+                      nykyinen.id,
+                      laji,
+                      ($event.target as HTMLInputElement).checked,
+                    )
+                  "
+                />
+                <span>Hylätty (turvallisuusrike) — tulos mitätöidään</span>
+              </label>
+            </div>
+          </details>
+        </template>
       </template>
     </template>
   </section>

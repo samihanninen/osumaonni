@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { computed, nextTick, watch } from 'vue'
-import type { Kilpailija, Laji, LajiMaaritys } from '@/types/kisa'
+import type { Kilpailija, LajiId } from '@/types/kisa'
 import { laskeLaji } from '@/core/laskenta'
 import { naytaLaukaus } from '@/core/laukaus'
-import { LUOKKA_NIMET } from '@/core/lajit'
+import { LUOKKA_NIMET, sarjanNimi as rakenteenSarjanNimi, type LajiRakenne } from '@/core/lajit'
 
 const props = defineProps<{
   kilpailija: Kilpailija
-  laji: Laji
-  maaritys: LajiMaaritys
+  laji: LajiId
+  rakenne: LajiRakenne
   /** Aktiivinen kilpasarja ja laukaus, joihin näppäimistön syöte menee. */
   aktiivinenSarja: number
   aktiivinenLaukaus: number
@@ -22,15 +22,16 @@ const osallistuminen = computed(() => props.kilpailija.osallistumiset[props.laji
 
 const tulos = computed(() => {
   const o = osallistuminen.value
-  return o ? laskeLaji(props.laji, props.maaritys, o) : null
+  return o ? laskeLaji(props.laji, props.rakenne, o) : null
 })
 
 function laukaukset(sarja: number) {
   return osallistuminen.value?.kilpasarjat[sarja]?.laukaukset ?? []
 }
 
+/** Sarjan nimi tulee lajin rakenteesta: mukautetussa kisassa esimerkiksi "Makuu". */
 function sarjanNimi(i: number): string {
-  return props.maaritys.kilpasarjoja === 1 ? 'Kilpasarja' : `Kilpasarja ${i + 1}`
+  return rakenteenSarjanNimi(props.rakenne, i)
 }
 
 /** Ruudun tunniste, jotta aktiivinen ruutu voidaan vierittää näkyviin. */
@@ -72,7 +73,7 @@ watch(
     </header>
 
     <section
-      v-for="(_, sarja) in maaritys.kilpasarjoja"
+      v-for="(_, sarja) in rakenne.kilpasarjat"
       :key="sarja"
       class="sarja"
       :class="{ 'sarja--laskeva': tulos.laskevaSarja === sarja }"

@@ -4,13 +4,26 @@ import { RouterLink, RouterView } from 'vue-router'
 import TallennusVaroitus from '@/components/TallennusVaroitus.vue'
 import SkeemaVaroitus from '@/components/SkeemaVaroitus.vue'
 import PaivitysIlmoitus from '@/components/PaivitysIlmoitus.vue'
+import { storeToRefs } from 'pinia'
+import { useKisaStore } from '@/stores/kisa'
 import { useLaiteStore } from '@/stores/laite'
+import { kisanLajit } from '@/core/lajit'
 import { VERSIO } from '@/core/versio'
 
 const laite = useLaiteStore()
+const { kisa } = storeToRefs(useKisaStore())
 
-/** Syöttö ja sijoitukset ovat lajikohtaisia: palataan viimeksi käytettyyn lajiin. */
-const laji = computed(() => laite.viimeinenLaji || 'RA1')
+/**
+ * Valikon linkit osoittavat viimeksi käytettyyn lajiin. Mukautetussa kisassa lajit
+ * vaihtuvat, joten tuntematon tunniste korvataan kisan ensimmäisellä lajilla — muuten
+ * linkki veisi lajiin jota kisassa ei ole.
+ */
+const laji = computed(() => {
+  const lajit = kisanLajit(kisa.value)
+  const viimeinen = laite.viimeinenLaji
+  if (lajit.some((l) => l.id === viimeinen)) return viimeinen
+  return lajit[0]?.id ?? ''
+})
 </script>
 
 <template>
