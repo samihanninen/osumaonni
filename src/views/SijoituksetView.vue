@@ -3,9 +3,9 @@ import { computed, ref } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useKisaStore } from '@/stores/kisa'
-import { kisanLajit, LUOKAT, LUOKKA_NIMET, sarjanNimi } from '@/core/lajit'
+import { kisanLajit, kisanSarjat, LUOKAT, LUOKKA_NIMET, sarjanNimi } from '@/core/lajit'
 import { sijoitukset } from '@/core/sijoitukset'
-import type { IkaSarja, LajiId, Luokka } from '@/types/kisa'
+import type { LajiId, Luokka, SarjaId } from '@/types/kisa'
 
 const route = useRoute()
 const store = useKisaStore()
@@ -24,9 +24,10 @@ const laji = computed<LajiId>(() => {
 const rakenne = computed(() => lajit.value.find((l) => l.id === laji.value))
 
 const luokka = ref<Luokka>('vakio')
-const ikasarjaSuodatin = ref<IkaSarja | 'kaikki'>('kaikki')
+const ikasarjaSuodatin = ref<SarjaId | 'kaikki'>('kaikki')
 
-const IKASARJAT: IkaSarja[] = ['H', 'H50']
+/** Kisan sarjat: RESUL-kisassa H ja H50, mukautetussa järjestäjän omat. */
+const sarjat = computed(() => kisanSarjat(kisa.value))
 
 /**
  * Suodatetut kilpailijat. Kun ikäsarja on rajattu, sijoitukset lasketaan **rajauksen
@@ -105,7 +106,7 @@ function sijaTeksti(sija: number): string {
             Kaikki
           </button>
           <button
-            v-for="s in IKASARJAT"
+            v-for="s in sarjat"
             :key="s"
             type="button"
             class="pikkunappi"

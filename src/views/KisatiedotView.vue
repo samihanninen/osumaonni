@@ -6,6 +6,7 @@ import { LAJI_KOODIT, laukauksiaYhteensa, suurinTulos } from '@/core/lajit'
 import { onJoukkuekilpailu } from '@/core/yhdistykset'
 import KisanPaattaminen from '@/components/KisanPaattaminen.vue'
 import MukautetutLajit from '@/components/MukautetutLajit.vue'
+import MukautetutSarjat from '@/components/MukautetutSarjat.vue'
 import type { KisaTyyppi, Laji, TulosSaanto } from '@/types/kisa'
 
 const store = useKisaStore()
@@ -111,7 +112,10 @@ function paivitaSaanto(laji: Laji, arvo: string) {
       </p>
     </fieldset>
 
-    <MukautetutLajit v-if="kisa.tyyppi === 'mukautettu'" />
+    <template v-if="kisa.tyyppi === 'mukautettu'">
+      <MukautetutSarjat />
+      <MukautetutLajit />
+    </template>
 
     <fieldset>
       <legend>Kisan perustiedot</legend>

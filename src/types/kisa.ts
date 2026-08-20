@@ -40,6 +40,19 @@ export type Luokka = 'vakio' | 'avoin'
 /** Ikäsarja. */
 export type IkaSarja = 'H' | 'H50'
 
+/** RESUL-kisan ikäsarjat. Säännöt, kohta 2 kaikissa neljässä lajissa: "Sarjat: H, H50". */
+export const RESUL_SARJAT: readonly IkaSarja[] = ['H', 'H50'] as const
+
+/**
+ * Kilpailijan sarja tallennuksessa.
+ *
+ * RESUL-kisassa `H` tai `H50` sääntöjen mukaan. Mukautetussa kisassa järjestäjän itse
+ * nimeämä sarja, jota ei ole pakko sitoa ikään — se voi olla myös esimerkiksi
+ * aloittelijat ja konkarit. Nimi on samalla tunniste, koska sarjoja ei ole tarpeen
+ * nimetä uudelleen kesken kisan eikä niihin liity muuta tietoa.
+ */
+export type SarjaId = string
+
 /** Napakympin merkki. Napakymppi on 10 pistettä, mutta se lasketaan erikseen tasatuloksia varten. */
 export const NAPAKYMPPI = '*'
 
@@ -145,7 +158,8 @@ export interface Kilpailija {
   /** Erillinen sukunimi on pakollinen: sijoilla 9→ tasatulokset järjestetään sukunimen mukaan. */
   sukunimi: string
   yhdistys: string
-  ikasarja: IkaSarja
+  /** Sarja, ks. `SarjaId`. RESUL-kisassa H tai H50. */
+  ikasarja: SarjaId
   /** Avaimena lajin tunniste: RESUL-kisassa lajikoodi, mukautetussa lajin `id`. */
   osallistumiset: Partial<Record<LajiId, Osallistuminen>>
 }
@@ -184,6 +198,11 @@ export interface Kisa {
   kisaId: string
   kisatiedot: Kisatiedot
   asetukset: Asetukset
+  /**
+   * Mukautetun kisan sarjat järjestyksessä, esim. "Yleinen" ja "Veteraanit".
+   * RESUL-kisassa puuttuu: sarjat tulevat silloin säännöistä (H, H50).
+   */
+  sarjat?: SarjaId[]
   /**
    * Mukautetun kisan lajit järjestyksessä. RESUL-kisassa tyhjä tai puuttuva: lajit
    * tulevat silloin säännöistä eikä niitä tallenneta erikseen.

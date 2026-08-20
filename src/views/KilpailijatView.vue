@@ -2,15 +2,16 @@
 import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useKisaStore } from '@/stores/kisa'
-import { kisanLajit, LUOKAT, LUOKKA_NIMET } from '@/core/lajit'
-import type { IkaSarja, LajiId, Luokka } from '@/types/kisa'
+import { kisanLajit, kisanSarjat, LUOKAT, LUOKKA_NIMET } from '@/core/lajit'
+import type { LajiId, Luokka, SarjaId } from '@/types/kisa'
 
 const store = useKisaStore()
 const { kisa, yhdistysEhdotukset } = storeToRefs(store)
 
-const IKASARJAT: IkaSarja[] = ['H', 'H50']
+/** Kisan sarjat: RESUL-kisassa H ja H50, mukautetussa järjestäjän omat. */
+const sarjat = computed(() => kisanSarjat(kisa.value))
 
-const uusi = ref({ etunimi: '', sukunimi: '', yhdistys: '', ikasarja: 'H' as IkaSarja })
+const uusi = ref({ etunimi: '', sukunimi: '', yhdistys: '', ikasarja: '' as SarjaId })
 const virhe = ref('')
 const poistoVahvistus = ref<string | null>(null)
 
@@ -103,7 +104,7 @@ function poista(id: string) {
         <div class="kentta">
           <label for="ikasarja">Ikäsarja</label>
           <select id="ikasarja" v-model="uusi.ikasarja">
-            <option v-for="s in IKASARJAT" :key="s" :value="s">{{ s }}</option>
+            <option v-for="s in sarjat" :key="s" :value="s">{{ s }}</option>
           </select>
         </div>
       </div>
@@ -173,11 +174,11 @@ function poista(id: string) {
                   :value="k.ikasarja"
                   @change="
                     store.paivitaKilpailija(k.id, {
-                      ikasarja: ($event.target as HTMLSelectElement).value as IkaSarja,
+                      ikasarja: ($event.target as HTMLSelectElement).value,
                     })
                   "
                 >
-                  <option v-for="s in IKASARJAT" :key="s" :value="s">{{ s }}</option>
+                  <option v-for="s in sarjat" :key="s" :value="s">{{ s }}</option>
                 </select>
               </div>
             </div>
