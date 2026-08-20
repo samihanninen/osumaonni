@@ -6,8 +6,10 @@ import type {
   LajiMaaritys,
   Luokka,
   MukautettuLaji,
+  SarjaId,
   TulosSaanto,
 } from '@/types/kisa'
+import { RESUL_SARJAT } from '@/types/kisa'
 
 /**
  * Lajien rakenteet RESUL:n virallisten sääntöjen mukaan.
@@ -210,6 +212,17 @@ export function sarjanNimi(r: LajiRakenne, sarja: number): string {
   const nimi = r.kilpasarjat[sarja]?.nimi?.trim()
   if (nimi) return nimi
   return r.kilpasarjat.length === 1 ? 'Kilpasarja' : `Kilpasarja ${sarja + 1}`
+}
+
+/**
+ * Kisan sarjat muodosta riippumatta.
+ *
+ * RESUL-kisassa sarjat tulevat säännöistä (H, H50) eikä niitä voi muuttaa. Mukautetussa
+ * kisassa järjestäjä nimeää ne itse, eikä niiden tarvitse liittyä ikään.
+ */
+export function kisanSarjat(kisa: Pick<Kisa, 'tyyppi' | 'sarjat'>): SarjaId[] {
+  if (kisa.tyyppi === 'mukautettu') return kisa.sarjat ?? []
+  return [...RESUL_SARJAT]
 }
 
 /** Onko tunniste kisassa oleva laji? Käytetään reitin parametrin tarkistuksessa. */

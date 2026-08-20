@@ -8,6 +8,7 @@ import {
   type Laukaus,
   type Luokka,
   type MukautettuLaji,
+  type SarjaId,
 } from '@/types/kisa'
 import { LAJI_KOODIT } from '@/core/lajit'
 
@@ -196,6 +197,8 @@ export interface Siirtopaketti {
   kisaTyyppi?: KisaTyyppi
   /** Mukautetun kisan lajit. RESUL-kisassa puuttuu: lajit tulevat säännöistä. */
   mukautetutLajit?: MukautettuLaji[]
+  /** Mukautetun kisan sarjat. Ilman näitä vastaanottaja ei tiedä kisan luokittelua. */
+  mukautetutSarjat?: SarjaId[]
   kisatiedot?: Kisa['kisatiedot']
   laskettavatParhaat?: number
   rakenteet?: Partial<Record<Laji, TiivisRakenne>>
@@ -482,7 +485,11 @@ export function rakennaTayspaketti(
     // RESUL on oletus, joten se jätetään pois — muuten jokainen tavallinen paketti
     // kantaisi turhaa kenttää.
     ...(kisa.tyyppi === 'mukautettu'
-      ? { kisaTyyppi: 'mukautettu' as const, mukautetutLajit: kisa.lajit ?? [] }
+      ? {
+          kisaTyyppi: 'mukautettu' as const,
+          mukautetutLajit: kisa.lajit ?? [],
+          mukautetutSarjat: kisa.sarjat ?? [],
+        }
       : {}),
     kisatiedot: kisa.kisatiedot,
     laskettavatParhaat: kisa.asetukset.laskettavatParhaat,

@@ -165,3 +165,104 @@ describe('mukautetun kisan lajit', () => {
     void a
   })
 })
+
+/**
+ * Mukautetun kisan sarjat.
+ *
+ * Sarja on kilpailuluokka, ja sijoitukset lasketaan sarjan sisällä — sarjajako ratkaisee
+ * siis kenet palkitaan. Tärkeintä on, ettei kilpailija koskaan jää sarjaan jota kisassa
+ * ei ole: hän katoaisi kaikista sarjakohtaisista tuloksista huomaamatta.
+ */
+describe('mukautetun kisan sarjat', () => {
+  let store: ReturnType<typeof useKisaStore>
+
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    store = useKisaStore()
+  })
+
+  it('RESUL-kisan sarjat tulevat säännöistä', () => {
+    expect(store.sarjat).toEqual(['H', 'H50'])
+  })
+
+  it('mukautettu kisa saa aloitussarjan, jottei kilpailijaa voi lisätä tyhjään', () => {
+    store.asetaKisaTyyppi('mukautettu')
+    expect(store.sarjat).toEqual(['Yleinen'])
+  })
+
+  it('sarjoja voi lisätä ja nimetä', () => {
+    store.asetaKisaTyyppi('mukautettu')
+
+    expect(store.lisaaSarja('Veteraanit')).toBe(true)
+    expect(store.sarjat).toEqual(['Yleinen', 'Veteraanit'])
+
+    expect(store.nimeaSarja('Veteraanit', 'Konkarit')).toBe(true)
+    expect(store.sarjat).toEqual(['Yleinen', 'Konkarit'])
+  })
+
+  it('sama nimi ei voi esiintyä kahdesti', () => {
+    store.asetaKisaTyyppi('mukautettu')
+    store.lisaaSarja('Veteraanit')
+
+    expect(store.lisaaSarja('Veteraanit')).toBe(false)
+    expect(store.lisaaSarja('  Veteraanit  ')).toBe(false)
+    expect(store.nimeaSarja('Yleinen', 'Veteraanit')).toBe(false)
+    expect(store.sarjat).toEqual(['Yleinen', 'Veteraanit'])
+  })
+
+  it('uusi kilpailija saa kisan ensimmäisen sarjan, ei H:ta', () => {
+    store.asetaKisaTyyppi('mukautettu')
+    store.nimeaSarja('Yleinen', 'Aloittelijat')
+
+    const k = store.lisaaKilpailija({ etunimi: 'A', sukunimi: 'B', yhdistys: 'C' })
+
+    expect(k.ikasarja).toBe('Aloittelijat')
+  })
+
+  it('nimeäminen siirtää sarjan kilpailijat mukanaan', () => {
+    store.asetaKisaTyyppi('mukautettu')
+    const k = store.lisaaKilpailija({ etunimi: 'A', sukunimi: 'B', yhdistys: 'C' })
+
+    store.nimeaSarja('Yleinen', 'Aloittelijat')
+
+    expect(store.kilpailija(k.id)?.ikasarja).toBe('Aloittelijat')
+  })
+
+  it('poisto siirtää kilpailijat jäljelle jäävään sarjaan', () => {
+    store.asetaKisaTyyppi('mukautettu')
+    store.lisaaSarja('Veteraanit')
+    const k = store.lisaaKilpailija({ etunimi: 'A', sukunimi: 'B', yhdistys: 'C' })
+    store.paivitaKilpailija(k.id, { ikasarja: 'Veteraanit' })
+    expect(store.sarjassa('Veteraanit')).toBe(1)
+
+    store.poistaSarja('Veteraanit')
+
+    expect(store.sarjat).toEqual(['Yleinen'])
+    expect(store.kilpailija(k.id)?.ikasarja).toBe('Yleinen')
+  })
+
+  it('viimeistä sarjaa ei voi poistaa', () => {
+    store.asetaKisaTyyppi('mukautettu')
+
+    store.poistaSarja('Yleinen')
+
+    expect(store.sarjat).toEqual(['Yleinen'])
+  })
+
+  /*
+   * Muodon vaihto vaihtaa sarjalistan kokonaan, joten kilpailijan sarja on siirrettävä
+   * kelvolliseksi. Muuten RESUL-kisaan jäisi "Veteraanit"-sarjalaisia, jotka eivät näy
+   * H- eikä H50-listassa.
+   */
+  it('muodon vaihto siirtää kilpailijat kelvolliseen sarjaan', () => {
+    store.asetaKisaTyyppi('mukautettu')
+    store.nimeaSarja('Yleinen', 'Veteraanit')
+    const k = store.lisaaKilpailija({ etunimi: 'A', sukunimi: 'B', yhdistys: 'C' })
+    expect(k.ikasarja).toBe('Veteraanit')
+
+    store.asetaKisaTyyppi('resul')
+
+    expect(store.sarjat).toEqual(['H', 'H50'])
+    expect(store.kilpailija(k.id)?.ikasarja).toBe('H')
+  })
+})

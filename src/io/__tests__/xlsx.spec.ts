@@ -438,3 +438,32 @@ describe('tuonnin virhetilanteet', () => {
     await expect(tuoKisa(tavut)).rejects.toThrow(/Tuloskortti/)
   })
 })
+
+/*
+ * Mukautetun kisan sarjanimet kulkevat tiedoston läpi sellaisenaan. Aiemmin tuonti
+ * pakotti tunnistamattoman sarjan H:ksi, mikä olisi hukannut koko luokittelun — ja
+ * juuri tiedostosta luettu sarja on se, jonka järjestäjä on saattanut korjata käsin.
+ */
+describe('mukautetun kisan sarjat tiedostossa', () => {
+  it('säilyttää järjestäjän omat sarjanimet', async () => {
+    const { store } = rakennaKisa()
+    const sami = store.kisa.kilpailijat.find((k) => k.sukunimi === 'Hänninen')!
+    store.paivitaKilpailija(sami.id, { ikasarja: 'Veteraanit' })
+
+    const { kisa } = await kierrata(store.kisa)
+
+    const tuotu = kisa.kilpailijat.find((k) => k.sukunimi === 'Hänninen')
+    expect(tuotu?.ikasarja).toBe('Veteraanit')
+  })
+
+  it('tyhjä sarja palautuu H:ksi eikä jää tyhjäksi', async () => {
+    const { store } = rakennaKisa()
+    const sami = store.kisa.kilpailijat.find((k) => k.sukunimi === 'Hänninen')!
+    store.paivitaKilpailija(sami.id, { ikasarja: '   ' })
+
+    const { kisa } = await kierrata(store.kisa)
+
+    const tuotu = kisa.kilpailijat.find((k) => k.sukunimi === 'Hänninen')
+    expect(tuotu?.ikasarja).toBe('H')
+  })
+})

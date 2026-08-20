@@ -1,6 +1,5 @@
 import type { Cell, Workbook, Worksheet } from 'exceljs'
 import type {
-  IkaSarja,
   Kilpailija,
   Kisa,
   Laji,
@@ -8,6 +7,7 @@ import type {
   Laukaus,
   Luokka,
   Osallistuminen,
+  SarjaId,
   TulosSaanto,
 } from '@/types/kisa'
 import { LAJIT, LAJI_KOODIT } from '@/core/lajit'
@@ -140,8 +140,15 @@ function onLuokka(arvo: string): arvo is Luokka {
   return arvo === 'vakio' || arvo === 'avoin'
 }
 
-function onIkasarja(arvo: string): arvo is IkaSarja {
-  return arvo === 'H' || arvo === 'H50'
+/**
+ * Sarja luetaan sellaisenaan.
+ *
+ * Aiemmin tuntematon arvo pakotettiin H:ksi. Mukautetussa kisassa sarjan nimeää
+ * järjestäjä, joten pakottaminen hukkaisi luokittelun huomaamatta — ja juuri
+ * tiedostosta luettu sarja on se, jonka järjestäjä on saattanut korjata käsin.
+ */
+function lueSarja(arvo: string): SarjaId {
+  return arvo.trim() || 'H'
 }
 
 /** Avain kilpailijan tunnistamiseen, kun Tunnus-sarake on tyhjä (käsin lisätty rivi). */
@@ -183,7 +190,7 @@ function lueTuloskortti(ws: Worksheet, laji: Laji, maaritys: LajiMaaritys, keray
         etunimi,
         sukunimi,
         yhdistys,
-        ikasarja: onIkasarja(ikasarjaTeksti) ? ikasarjaTeksti : 'H',
+        ikasarja: lueSarja(ikasarjaTeksti),
         osallistumiset: {},
       })
       kerays.nimiIndeksi.set(avain, id)

@@ -175,7 +175,9 @@ export function yhdista(
         etunimi: rivi.etunimi ?? '',
         sukunimi: rivi.sukunimi ?? '',
         yhdistys: rivi.yhdistys ?? '',
-        ikasarja: rivi.ikasarja === 'H50' ? 'H50' : 'H',
+        // Sarja välitetään sellaisenaan: mukautetussa kisassa se on järjestäjän oma
+        // nimi, ja tunnistamattoman pakottaminen H:ksi hukkaisi sen huomaamatta.
+        ikasarja: rivi.ikasarja?.trim() || 'H',
         osallistumiset: {},
       }
       tulos.kilpailijat.push(kilpailija)
@@ -281,7 +283,7 @@ function rakennaKisaPaketista(paketti: Siirtopaketti): Kisa {
     etunimi: k.etunimi,
     sukunimi: k.sukunimi,
     yhdistys: k.yhdistys,
-    ikasarja: k.ikasarja === 'H50' ? 'H50' : 'H',
+    ikasarja: k.ikasarja?.trim() || 'H',
     osallistumiset: {},
   }))
 
@@ -304,6 +306,7 @@ function rakennaKisaPaketista(paketti: Siirtopaketti): Kisa {
     // Puuttuva muoto tarkoittaa RESUL-kisaa; lähettäjä jättää sen pois oletustapauksessa.
     tyyppi: paketti.kisaTyyppi ?? 'resul',
     ...(paketti.mukautetutLajit ? { lajit: paketti.mukautetutLajit } : {}),
+    ...(paketti.mukautetutSarjat ? { sarjat: paketti.mukautetutSarjat } : {}),
     kisaId: paketti.kisaId,
     kisatiedot: paketti.kisatiedot ?? {
       nimi: '',

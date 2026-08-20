@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import type {
-  IkaSarja,
   Kilpailija,
   Kilpasarjamaaritys,
   Kisa,
@@ -13,8 +12,9 @@ import type {
   Luokka,
   MukautettuLaji,
   Osallistuminen,
+  SarjaId,
 } from '@/types/kisa'
-import { LAJIT, LAJI_KOODIT, kisanLajit } from '@/core/lajit'
+import { LAJIT, LAJI_KOODIT, kisanLajit, kisanSarjat } from '@/core/lajit'
 import { laskeLaji } from '@/core/laskenta'
 import { lyhytTunnus, uusiId } from '@/core/tunnus'
 import { KISA_SKEEMA_VERSIO, lueTallennettu, type LuentaTulos } from '@/core/skeema'
@@ -158,14 +158,15 @@ export const useKisaStore = defineStore(
       etunimi: string
       sukunimi: string
       yhdistys: string
-      ikasarja?: IkaSarja
+      ikasarja?: SarjaId
     }): Kilpailija {
       const uusi: Kilpailija = {
         id: uusiId(),
         etunimi: tiedot.etunimi.trim(),
         sukunimi: tiedot.sukunimi.trim(),
         yhdistys: tiedot.yhdistys.trim(),
-        ikasarja: tiedot.ikasarja ?? 'H',
+        // Oletussarja kisan omasta listasta: mukautetussa kisassa H:ta ei ole olemassa.
+        ikasarja: tiedot.ikasarja ?? kisanSarjat(kisa.value)[0] ?? 'H',
         osallistumiset: {},
       }
       kisa.value.kilpailijat.push(uusi)
@@ -423,15 +424,82 @@ export const useKisaStore = defineStore(
       if (siirretty) lajit.splice(j, 0, siirretty)
     }
 
+    // ---------- Mukautetun kisan sarjat ----------
+
+    /** Kisan sarjat: RESUL-kisassa H ja H50, mukautetussa järjestäjän omat. */
+    const sarjat = computed(() => kisanSarjat(kisa.value))
+
+    /** Montako kilpailijaa on kyseisessä sarjassa? Käytetään poiston varmistuksessa. */
+    function sarjassa(sarja: SarjaId): number {
+      return kisa.value.kilpailijat.filter((k) => k.ikasarja === sarja).length
+    }
+
+    /** Lisää sarjan mukautettuun kisaan. Sama nimi ei voi esiintyä kahdesti. */
+    function lisaaSarja(nimi: string): boolean {
+      const siisti = nimi.trim()
+      if (!siisti) return false
+      if (!kisa.value.sarjat) kisa.value.sarjat = []
+      if (kisa.value.sarjat.includes(siisti)) return false
+      kisa.value.sarjat.push(siisti)
+      return true
+    }
+
     /**
-     * Vaihtaa kisan muodon. Muoto ratkaisee mistä lajit tulevat, joten vaihto tekee
-     * kirjatuista tuloksista tulkitsemattomia — kutsuja vastaa varmistuksesta.
+     * Poistaa sarjan ja siirtää sen kilpailijat ensimmäiseen jäljelle jäävään sarjaan.
+     *
+     * Kilpailijaa ei jätetä sarjaan jota ei ole: hän katoaisi kaikista sarjakohtaisista
+     * tuloksista huomaamatta. Viimeistä sarjaa ei voi poistaa.
+     */
+    function poistaSarja(sarja: SarjaId) {
+      const lista = kisa.value.sarjat
+      if (!lista || lista.length <= 1) return
+      const i = lista.indexOf(sarja)
+      if (i < 0) return
+      lista.splice(i, 1)
+      const korvaava = lista[0]
+      if (!korvaava) return
+      for (const k of kisa.value.kilpailijat) {
+        if (k.ikasarja === sarja) k.ikasarja = korvaava
+      }
+    }
+
+    /** Nimeää sarjan uudelleen ja siirtää sen kilpailijat mukana. */
+    function nimeaSarja(vanha: SarjaId, uusi: string): boolean {
+      const siisti = uusi.trim()
+      const lista = kisa.value.sarjat
+      if (!lista || !siisti || siisti === vanha) return false
+      if (lista.includes(siisti)) return false
+      const i = lista.indexOf(vanha)
+      if (i < 0) return false
+      lista[i] = siisti
+      for (const k of kisa.value.kilpailijat) {
+        if (k.ikasarja === vanha) k.ikasarja = siisti
+      }
+      return true
+    }
+
+    /**
+     * Vaihtaa kisan muodon. Muoto ratkaisee mistä lajit ja sarjat tulevat, joten vaihto
+     * tekee kirjatuista tuloksista tulkitsemattomia — kutsuja vastaa varmistuksesta.
      */
     function asetaKisaTyyppi(tyyppi: KisaTyyppi) {
       if (kisa.value.tyyppi === tyyppi) return
       kisa.value.tyyppi = tyyppi
       for (const k of kisa.value.kilpailijat) k.osallistumiset = {}
       kisa.value.lajit = tyyppi === 'mukautettu' ? (kisa.value.lajit ?? []) : undefined
+
+      if (tyyppi === 'mukautettu') {
+        // Aloitussarja, jottei kisa jää tilaan jossa kilpailijaa ei voi lisätä.
+        kisa.value.sarjat = kisa.value.sarjat?.length ? kisa.value.sarjat : ['Yleinen']
+      } else {
+        kisa.value.sarjat = undefined
+      }
+      // Sarjat vaihtuivat, joten kilpailijoiden sarja on siirrettävä kelvolliseksi.
+      const kelvolliset = kisanSarjat(kisa.value)
+      const oletus = kelvolliset[0] ?? 'H'
+      for (const k of kisa.value.kilpailijat) {
+        if (!kelvolliset.includes(k.ikasarja)) k.ikasarja = oletus
+      }
     }
 
     /** Palauttaa lajien rakenteet sääntöjen mukaisiin oletuksiin. */
@@ -486,6 +554,11 @@ export const useKisaStore = defineStore(
       poistaMukautettuLaji,
       siirraMukautettuLaji,
       asetaKisaTyyppi,
+      sarjat,
+      sarjassa,
+      lisaaSarja,
+      poistaSarja,
+      nimeaSarja,
       asetaLajiMaaritys,
       palautaOletusRakenteet,
       korvaaKisa,
