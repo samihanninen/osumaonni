@@ -1,14 +1,26 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
-
+import { storeToRefs } from 'pinia'
 import { computed } from 'vue'
 import { useKisaStore } from '@/stores/kisa'
 import { useLaiteStore } from '@/stores/laite'
+import { kisanLajit } from '@/core/lajit'
 
 const store = useKisaStore()
 const laite = useLaiteStore()
+const { kisa } = storeToRefs(store)
 
-const laji = computed(() => laite.viimeinenLaji || 'RA1')
+/**
+ * Valikon linkit osoittavat viimeksi käytettyyn lajiin. Mukautetussa kisassa lajit
+ * vaihtuvat, joten tuntematon tunniste korvataan kisan ensimmäisellä lajilla — muuten
+ * linkki veisi lajiin jota kisassa ei ole.
+ */
+const laji = computed(() => {
+  const lajit = kisanLajit(kisa.value)
+  const viimeinen = laite.viimeinenLaji
+  if (lajit.some((l) => l.id === viimeinen)) return viimeinen
+  return lajit[0]?.id ?? ''
+})
 
 /** Onko kilpailijoita, eli voiko tuloksia jo kirjata? */
 const voiKirjata = computed(() => store.kilpailijoita > 0)

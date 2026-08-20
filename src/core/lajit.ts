@@ -170,3 +170,49 @@ export function kisanLajit(kisa: Pick<Kisa, 'tyyppi' | 'asetukset' | 'lajit'>): 
 export function rakenteenLaukaukset(r: LajiRakenne): number {
   return r.kilpasarjat.reduce((s, k) => s + k.laukauksia, 0)
 }
+
+/** Pisimmän kilpasarjan pituus. Taulukkosyötössä sarakkeiden määrä. */
+export function pisinKilpasarja(r: LajiRakenne): number {
+  return r.kilpasarjat.reduce((s, k) => Math.max(s, k.laukauksia), 0)
+}
+
+/**
+ * Laukausten juokseva numerointi sarjojen yli.
+ *
+ * Taulukkosyöttö liikkuu laukauksesta toiseen yhtenä jonona, mutta sarjat voivat olla
+ * eri mittaisia — jakolasku sarjan pituudella ei siis kelpaa. Nämä kaksi funktiota
+ * hoitavat muunnoksen molempiin suuntiin.
+ */
+export function litteaksiIndeksiksi(r: LajiRakenne, sarja: number, laukaus: number): number {
+  let n = 0
+  for (let s = 0; s < sarja && s < r.kilpasarjat.length; s++) {
+    n += r.kilpasarjat[s]?.laukauksia ?? 0
+  }
+  return n + laukaus
+}
+
+export function litteastaIndeksista(
+  r: LajiRakenne,
+  littea: number,
+): { sarja: number; laukaus: number } | null {
+  if (littea < 0) return null
+  let jaljella = littea
+  for (let s = 0; s < r.kilpasarjat.length; s++) {
+    const pituus = r.kilpasarjat[s]?.laukauksia ?? 0
+    if (jaljella < pituus) return { sarja: s, laukaus: jaljella }
+    jaljella -= pituus
+  }
+  return null
+}
+
+/** Sarjan näkyvä nimi. Nimeämätön sarja numeroidaan. */
+export function sarjanNimi(r: LajiRakenne, sarja: number): string {
+  const nimi = r.kilpasarjat[sarja]?.nimi?.trim()
+  if (nimi) return nimi
+  return r.kilpasarjat.length === 1 ? 'Kilpasarja' : `Kilpasarja ${sarja + 1}`
+}
+
+/** Onko tunniste kisassa oleva laji? Käytetään reitin parametrin tarkistuksessa. */
+export function onKisanLaji(kisa: Pick<Kisa, 'tyyppi' | 'asetukset' | 'lajit'>, arvo: unknown) {
+  return typeof arvo === 'string' && kisanLajit(kisa).some((l) => l.id === arvo)
+}
