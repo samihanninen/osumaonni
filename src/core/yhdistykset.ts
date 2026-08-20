@@ -1,5 +1,5 @@
-import type { Asetukset, Kilpailija, Laji, LajiMaaritys, Luokka } from '@/types/kisa'
-import { LAJIT, LAJI_KOODIT } from './lajit'
+import type { Asetukset, Kilpailija, LajiId, LajiMaaritys, Luokka } from '@/types/kisa'
+import { LAJIT, LAJI_KOODIT, type LajiRakenne } from './lajit'
 import { laskeLaji } from './laskenta'
 
 /**
@@ -42,7 +42,7 @@ export interface YhdistysKokonaisTulos {
   jaettu: boolean
   yhdistys: string
   /** Lajikohtaiset pisteet. Puuttuva laji on 0. */
-  lajipisteet: Record<Laji, number>
+  lajipisteet: Record<LajiId, number>
   pisteet: number
 }
 
@@ -73,7 +73,12 @@ export interface YhdistysOptiot {
    * järjestäjän muokkaama tulossääntö ei vaikuttaisi laskentaan. Kutsujan on annettava
    * nämä aina, kun käytettävissä on kisan omat asetukset.
    */
-  maaritykset?: Record<Laji, LajiMaaritys>
+  maaritykset?: Record<LajiId, Pick<LajiMaaritys, 'tulosSaanto'>>
+  /**
+   * Lajit, joista yhteistulos muodostuu. Ilman tätä käytetään RESUL-lajeja, joten
+   * mukautetun kisan on annettava oma listansa.
+   */
+  lajit?: LajiRakenne[]
 }
 
 /**
@@ -82,11 +87,14 @@ export interface YhdistysOptiot {
  */
 export function yhdistysLaji(
   kilpailijat: Kilpailija[],
-  laji: Laji,
+  laji: LajiId,
   optiot: YhdistysOptiot = {},
 ): (YhdistysLajiTulos & { sija: number; jaettu: boolean })[] {
   const { parhaita = JOUKKUEEN_KOKO, luokka } = optiot
-  const maaritys = optiot.maaritykset?.[laji] ?? LAJIT[laji]
+  const maaritys =
+    optiot.maaritykset?.[laji] ??
+    optiot.lajit?.find((l) => l.id === laji) ??
+    LAJIT[laji as keyof typeof LAJIT]
 
   const ryhmat = new Map<string, { kilpailija: Kilpailija; pisteet: number }[]>()
 
@@ -134,12 +142,13 @@ export function yhdistysYhteistulos(
   kilpailijat: Kilpailija[],
   optiot: YhdistysOptiot = {},
 ): YhdistysKokonaisTulos[] {
-  const kertyma = new Map<string, Record<Laji, number>>()
+  const tunnisteet = optiot.lajit?.map((l) => l.id) ?? LAJI_KOODIT
+  const tyhja = () => Object.fromEntries(tunnisteet.map((l) => [l, 0])) as Record<LajiId, number>
+  const kertyma = new Map<string, Record<LajiId, number>>()
 
-  for (const laji of LAJI_KOODIT) {
+  for (const laji of tunnisteet) {
     for (const rivi of yhdistysLaji(kilpailijat, laji, optiot)) {
-      const nykyinen =
-        kertyma.get(rivi.yhdistys) ?? ({ RA1: 0, RA2: 0, RA3: 0, RA4: 0 } as Record<Laji, number>)
+      const nykyinen = kertyma.get(rivi.yhdistys) ?? tyhja()
       nykyinen[laji] = rivi.pisteet
       kertyma.set(rivi.yhdistys, nykyinen)
     }
@@ -148,7 +157,7 @@ export function yhdistysYhteistulos(
   const rivit = [...kertyma].map(([yhdistys, lajipisteet]) => ({
     yhdistys,
     lajipisteet,
-    pisteet: LAJI_KOODIT.reduce((s, l) => s + lajipisteet[l], 0),
+    pisteet: tunnisteet.reduce((s, l) => s + (lajipisteet[l] ?? 0), 0),
   }))
 
   return lisaaSijat(rivit)

@@ -3,10 +3,10 @@ import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useKisaStore } from '@/stores/kisa'
-import { LAJI_KOODIT, LUOKAT, LUOKKA_NIMET } from '@/core/lajit'
+import { kisanLajit, LUOKAT, LUOKKA_NIMET } from '@/core/lajit'
 import { onJoukkuekilpailu, yhdistysLaji, yhdistysYhteistulos } from '@/core/yhdistykset'
-import { kokonaiskilpailu } from '@/core/kokonaiskilpailu'
-import type { Laji, Luokka } from '@/types/kisa'
+import { kokonaiskilpailu, RESUL_TASATULOKSEN_RATKAISIJA } from '@/core/kokonaiskilpailu'
+import type { LajiId, Luokka } from '@/types/kisa'
 
 const store = useKisaStore()
 const { kisa } = storeToRefs(store)
@@ -16,22 +16,33 @@ const luokka = ref<Luokka | 'kaikki'>('kaikki')
 
 const parhaita = computed(() => kisa.value.asetukset.laskettavatParhaat)
 
+/** Kisan lajit muodosta riippumatta. */
+const lajit = computed(() => kisanLajit(kisa.value))
+
 const optiot = computed(() => ({
   parhaita: parhaita.value,
-  // Kisan omat rakenteet, ei sääntöjen oletuksia: järjestäjä on voinut muokata niitä.
-  maaritykset: kisa.value.asetukset.lajiMaaritykset,
+  lajit: lajit.value,
   ...(luokka.value === 'kaikki' ? {} : { luokka: luokka.value }),
 }))
 
 const yhteistulos = computed(() => yhdistysYhteistulos(kisa.value.kilpailijat, optiot.value))
 
-function lajiTulokset(laji: Laji) {
+function lajiTulokset(laji: LajiId) {
   return yhdistysLaji(kisa.value.kilpailijat, laji, optiot.value)
 }
 
+/**
+ * Kokonaiskilpailu. Tasatuloksen ratkaisijalaji on RESUL-kisassa sääntöjen mukaan RA2;
+ * mukautetussa kisassa vastaavaa sääntöä ei ole, joten ratkaisijaa ei anneta ja
+ * tasatulos ratkeaa sukunimen mukaan. Arvattu ratkaisijalaji olisi pahempi kuin ei
+ * mitään, koska se päättäisi sijoituksia perusteella jota kilpailijat eivät tiedä.
+ */
 const henkilokohtainen = computed(() =>
   kokonaiskilpailu(kisa.value.kilpailijat, {
-    maaritykset: kisa.value.asetukset.lajiMaaritykset,
+    lajit: lajit.value,
+    ...(kisa.value.tyyppi === 'resul'
+      ? { tasatuloksenRatkaisija: RESUL_TASATULOKSEN_RATKAISIJA }
+      : {}),
   }),
 )
 
@@ -95,7 +106,7 @@ const onTuloksia = computed(() =>
             <tr>
               <th class="numero">Sija</th>
               <th>Yhdistys</th>
-              <th v-for="laji in LAJI_KOODIT" :key="laji" class="numero">{{ laji }}</th>
+              <th v-for="l in lajit" :key="l.id" class="numero" :title="l.nimi">{{ l.koodi }}</th>
               <th class="numero">Yhteensä</th>
             </tr>
           </thead>
@@ -105,8 +116,8 @@ const onTuloksia = computed(() =>
                 {{ rivi.sija }}<span v-if="rivi.jaettu" class="jaettu">.</span>
               </td>
               <th scope="row">{{ rivi.yhdistys }}</th>
-              <td v-for="laji in LAJI_KOODIT" :key="laji" class="numero">
-                {{ rivi.lajipisteet[laji] || '' }}
+              <td v-for="l in lajit" :key="l.id" class="numero">
+                {{ rivi.lajipisteet[l.id] || '' }}
               </td>
               <td class="numero yhteensa">{{ rivi.pisteet }}</td>
             </tr>
@@ -114,9 +125,9 @@ const onTuloksia = computed(() =>
         </table>
       </div>
 
-      <section v-for="laji in naytaYhdistykset ? LAJI_KOODIT : []" :key="laji" class="lajiosio">
-        <h2>{{ laji }}</h2>
-        <p v-if="lajiTulokset(laji).length === 0" class="tyhja">Ei tuloksia tässä lajissa.</p>
+      <section v-for="l in naytaYhdistykset ? lajit : []" :key="l.id" class="lajiosio">
+        <h2>{{ l.nimi }}</h2>
+        <p v-if="lajiTulokset(l.id).length === 0" class="tyhja">Ei tuloksia tässä lajissa.</p>
         <div v-else class="taulukko-kehys">
           <table>
             <thead>
@@ -129,7 +140,7 @@ const onTuloksia = computed(() =>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="rivi in lajiTulokset(laji)" :key="rivi.yhdistys">
+              <tr v-for="rivi in lajiTulokset(l.id)" :key="rivi.yhdistys">
                 <td class="numero sija">
                   {{ rivi.sija }}<span v-if="rivi.jaettu" class="jaettu">.</span>
                 </td>
@@ -155,7 +166,11 @@ const onTuloksia = computed(() =>
       <section class="lajiosio">
         <h2>Kokonaiskilpailu — henkilökohtainen</h2>
         <p class="selite">
-          Kilpailijan tulosten summa kaikista lajeista. Tasatuloksen ratkaisee parempi RA2:n tulos.
+          Kilpailijan tulosten summa kaikista lajeista.
+          <template v-if="kisa.tyyppi === 'resul'">
+            Tasatuloksen ratkaisee parempi RA2:n tulos.
+          </template>
+          <template v-else>Tasatuloksessa ratkaisee sukunimen mukainen järjestys.</template>
         </p>
         <div class="taulukko-kehys">
           <table>
@@ -164,7 +179,7 @@ const onTuloksia = computed(() =>
                 <th class="numero">Sija</th>
                 <th>Nimi</th>
                 <th>Yhdistys</th>
-                <th v-for="laji in LAJI_KOODIT" :key="laji" class="numero">{{ laji }}</th>
+                <th v-for="l in lajit" :key="l.id" class="numero" :title="l.nimi">{{ l.koodi }}</th>
                 <th class="numero">Yhteensä</th>
                 <th class="numero">Lajeja</th>
               </tr>
@@ -179,8 +194,8 @@ const onTuloksia = computed(() =>
                   }}<span class="etunimi">, {{ rivi.kilpailija.etunimi }}</span>
                 </th>
                 <td>{{ rivi.kilpailija.yhdistys || '—' }}</td>
-                <td v-for="laji in LAJI_KOODIT" :key="laji" class="numero">
-                  {{ rivi.lajipisteet[laji] ?? '' }}
+                <td v-for="l in lajit" :key="l.id" class="numero">
+                  {{ rivi.lajipisteet[l.id] ?? '' }}
                 </td>
                 <td class="numero yhteensa">{{ rivi.pisteet }}</td>
                 <td class="numero">

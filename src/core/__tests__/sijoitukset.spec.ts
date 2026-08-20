@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { Kilpailija, Kilpasarja, Laji, Luokka } from '@/types/kisa'
-import { LAJIT } from '../lajit'
+import { LAJIT, type LajiRakenne } from '../lajit'
 import { sijoitukset, vertaaNimia, TARKAN_TULKKAUKSEN_RAJA } from '../sijoitukset'
 import {
   yhdistysLaji,
@@ -8,7 +8,7 @@ import {
   onJoukkuekilpailu,
   JOUKKUEEN_KOKO,
 } from '../yhdistykset'
-import { kokonaiskilpailu } from '../kokonaiskilpailu'
+import { kokonaiskilpailu, RESUL_TASATULOKSEN_RATKAISIJA } from '../kokonaiskilpailu'
 
 let seuraavaId = 0
 
@@ -463,5 +463,122 @@ describe('yhdistyskilpailun valinnaisuus', () => {
   it('vain nimenomainen epätosi sammuttaa sen', () => {
     expect(onJoukkuekilpailu({ joukkuekilpailu: false })).toBe(false)
     expect(onJoukkuekilpailu({ joukkuekilpailu: true })).toBe(true)
+  })
+})
+
+/**
+ * Mukautetun kisan tulokset.
+ *
+ * Sijoitus- ja yhdistyslaskenta ovat lajista riippumattomia, joten mukautettu laji
+ * kelpaa niihin sellaisenaan. Kokonaiskilpailu on poikkeus: sen tasatuloksen ratkaisee
+ * RESUL-säännöissä RA2, eikä mukautetussa kisassa ole vastaavaa sääntöä.
+ */
+describe('mukautetun kisan tulokset', () => {
+  /** Kolmen asennon laji: sarjat eri mittaisia, kaikki lasketaan yhteen. */
+  const kolmeAsentoa: LajiRakenne = {
+    id: 'x1',
+    koodi: '3-as',
+    nimi: 'Kolme asentoa',
+    kilpasarjat: [
+      { nimi: 'Makuu', laukauksia: 2 },
+      { nimi: 'Polvi', laukauksia: 2 },
+      { nimi: 'Pysty', laukauksia: 1 },
+    ],
+    tulosSaanto: 'summa',
+  }
+
+  function mukautettuAmpuja(nimi: string, sarjat: Kilpasarja[], yhdistys = 'Nupures'): Kilpailija {
+    const k = ampuja({ nimi, yhdistys, sarjat: [] })
+    k.osallistumiset = {
+      x1: {
+        luokka: 'vakio',
+        kilpasarjat: sarjat.map((laukaukset) => ({ laukaukset })),
+        rangaistuksia: 0,
+        hylatty: false,
+      },
+    }
+    return k
+  }
+
+  it('sijoittaa mukautetun lajin tulokset', () => {
+    const kilpailijat = [
+      mukautettuAmpuja('Parempi Ampuja', [[10, 10], [9, 9], [10]]), // 48
+      mukautettuAmpuja('Heikompi Ampuja', [[8, 8], [8, 8], [8]]), // 40
+    ]
+
+    const rivit = sijoitukset(kilpailijat, 'x1', 'vakio', kolmeAsentoa)
+
+    expect(rivit[0]?.tulos.pisteet).toBe(48)
+    expect(rivit[0]?.kilpailija.etunimi).toBe('Parempi')
+    expect(rivit[1]?.tulos.pisteet).toBe(40)
+  })
+
+  it('laskee eri mittaiset sarjat oikein summana', () => {
+    const kilpailijat = [mukautettuAmpuja('A Yksi', [[10, 10], [10, 10], [10]])]
+
+    const rivit = sijoitukset(kilpailijat, 'x1', 'vakio', kolmeAsentoa)
+
+    // 5 laukausta × 10 = 50, ei 6 × 10.
+    expect(rivit[0]?.tulos.pisteet).toBe(50)
+    expect(rivit[0]?.tulos.sarjat).toHaveLength(3)
+  })
+
+  it('yhdistyskilpailu laskee mukautetut lajit', () => {
+    const kilpailijat = [
+      mukautettuAmpuja('A Yksi', [[10, 10], [10, 10], [10]], 'Nupures'),
+      mukautettuAmpuja('B Kaksi', [[9, 9], [9, 9], [9]], 'Nupures'),
+    ]
+
+    const rivit = yhdistysYhteistulos(kilpailijat, { lajit: [kolmeAsentoa] })
+
+    expect(rivit[0]?.yhdistys).toBe('Nupures')
+    expect(rivit[0]?.lajipisteet.x1).toBe(50 + 45)
+    expect(rivit[0]?.pisteet).toBe(95)
+  })
+
+  /*
+   * Tämä on se kohta, jossa RESUL-sääntöä ei voi soveltaa: mukautetussa kisassa ei ole
+   * RA2:ta eikä muuta sääntöjen nimeämää ratkaisijalajia. Arvattu ratkaisija päättäisi
+   * sijoituksia perusteella, jota kilpailijoille ei ole kerrottu.
+   */
+  it('kokonaiskilpailussa tasatulos jää jaetuksi ilman ratkaisijalajia', () => {
+    const kilpailijat = [
+      mukautettuAmpuja('Aakkonen Ensin', [[10, 8], [9, 9], [10]]), // 46
+      mukautettuAmpuja('Bee Toinen', [[9, 9], [10, 8], [10]]), // 46
+    ]
+
+    const rivit = kokonaiskilpailu(kilpailijat, { lajit: [kolmeAsentoa] })
+
+    expect(rivit[0]?.pisteet).toBe(46)
+    expect(rivit[1]?.pisteet).toBe(46)
+    expect(rivit[0]?.sija).toBe(1)
+    expect(rivit[1]?.sija).toBe(1)
+    expect(rivit.every((r) => r.jaettu)).toBe(true)
+    // Järjestys sukunimen mukaan, koska muuta perustetta ei ole.
+    expect(rivit[0]?.kilpailija.sukunimi).toBe('Ensin')
+  })
+
+  it('RESUL-kisassa ratkaisijalaji purkaa saman tasatuloksen', () => {
+    // Kummallakin yhteensä 130, mutta RA2:n osuus eri: 30 vs. 60.
+    const heikkoRa2 = ampuja({
+      nimi: 'Aakkonen Ensin',
+      sarjat: [],
+      lajit: { RA1: [tasainen(10)], RA2: [tasainen(5, 6)] },
+    })
+    const vahvaRa2 = ampuja({
+      nimi: 'Bee Toinen',
+      sarjat: [],
+      lajit: { RA1: [tasainen(7)], RA2: [tasainen(10, 6)] },
+    })
+
+    const rivit = kokonaiskilpailu([heikkoRa2, vahvaRa2], {
+      tasatuloksenRatkaisija: RESUL_TASATULOKSEN_RATKAISIJA,
+    })
+
+    expect(rivit.map((r) => r.pisteet)).toEqual([130, 130])
+    // Parempi RA2 ratkaisee, joten sukunimi ei ratkaise järjestystä.
+    expect(rivit[0]?.kilpailija.sukunimi).toBe('Toinen')
+    expect(rivit[0]?.sija).toBe(1)
+    expect(rivit[1]?.sija).toBe(2)
   })
 })
