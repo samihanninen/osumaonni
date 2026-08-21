@@ -1,6 +1,6 @@
 import type { Cell, Workbook, Worksheet } from 'exceljs'
-import type { Kilpailija, Kisa, Laji, Laukaus, Luokka } from '@/types/kisa'
-import { LAJI_KOODIT, LUOKAT, LUOKKA_NIMET } from '@/core/lajit'
+import type { Kilpailija, Kisa, Laukaus, Luokka } from '@/types/kisa'
+import { kisanLajit, LAJI_KOODIT, LUOKAT, LUOKKA_NIMET, type LajiRakenne } from '@/core/lajit'
 import { laskeLaji } from '@/core/laskenta'
 import { sijoitukset } from '@/core/sijoitukset'
 import { onJoukkuekilpailu, yhdistysLaji, yhdistysYhteistulos } from '@/core/yhdistykset'
@@ -19,6 +19,7 @@ import {
   alue,
   luoAsettelu,
   sijoituksetNimi,
+  uniikkiSivunNimi,
   solu,
   tuloskorttiNimi,
 } from './xlsxAsettelu'
@@ -54,10 +55,11 @@ function laukausSoluun(arvo: Laukaus): string | number | null {
 }
 
 /** Tuloskortti: ainoa muokattava välilehti, jossa on aidot Excel-kaavat. */
-function kirjoitaTuloskortti(wb: Workbook, kisa: Kisa, laji: Laji) {
-  const maaritys = kisa.asetukset.lajiMaaritykset[laji]
-  const a = luoAsettelu(maaritys)
-  const ws = wb.addWorksheet(tuloskorttiNimi(laji), {
+function kirjoitaTuloskortti(wb: Workbook, kisa: Kisa, rakenne: LajiRakenne, sivu: string) {
+  const laji = rakenne.id
+  const maaritys = rakenne
+  const a = luoAsettelu(rakenne)
+  const ws = wb.addWorksheet(sivu, {
     views: [{ state: 'frozen', xSplit: PERUSSARAKKEET.length, ySplit: OTSIKKO_RIVI }],
   })
 
@@ -82,7 +84,7 @@ function kirjoitaTuloskortti(wb: Workbook, kisa: Kisa, laji: Laji) {
     tyylitaOtsikko(c)
   })
   for (let s = 0; s < a.kilpasarjoja; s++) {
-    for (let i = 0; i < a.laukauksiaSarjassa; i++) {
+    for (let i = 0; i < a.laukauksia(s); i++) {
       const c = ws.getCell(OTSIKKO_RIVI, a.laukausAlku(s) + i)
       c.value = `S${s + 1}.${i + 1}`
       tyylitaOtsikko(c)
@@ -134,7 +136,7 @@ function kirjoitaTuloskortti(wb: Workbook, kisa: Kisa, laji: Laji) {
     const yhtSolut: string[] = []
     for (let s = 0; s < a.kilpasarjoja; s++) {
       const laukaukset = o.kilpasarjat[s]?.laukaukset ?? []
-      for (let i = 0; i < a.laukauksiaSarjassa; i++) {
+      for (let i = 0; i < a.laukauksia(s); i++) {
         const c = ws.getCell(rivi, a.laukausAlku(s) + i)
         c.value = laukausSoluun(laukaukset[i] ?? null)
         c.alignment = { horizontal: 'center' }
@@ -220,7 +222,7 @@ function kirjoitaTuloskortti(wb: Workbook, kisa: Kisa, laji: Laji) {
   ws.getColumn(5).width = 9
   ws.getColumn(6).width = 8
   for (let s = 0; s < a.kilpasarjoja; s++) {
-    for (let i = 0; i < a.laukauksiaSarjassa; i++) ws.getColumn(a.laukausAlku(s) + i).width = 4.5
+    for (let i = 0; i < a.laukauksia(s); i++) ws.getColumn(a.laukausAlku(s) + i).width = 4.5
     ws.getColumn(a.sarjaYht(s)).width = 8
     ws.getColumn(a.sarjaNavat(s)).width = 6
     ws.getColumn(a.sarjaIskemat(s)).width = 6
@@ -252,14 +254,15 @@ function kirjoitaTuloskortti(wb: Workbook, kisa: Kisa, laji: Laji) {
 }
 
 /** Sijoitukset: tilannekuva, ei kaavoja. */
-function kirjoitaSijoitukset(wb: Workbook, kisa: Kisa, laji: Laji) {
-  const maaritys = kisa.asetukset.lajiMaaritykset[laji]
-  const ws = wb.addWorksheet(sijoituksetNimi(laji))
+function kirjoitaSijoitukset(wb: Workbook, kisa: Kisa, rakenne: LajiRakenne, sivu: string) {
+  const laji = rakenne.id
+  const maaritys = rakenne
+  const ws = wb.addWorksheet(sivu)
 
-  const leveys = 7 + maaritys.kilpasarjoja
+  const leveys = 7 + maaritys.kilpasarjat.length
   ws.mergeCells(1, 1, 1, leveys)
   const otsikko = ws.getCell(1, 1)
-  otsikko.value = `Sijoitukset — ${laji}`
+  otsikko.value = `Sijoitukset — ${maaritys.nimi}`
   tyylitaOtsikko(otsikko, true)
 
   ws.mergeCells(2, 1, 2, leveys)
@@ -286,7 +289,7 @@ function kirjoitaSijoitukset(wb: Workbook, kisa: Kisa, laji: Laji) {
       'Etunimi',
       'Yhdistys',
       'Ikäsarja',
-      ...Array.from({ length: maaritys.kilpasarjoja }, (_, i) => `S${i + 1}`),
+      ...maaritys.kilpasarjat.map((sarja, i) => sarja.nimi?.trim() || `S${i + 1}`),
       'Tulos',
       'Iskemät',
       '★',
@@ -304,14 +307,14 @@ function kirjoitaSijoitukset(wb: Workbook, kisa: Kisa, laji: Laji) {
       ws.getCell(rivi, 3).value = r.kilpailija.etunimi
       ws.getCell(rivi, 4).value = r.kilpailija.yhdistys
       ws.getCell(rivi, 5).value = r.kilpailija.ikasarja
-      for (let s = 0; s < maaritys.kilpasarjoja; s++) {
+      for (let s = 0; s < maaritys.kilpasarjat.length; s++) {
         ws.getCell(rivi, 6 + s).value = r.tulos.sarjat[s]?.pisteet ?? 0
       }
-      ws.getCell(rivi, 6 + maaritys.kilpasarjoja).value = r.tulos.hylatty
+      ws.getCell(rivi, 6 + maaritys.kilpasarjat.length).value = r.tulos.hylatty
         ? 'hylätty'
         : r.tulos.pisteet
-      ws.getCell(rivi, 7 + maaritys.kilpasarjoja).value = r.tulos.peruste.iskemat
-      ws.getCell(rivi, 8 + maaritys.kilpasarjoja).value = r.tulos.peruste.navat
+      ws.getCell(rivi, 7 + maaritys.kilpasarjat.length).value = r.tulos.peruste.iskemat
+      ws.getCell(rivi, 8 + maaritys.kilpasarjat.length).value = r.tulos.peruste.navat
       rivi++
     }
     rivi++
@@ -472,7 +475,12 @@ function kirjoitaKisatiedot(wb: Workbook, kisa: Kisa) {
   ws.getColumn(2).width = 40
 }
 
-function kirjoitaMeta(wb: Workbook, kisa: Kisa, aika: string) {
+function kirjoitaMeta(
+  wb: Workbook,
+  kisa: Kisa,
+  aika: string,
+  sivut: Map<string, { tuloskortti: string; sijoitukset: string }>,
+) {
   const ws = wb.addWorksheet(META_VALILEHTI)
 
   const parit: [string, string | number][] = [
@@ -481,11 +489,33 @@ function kirjoitaMeta(wb: Workbook, kisa: Kisa, aika: string) {
     ['sovellusVersio', SOVELLUS_VERSIO],
     ['vientiAika', aika],
     ['kisaId', kisa.kisaId],
+    ['kisaTyyppi', kisa.tyyppi],
     ['laskettavatParhaat', kisa.asetukset.laskettavatParhaat],
     // Kirjoitetaan aina, myös oletusarvo: muuten tuonti ei erota "ei järjestetty"
     // vanhemmalla versiolla tehdystä tiedostosta, jossa tietoa ei ollut lainkaan.
     ['joukkuekilpailu', onJoukkuekilpailu(kisa.asetukset) ? 'kylla' : 'ei'],
   ]
+
+  /*
+   * Mukautetun kisan lajit ja sarjat JSON-muodossa.
+   *
+   * Sarjat voivat olla eri mittaisia ja nimettyjä, joten sarakkeisiin perustuva taulukko
+   * ei riitä. Olennaisin kenttä on `sivu`: se sitoo lajin sen välilehteen, jolloin tuonti
+   * ei ole sivunimen varassa. Nimi on käyttäjän tekstiä ja se voi siistiytyä tai saada
+   * numeropäätteen, joten nimen perusteella etsiminen olisi arvailua.
+   */
+  if (kisa.tyyppi === 'mukautettu') {
+    const lajit = (kisa.lajit ?? []).map((l) => ({
+      id: l.id,
+      koodi: l.koodi,
+      nimi: l.nimi,
+      tulosSaanto: l.tulosSaanto,
+      kilpasarjat: l.kilpasarjat,
+      sivu: sivut.get(l.id)?.tuloskortti ?? '',
+    }))
+    parit.push(['lajitJson', JSON.stringify(lajit)])
+    parit.push(['sarjatJson', JSON.stringify(kisa.sarjat ?? [])])
+  }
   parit.forEach(([avain, arvo], i) => {
     ws.getCell(i + 1, 1).value = avain
     ws.getCell(i + 1, 2).value = arvo
@@ -496,19 +526,21 @@ function kirjoitaMeta(wb: Workbook, kisa: Kisa, aika: string) {
    * tietääkseen mistä sarakkeista laukaukset luetaan.
    */
   const alkuRivi = parit.length + 2
-  ;['laji', 'kilpasarjoja', 'laukauksiaSarjassa', 'tulosSaanto'].forEach((n, i) => {
-    const c = ws.getCell(alkuRivi, i + 1)
-    c.value = n
-    c.font = { bold: true }
-  })
-  LAJI_KOODIT.forEach((laji, i) => {
-    const m = kisa.asetukset.lajiMaaritykset[laji]
-    const rivi = alkuRivi + 1 + i
-    ws.getCell(rivi, 1).value = laji
-    ws.getCell(rivi, 2).value = m.kilpasarjoja
-    ws.getCell(rivi, 3).value = m.laukauksiaSarjassa
-    ws.getCell(rivi, 4).value = m.tulosSaanto
-  })
+  if (kisa.tyyppi === 'resul') {
+    ;['laji', 'kilpasarjoja', 'laukauksiaSarjassa', 'tulosSaanto'].forEach((n, i) => {
+      const c = ws.getCell(alkuRivi, i + 1)
+      c.value = n
+      c.font = { bold: true }
+    })
+    LAJI_KOODIT.forEach((laji, i) => {
+      const m = kisa.asetukset.lajiMaaritykset[laji]
+      const rivi = alkuRivi + 1 + i
+      ws.getCell(rivi, 1).value = laji
+      ws.getCell(rivi, 2).value = m.kilpasarjoja
+      ws.getCell(rivi, 3).value = m.laukauksiaSarjassa
+      ws.getCell(rivi, 4).value = m.tulosSaanto
+    })
+  }
 
   ws.getColumn(1).width = 22
   ws.getColumn(2).width = 26
@@ -547,10 +579,31 @@ export async function vieKisa(kisa: Kisa, nyt: Date = new Date()): Promise<Vient
   wb.created = nyt
 
   kirjoitaKisatiedot(wb, kisa)
-  for (const laji of LAJI_KOODIT) kirjoitaTuloskortti(wb, kisa, laji)
-  for (const laji of LAJI_KOODIT) kirjoitaSijoitukset(wb, kisa, laji)
+  /*
+   * Sivunimet johdetaan lajin koodista, joka on mukautetussa kisassa käyttäjän
+   * kirjoittamaa tekstiä. Nimet varataan kerran ja välitetään mukana, jotta tuloskortti
+   * ja sijoitukset osuvat samaan lajiin ja _meta voi kertoa tuonnille kumpi on kumpi.
+   */
+  const varatut = new Set<string>(
+    [KISATIEDOT_VALILEHTI, YHDISTYKSET_VALILEHTI, META_VALILEHTI].map((n) => n.toLowerCase()),
+  )
+  const lajit = kisanLajit(kisa)
+  const sivut = new Map<string, { tuloskortti: string; sijoitukset: string }>()
+  for (const rakenne of lajit) {
+    sivut.set(rakenne.id, {
+      tuloskortti: uniikkiSivunNimi(tuloskorttiNimi(rakenne.koodi), varatut),
+      sijoitukset: uniikkiSivunNimi(sijoituksetNimi(rakenne.koodi), varatut),
+    })
+  }
+
+  for (const rakenne of lajit) {
+    kirjoitaTuloskortti(wb, kisa, rakenne, sivut.get(rakenne.id)!.tuloskortti)
+  }
+  for (const rakenne of lajit) {
+    kirjoitaSijoitukset(wb, kisa, rakenne, sivut.get(rakenne.id)!.sijoitukset)
+  }
   kirjoitaYhdistykset(wb, kisa)
-  kirjoitaMeta(wb, kisa, nyt.toISOString())
+  kirjoitaMeta(wb, kisa, nyt.toISOString(), sivut)
 
   const tavut = await wb.xlsx.writeBuffer()
   return {

@@ -3,14 +3,15 @@ import type {
   Kilpailija,
   Kisa,
   Laji,
-  LajiMaaritys,
+  LajiId,
+  MukautettuLaji,
   Laukaus,
   Luokka,
   Osallistuminen,
   SarjaId,
   TulosSaanto,
 } from '@/types/kisa'
-import { LAJIT, LAJI_KOODIT } from '@/core/lajit'
+import { LAJIT, LAJI_KOODIT, resulRakenne } from '@/core/lajit'
 import { KISA_SKEEMA_VERSIO } from '@/core/skeema'
 import { jasennaLaukaus } from '@/core/laukaus'
 import { lyhytTunnus, uusiId } from '@/core/tunnus'
@@ -151,6 +152,49 @@ function lueSarja(arvo: string): SarjaId {
   return arvo.trim() || 'H'
 }
 
+/** Mukautetun lajin tiedot `_meta`-välilehdeltä, sivunimi mukaan lukien. */
+interface TiedostonLaji extends MukautettuLaji {
+  sivu: string
+}
+
+/**
+ * Lukee mukautetun kisan lajit `_meta`:n JSON-kentästä.
+ *
+ * Vioittunut tai puuttuva JSON ei kaada tuontia vaan johtaa tyhjään listaan, jolloin
+ * tuonti kertoo selkeästi ettei tuloskortteja löytynyt. Se on parempi kuin puolittain
+ * luettu kisa.
+ */
+function lueMukautetutLajit(parit: Map<string, string>): TiedostonLaji[] {
+  const json = parit.get('lajitJson')
+  if (!json) return []
+  try {
+    const luettu: unknown = JSON.parse(json)
+    if (!Array.isArray(luettu)) return []
+    return luettu.filter(
+      (l): l is TiedostonLaji =>
+        Boolean(l) &&
+        typeof l === 'object' &&
+        typeof (l as TiedostonLaji).id === 'string' &&
+        Array.isArray((l as TiedostonLaji).kilpasarjat),
+    )
+  } catch {
+    return []
+  }
+}
+
+/** Lukee mukautetun kisan sarjat `_meta`:n JSON-kentästä. */
+function lueMukautetutSarjat(parit: Map<string, string>): SarjaId[] {
+  const json = parit.get('sarjatJson')
+  if (!json) return []
+  try {
+    const luettu: unknown = JSON.parse(json)
+    if (!Array.isArray(luettu)) return []
+    return luettu.filter((s): s is string => typeof s === 'string' && s.trim() !== '')
+  } catch {
+    return []
+  }
+}
+
 /** Avain kilpailijan tunnistamiseen, kun Tunnus-sarake on tyhjä (käsin lisätty rivi). */
 function nimiAvain(sukunimi: string, etunimi: string, yhdistys: string): string {
   return `${sukunimi.trim().toLowerCase()}|${etunimi.trim().toLowerCase()}|${yhdistys.trim().toLowerCase()}`
@@ -167,8 +211,13 @@ interface Kerays {
  * jotta järjestäjän käsin tekemät korjaukset menevät varmasti läpi eikä vanhentunut
  * välisumma voi jäädä voimaan.
  */
-function lueTuloskortti(ws: Worksheet, laji: Laji, maaritys: LajiMaaritys, kerays: Kerays) {
-  const a = luoAsettelu(maaritys)
+function lueTuloskortti(
+  ws: Worksheet,
+  laji: LajiId,
+  rakenne: { kilpasarjat: readonly { laukauksia: number }[] },
+  kerays: Kerays,
+) {
+  const a = luoAsettelu(rakenne)
 
   for (let rivi = ENSIMMAINEN_DATARIVI; rivi <= ws.rowCount; rivi++) {
     const r = ws.getRow(rivi)
@@ -200,9 +249,9 @@ function lueTuloskortti(ws: Worksheet, laji: Laji, maaritys: LajiMaaritys, keray
     if (!kilpailija) continue
 
     const kilpasarjat = []
-    for (let s = 0; s < maaritys.kilpasarjoja; s++) {
+    for (let s = 0; s < a.kilpasarjoja; s++) {
       const laukaukset: Laukaus[] = []
-      for (let i = 0; i < maaritys.laukauksiaSarjassa; i++) {
+      for (let i = 0; i < a.laukauksia(s); i++) {
         const arvo = jasennaLaukaus(teksti(r.getCell(a.laukausAlku(s) + i)))
         laukaukset.push(arvo === undefined ? null : arvo)
       }
@@ -227,7 +276,7 @@ export interface TuontiYhteenveto {
   /** Kilpailijoiden määrä. */
   kilpailijoita: number
   /** Osallistumisten määrä lajeittain. */
-  osallistumiset: Record<Laji, number>
+  osallistumiset: Record<LajiId, number>
   /** Tiedostoon merkitty vientiaika, jos luettavissa. */
   vientiAika: string
   /** Onko tiedoston kisaId sama kuin nykyisen kisan? Kutsuja voi varoittaa eri kisasta. */
@@ -257,14 +306,38 @@ export async function tuoKisa(tavut: ArrayBuffer): Promise<TuontiYhteenveto> {
   }
 
   const kerays: Kerays = { kilpailijat: new Map(), nimiIndeksi: new Map() }
-  const osallistumiset = { RA1: 0, RA2: 0, RA3: 0, RA4: 0 } as Record<Laji, number>
+  const osallistumiset: Record<LajiId, number> = {}
+
+  const mukautettu = parit.get('kisaTyyppi') === 'mukautettu'
+  const mukautetutLajit = mukautettu ? lueMukautetutLajit(parit) : []
+  const mukautetutSarjat = mukautettu ? lueMukautetutSarjat(parit) : []
+
+  /*
+   * Luettavat lajit ja niiden välilehdet.
+   *
+   * Mukautetussa kisassa välilehti haetaan `_meta`:n tallentaman nimen perusteella, ei
+   * arvaamalla lajikoodista: koodi on käyttäjän tekstiä ja sivunimi on voinut siistiytyä
+   * tai saada numeropäätteen, joten arvaus osuisi väärään tai ei mihinkään.
+   */
+  const luettavat = mukautettu
+    ? mukautetutLajit.map((l) => ({
+        laji: l.id as LajiId,
+        rakenne: { kilpasarjat: l.kilpasarjat, tulosSaanto: l.tulosSaanto },
+        sivu: l.sivu,
+      }))
+    : LAJI_KOODIT.map((laji) => ({
+        laji: laji as LajiId,
+        rakenne: resulRakenne(laji, lajiMaaritykset[laji]),
+        sivu: tuloskorttiNimi(laji),
+      }))
 
   let loytyiTuloskortti = false
-  for (const laji of LAJI_KOODIT) {
-    const ws = wb.getWorksheet(tuloskorttiNimi(laji))
+  for (const { laji, rakenne, sivu } of luettavat) {
+    const ws = sivu ? wb.getWorksheet(sivu) : undefined
     if (!ws) continue
     loytyiTuloskortti = true
-    lueTuloskortti(ws, laji, lajiMaaritykset[laji], kerays)
+    osallistumiset[laji] = 0
+    lueTuloskortti(ws, laji, rakenne, kerays)
   }
 
   if (!loytyiTuloskortti) {
@@ -273,8 +346,8 @@ export async function tuoKisa(tavut: ArrayBuffer): Promise<TuontiYhteenveto> {
 
   const kilpailijat = [...kerays.kilpailijat.values()]
   for (const k of kilpailijat) {
-    for (const laji of LAJI_KOODIT) {
-      if (k.osallistumiset[laji]) osallistumiset[laji]++
+    for (const { laji } of luettavat) {
+      if (k.osallistumiset[laji]) osallistumiset[laji] = (osallistumiset[laji] ?? 0) + 1
     }
   }
 
@@ -282,8 +355,20 @@ export async function tuoKisa(tavut: ArrayBuffer): Promise<TuontiYhteenveto> {
 
   const kisa: Kisa = {
     schemaVersion: KISA_SKEEMA_VERSIO,
-    // Tuonti lukee toistaiseksi vain RESUL-kisoja; mukautettu kisa tulee omana työnään.
-    tyyppi: 'resul',
+    tyyppi: mukautettu ? 'mukautettu' : 'resul',
+    ...(mukautettu
+      ? {
+          lajit: mukautetutLajit.map(({ sivu, ...laji }) => {
+            void sivu
+            return laji
+          }),
+          // Sarjalista tiedostosta; puuttuessa kootaan kilpailijoiden sarjoista, jottei
+          // luokittelu katoa vanhemmalla versiolla viedystä tiedostosta.
+          sarjat: mukautetutSarjat.length
+            ? mukautetutSarjat
+            : [...new Set(kilpailijat.map((k) => k.ikasarja))],
+        }
+      : {}),
     kisaId: parit.get('kisaId') || lyhytTunnus(),
     kisatiedot: lueKisatiedot(wb),
     asetukset: {
