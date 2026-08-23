@@ -62,8 +62,10 @@ käytettävissä puhelimella ampumaradalla. Tämä versio korjaa nämä kolme as
 
 ## Käyttöohje
 
-1. **Kisatiedot** — kirjaa kisan nimi, järjestäjä, paikka, päivämäärä ja vastuuhenkilöt.
-   Valitse kisatyyppi; se ratkaisee lasketaanko kilpailutulos summana vai parhaana sarjana.
+1. **Kisatiedot** — valitse ensin kisan muoto: **RESUL** (RA1–RA4 virallisin säännöin) vai
+   **mukautettu kisa**, jossa määrittelet lajit itse. Kirjaa sitten kisan nimi, järjestäjä,
+   paikka, päivämäärä ja vastuuhenkilöt. Mukautetussa kisassa määrittele myös lajit,
+   kilpasarjat ja sarjat — ks. [Mukautettu kisa](#mukautettu-kisa).
 2. **Kilpailijat** — lisää kilpailijat: nimi, yhdistys ja lajit joihin hän osallistuu.
    Yhdistyksen nimi ehdotetaan aiemmin syötetyistä, joten kirjoitusasu pysyy samana.
 3. **Syöttö** — valitse laji ja syötä laukaukset. Sarjan summa, navat ja kilpailutulos
@@ -326,15 +328,21 @@ välilehtirakennetta:
 
 | Välilehti | Sisältö | Muokattavissa |
 |---|---|---|
-| `Tuloskortti RA1`–`RA4` | Kilpailijat ja laukaukset | ✅ **Kyllä — aidot Excel-kaavat.** Kun korjaat laukauksen, sarjan summa, navat ja kilpailutulos laskeutuvat uudelleen kuten Excel-versiossa |
+| `Tuloskortti <laji>` | Kilpailijat ja laukaukset | ✅ **Kyllä — aidot Excel-kaavat.** Kun korjaat laukauksen, sarjan summa, navat ja kilpailutulos laskeutuvat uudelleen kuten Excel-versiossa |
 | `Kisatiedot` | Kisan perustiedot ja asetukset | ✅ Kyllä |
-| `Sijoitukset RA1`–`RA4` | Sijoitukset | ℹ️ Tilannekuva — päivittyy kun tiedosto tuodaan takaisin sovellukseen |
+| `Sijoitukset <laji>` | Sijoitukset | ℹ️ Tilannekuva — päivittyy kun tiedosto tuodaan takaisin sovellukseen |
 | `Yhdistys …` | Yhdistyskilpailu | ℹ️ Tilannekuva — kuten yllä |
-| `_meta` | Versiotiedot | Ei |
+| `_meta` | Versiotiedot ja lajien rakenne | Ei |
 
-Tuonti lukee **vain** `Tuloskortti`-välilehtien nimet ja laukaukset ja laskee kaiken
+RESUL-kisassa lajin tilalla on `RA1`–`RA4`. Mukautetussa kisassa nimi tulee lajin
+lyhenteestä, ja se siistitään Excelin sivunimirajoitusten mukaiseksi (enintään 31
+merkkiä, ei merkkejä `: \ / ? * [ ]`).
+
+Tuonti lukee **vain** `Tuloskortti`-välilehtien kilpailijat ja laukaukset ja laskee kaiken
 muun uudelleen. Näin järjestäjän käsin tekemät korjaukset siirtyvät sovellukseen
-sellaisenaan, eikä vanhentunut sijoitusvälilehti voi sotkea tuloksia.
+sellaisenaan, eikä vanhentunut sijoitusvälilehti voi sotkea tuloksia. Oikea välilehti
+tunnistetaan `_meta`:aan kirjatusta lajitunnisteesta, ei nimestä — nimi voi olla
+siistiytynyt eikä siihen siksi voi luottaa.
 
 **Näin virheen korjaaminen onnistuu myös jälkikäteen**, vaikka selaimen muisti olisi
 tyhjentynyt: avaa viety tiedosto Excelissä, korjaa laukaus ja tuo tiedosto takaisin.
@@ -430,6 +438,10 @@ Käytännössä koko kisa vie:
 | 40 | 4 | 3 |
 
 Osat voi lukea missä järjestyksessä tahansa, ja sovellus kertoo mitä vielä puuttuu.
+
+Mukautetussa kisassa koko kisa vie hieman enemmän, koska lajien nimet ja kilpasarjojen
+rakenne kulkevat mukana — RESUL-lajit ovat samat joka laitteessa eikä niitä tarvitse
+lähettää. Ero on yksi koodi tai kaksi; pelkkien tulosten koko ei muutu.
 
 > 🔒 **Tietosuojahuomio:** QR-koodi on ainoa tapa, jossa tiedot eivät poistu paikalta.
 > Linkki ja tiedosto kulkevat sen sovelluksen kautta, jolla ne lähetät (esim. WhatsApp).
