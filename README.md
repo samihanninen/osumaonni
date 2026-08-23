@@ -31,6 +31,9 @@ käytettävissä puhelimella ampumaradalla. Tämä versio korjaa nämä kolme as
   | **RA3** | itselataava pistooli, väh. 9,00 mm | 2 × 10 ls | parempi sarja | 25 m | seisten |
   | **RA4** | itselataava pistooli, väh. 9,00 mm | 2 × 10 ls (tuplat) | parempi sarja | 25 m | seisten |
 
+- **Mukautettu kisa** — kolmen asennon kisa, oma kilpailu tai mikä tahansa harjoitus:
+  määrittele lajit, kilpasarjat ja sarjat itse. RESUL-lajit pysyvät koskemattomina
+  (ks. [Mukautettu kisa](#mukautettu-kisa))
 - **Vakio- ja avoin luokka** erikseen — avoimessa luokassa optiikka on sallittu, joten
   tulokset lasketaan ja järjestetään luokittain erikseen
 - **Ikäsarjat H ja H50**
@@ -71,6 +74,81 @@ käytettävissä puhelimella ampumaradalla. Tämä versio korjaa nämä kolme as
 
 Kisapäivää varten on erillinen tiivis muistilista: [KILPAILUOHJE.md](KILPAILUOHJE.md).
 Se on luettavissa myös sovelluksen *Ohje*-välilehdeltä ilman verkkoyhteyttä.
+
+---
+
+## Mukautettu kisa
+
+Kaikki kisat eivät ole RESUL-kisoja. Kolmen asennon ammunta, kahden kierroksen harjoitus
+tai yhdistyksen oma kilpailu eivät mahdu RA1–RA4:n rakenteeseen, joten ne ammutaan
+**mukautettuna kisana**: lajit, kilpasarjat ja sarjat määritellään itse.
+
+Muoto valitaan *Kisatiedot*-sivulta. **Kisa on aina yhtä muotoa** — RESUL tai mukautettu,
+ei molempia. Sekamuotoinen kisa tekisi kokonaiskilpailusta tulkinnanvaraisen, eikä
+virallisen kisan tulos saa riippua siitä, mitä muuta samaan kisaan on lisätty.
+
+| | RESUL-kisa | Mukautettu kisa |
+|---|---|---|
+| Lajit | RA1–RA4, ei lisättävissä | määrittelet itse |
+| Kilpasarjat | sääntöjen mukaan | määrä, pituus ja nimi vapaasti |
+| Tulossääntö | sääntöjen mukaan lajeittain | kilpasarjojen summa tai paras kilpasarja |
+| Sarjat | H ja H50 sääntöjen mukaan | nimeät itse, ei tarvitse liittyä ikään |
+| Tasatulos lajissa | virallinen tasatulossääntö | sama sääntö |
+| Tasatulos kokonaiskilpailussa | parempi RA2:n tulos | jaettu sija, järjestys sukunimen mukaan |
+
+### Kilpasarjat ovat sarjoja vain nimeltä
+
+Mukautetun lajin kilpasarja voi olla ampuma-asento, kierros tai mikä tahansa erä. Anna
+sille nimi, niin kirjaaja tietää mitä ampuu — nimi näkyy tuloskortissa, tuloslistassa ja
+Excelissä. Kilpasarjat voivat olla **eri mittaisia**, joten kolmen asennon kisa jossa
+pystyasennosta ammutaan vähemmän on aivan tavallinen tapaus.
+
+Kolmen asennon kisa määritellään näin:
+
+| Kilpasarja | Nimi | Laukauksia |
+|---|---|---|
+| 1. | Makuu | 10 |
+| 2. | Polvi | 10 |
+| 3. | Pysty | 10 |
+
+…ja tulossäännöksi *kaikkien kilpasarjojen summa*. Kahden kierroksen kisassa
+kilpasarjoja on kaksi ja tulossääntönä *paras kilpasarja*.
+
+### Sarjat eli kilpailuluokat
+
+Sarja on kilpailuluokka: *Yleinen*, *Veteraanit*, *Aloittelijat* — mitä kisa vaatii.
+Sijoitukset voidaan laskea sarjan sisällä, joten **sarjajako ratkaisee kenet palkitaan.**
+
+Sarjan poistaminen siirtää sen kilpailijat toiseen sarjaan eikä jätä ketään sarjattomaksi:
+sarjaton kilpailija ei näkyisi missään sarjakohtaisessa tuloslistassa.
+
+### Mikä ei muutu
+
+Laskenta on sama. Napakymppi on 10 pistettä ja kirjautuu napalaskuriin, ohilaukaus ei ole
+iskemä, sääntörike vähentää 2 pistettä ja turvallisuusrike mitätöi tuloksen. Myös
+tasatulossääntö lajin sisällä on sama kuin RESUL-kisassa — se toimii millä tahansa
+0–10-lajilla.
+
+### Mitä säännöt eivät sano
+
+Kokonaiskilpailun tasatuloksen ratkaisee RESUL-säännöissä parempi RA2:n tulos.
+Mukautetussa kisassa ei ole RA2:ta eikä muuta sääntöjen nimeämää ratkaisijalajia, joten
+tasatulos jää jaetuksi ja järjestys ratkeaa sukunimen mukaan.
+
+Ratkaisijalajia ei arvata — esimerkiksi kisan ensimmäistä tai pisintä lajia — koska se
+päättäisi sijoituksia perusteella, jota kilpailijoille ei ole kerrottu eikä
+kilpailukutsussa mainittu. Jos kisassa tarvitaan tietty ratkaisijalaji, se on sovittava
+etukäteen ja ratkaistava käsin.
+
+### Excel-vienti
+
+Toimii kuten RESUL-kisassa: jokainen laji saa oman tuloskorttinsa aitoine kaavoineen.
+Välilehtien nimet tulevat lajin lyhenteestä, mutta Excelin sivunimi on enintään 31
+merkkiä eikä siinä saa olla merkkejä `: \ / ? * [ ]`, joten nimi siistitään
+automaattisesti. Samannimiset lajit erotetaan numerolla.
+
+Tuonti ei etsi välilehteä nimen perusteella vaan tiedostoon kirjatun lajitunnisteen
+mukaan, joten siistitty tai numeroitu nimi ei sekoita tuloksia.
 
 ---
 
@@ -217,6 +295,21 @@ tallennettua kisaa ei voi avata* yllä.
 **Kaikissa kisan laitteissa on syytä olla sama versio.** Tulosten yhdistäminen QR-koodilla
 tarkistaa siirtomuodon version, ja eri versiot voivat kieltäytyä lukemasta toistensa
 koodeja. Päivittäkää siis kaikki laitteet yhdessä — ennen kisaa, ei kesken sen.
+
+> ⚠️ **Versio 1.3.0 vaatii päivityksen kaikkiin laitteisiin.** Mukautettu kisa muutti sekä
+> tallennusmuotoa että QR-siirtomuotoa, joten 1.2-laite ja 1.3-laite **eivät** vaihda
+> tuloksia keskenään: koodin lukeminen epäonnistuu selkeällä virheilmoituksella.
+>
+> Tämä koskee myös RESUL-kisaa, vaikka sen toiminta ei muutu. Päivitä siis kaikki kisan
+> laitteet ennen kisapäivää, älä yhtä kerrallaan.
+>
+> Aiemmilla versioilla kirjatut kisat avautuvat päivityksen jälkeen normaalisti —
+> päivityssuunta on turvallinen. Vain toiseen suuntaan (1.3-laitteen tallennus tai koodi
+> 1.2-laitteeseen) ei ole yhteensopivuutta, ja silloin vanhempi sovellus kieltäytyy
+> lukemasta eikä sekoita tuloksia.
+>
+> Excel-tiedostot ovat poikkeus: RESUL-kisan tiedosto avautuu myös 1.2-laitteessa.
+> Mukautetun kisan tiedostosta se ei löydä tuloskortteja ja kertoo sen.
 
 > **Jos asensit sovelluksen ennen osoitteen muuttumista pieniksi kirjaimiksi:** poista vanha
 > kuvake kotivalikosta ja asenna sovellus uudelleen yllä olevasta osoitteesta. Vanha
