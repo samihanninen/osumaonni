@@ -219,6 +219,31 @@ describe('mukautetun kisan sarjat', () => {
     expect(k.ikasarja).toBe('Aloittelijat')
   })
 
+  /*
+   * Lomakkeen sarjavalinta lähettää tyhjän merkkijonon, jos mitään ei ole valittu.
+   * Tyhjä ei ole puuttuva arvo, joten se ei osunut oletukseen — ja sarjaton kilpailija
+   * ei näkyisi missään sarjakohtaisessa tuloksessa.
+   */
+  it('tyhjä sarja korvataan kisan ensimmäisellä', () => {
+    store.asetaKisaTyyppi('mukautettu')
+
+    const tyhja = store.lisaaKilpailija({
+      etunimi: 'A',
+      sukunimi: 'B',
+      yhdistys: 'C',
+      ikasarja: '',
+    })
+    const valilyonnit = store.lisaaKilpailija({
+      etunimi: 'D',
+      sukunimi: 'E',
+      yhdistys: 'F',
+      ikasarja: '   ',
+    })
+
+    expect(tyhja.ikasarja).toBe('Yleinen')
+    expect(valilyonnit.ikasarja).toBe('Yleinen')
+  })
+
   it('nimeäminen siirtää sarjan kilpailijat mukanaan', () => {
     store.asetaKisaTyyppi('mukautettu')
     const k = store.lisaaKilpailija({ etunimi: 'A', sukunimi: 'B', yhdistys: 'C' })

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watchEffect } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useKisaStore } from '@/stores/kisa'
 import { kisanLajit, kisanSarjat, LUOKAT, LUOKKA_NIMET } from '@/core/lajit'
@@ -12,11 +12,25 @@ const { kisa, yhdistysEhdotukset } = storeToRefs(store)
 const sarjat = computed(() => kisanSarjat(kisa.value))
 
 const uusi = ref({ etunimi: '', sukunimi: '', yhdistys: '', ikasarja: '' as SarjaId })
+
+/*
+ * Lomakkeen sarjavalinta pidetään kelvollisena. Kisan muoto tai sarjalista voi vaihtua
+ * kesken kaiken, ja tyhjä valinta tekisi kilpailijasta sarjattoman — hän ei näkyisi
+ * missään sarjakohtaisessa tuloksessa.
+ */
+watchEffect(() => {
+  if (!sarjat.value.includes(uusi.value.ikasarja)) {
+    uusi.value.ikasarja = sarjat.value[0] ?? ''
+  }
+})
 const virhe = ref('')
 const poistoVahvistus = ref<string | null>(null)
 
 /** Kisan lajit muodosta riippumatta: RESUL-kisassa RA1–RA4, mukautetussa omat lajit. */
 const lajit = computed(() => kisanLajit(kisa.value))
+
+/** RESUL-kisassa sarjat ovat ikäsarjoja; mukautetussa ne eivät liity ikään. */
+const sarjaOtsikko = computed(() => (kisa.value.tyyppi === 'resul' ? 'Ikäsarja' : 'Sarja'))
 
 const kilpailijat = computed(() =>
   [...kisa.value.kilpailijat].sort(
@@ -102,7 +116,7 @@ function poista(id: string) {
           <span class="vihje">Valitse listalta, niin kirjoitusasu pysyy samana.</span>
         </div>
         <div class="kentta">
-          <label for="ikasarja">Ikäsarja</label>
+          <label for="ikasarja">{{ sarjaOtsikko }}</label>
           <select id="ikasarja" v-model="uusi.ikasarja">
             <option v-for="s in sarjat" :key="s" :value="s">{{ s }}</option>
           </select>
@@ -168,7 +182,7 @@ function poista(id: string) {
                 />
               </div>
               <div class="kentta">
-                <label :for="`ika-${k.id}`">Ikäsarja</label>
+                <label :for="`ika-${k.id}`">{{ sarjaOtsikko }}</label>
                 <select
                   :id="`ika-${k.id}`"
                   :value="k.ikasarja"

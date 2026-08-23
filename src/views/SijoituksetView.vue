@@ -23,6 +23,9 @@ const laji = computed<LajiId>(() => {
 
 const rakenne = computed(() => lajit.value.find((l) => l.id === laji.value))
 
+/** RESUL-kisassa sarjat ovat ikäsarjoja; mukautetussa ne eivät liity ikään. */
+const sarjaOtsikko = computed(() => (kisa.value.tyyppi === 'resul' ? 'Ikäsarja' : 'Sarja'))
+
 const luokka = ref<Luokka>('vakio')
 const ikasarjaSuodatin = ref<SarjaId | 'kaikki'>('kaikki')
 
@@ -95,8 +98,8 @@ function sijaTeksti(sija: number): string {
       </div>
 
       <div class="suodatin">
-        <span class="suodatin-otsikko">Ikäsarja</span>
-        <div class="napit" role="group" aria-label="Ikäsarja">
+        <span class="suodatin-otsikko">{{ sarjaOtsikko }}</span>
+        <div class="napit" role="group" :aria-label="sarjaOtsikko">
           <button
             type="button"
             class="pikkunappi"
@@ -143,7 +146,7 @@ function sijaTeksti(sija: number): string {
             <th class="numero">Sija</th>
             <th>Nimi</th>
             <th>Yhdistys</th>
-            <th>Ikäsarja</th>
+            <th>{{ sarjaOtsikko }}</th>
             <!-- Sarjan oma nimi otsikkoon, jotta kolmen asennon kisassa näkyy asento. -->
             <th
               v-for="(sarja, i) in rakenne?.kilpasarjat ?? []"

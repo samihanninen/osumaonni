@@ -165,8 +165,13 @@ export const useKisaStore = defineStore(
         etunimi: tiedot.etunimi.trim(),
         sukunimi: tiedot.sukunimi.trim(),
         yhdistys: tiedot.yhdistys.trim(),
-        // Oletussarja kisan omasta listasta: mukautetussa kisassa H:ta ei ole olemassa.
-        ikasarja: tiedot.ikasarja ?? kisanSarjat(kisa.value)[0] ?? 'H',
+        /*
+         * Oletussarja kisan omasta listasta: mukautetussa kisassa H:ta ei ole olemassa.
+         * Tyhjä arvo tulkitaan puuttuvaksi — sarjaton kilpailija ei näkyisi missään
+         * sarjakohtaisessa tuloksessa, ja lomakkeen tyhjä valinta lähettää tyhjän
+         * merkkijonon, jota `??` ei ottaisi kiinni.
+         */
+        ikasarja: tiedot.ikasarja?.trim() || kisanSarjat(kisa.value)[0] || 'H',
         osallistumiset: {},
       }
       kisa.value.kilpailijat.push(uusi)

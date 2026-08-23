@@ -57,7 +57,7 @@ function vahvista() {
 function asetaPituus(laji: MukautettuLaji, i: number, arvo: string) {
   const laukauksia = Math.max(1, Math.trunc(Number(arvo) || 1))
   const sarjat = laji.kilpasarjat.map((s, j) => (j === i ? { ...s, laukauksia } : s))
-  muutaSarjat(laji, sarjat, `Sarjan ${i + 1} pituus ${laukauksia} laukausta`)
+  muutaSarjat(laji, sarjat, `Kilpasarjan ${i + 1} pituus ${laukauksia} laukausta`)
 }
 
 function asetaNimi(laji: MukautettuLaji, i: number, arvo: string) {
@@ -79,7 +79,7 @@ function lisaaSarja(laji: MukautettuLaji) {
 function poistaSarja(laji: MukautettuLaji, i: number) {
   if (laji.kilpasarjat.length <= 1) return
   const sarjat = laji.kilpasarjat.filter((_, j) => j !== i)
-  muutaSarjat(laji, sarjat, `Sarja ${i + 1} poistetaan`)
+  muutaSarjat(laji, sarjat, `Kilpasarja ${i + 1} poistetaan`)
 }
 
 function poistaLaji(laji: MukautettuLaji) {
@@ -113,9 +113,9 @@ function suurin(laji: MukautettuLaji): number {
     <legend>Kisan lajit</legend>
 
     <p class="vihje">
-      Määrittele lajit ja niiden sarjat. Sarja voi olla ampuma-asento, kierros tai mikä tahansa erä
-      — anna sille nimi, niin kirjaaja tietää mitä ampuu. Tulos lasketaan joko kaikkien sarjojen
-      summana tai parhaan sarjan mukaan.
+      Määrittele lajit ja niiden kilpasarjat. Kilpasarja voi olla ampuma-asento, kierros tai mikä
+      tahansa erä — anna sille nimi, niin kirjaaja tietää mitä ampuu. Tulos lasketaan joko kaikkien
+      kilpasarjojen summana tai parhaan sarjan mukaan.
     </p>
 
     <p v-if="lajit.length === 0" class="vihje tyhja">
@@ -170,7 +170,7 @@ function suurin(laji: MukautettuLaji): number {
       <table class="sarjat">
         <thead>
           <tr>
-            <th>Sarja</th>
+            <th>Kilpasarja</th>
             <th>Nimi</th>
             <th class="numero">Laukauksia</th>
             <th><span class="piilotettu">Toiminnot</span></th>
@@ -206,7 +206,7 @@ function suurin(laji: MukautettuLaji): number {
                 :disabled="laji.kilpasarjat.length <= 1"
                 @click="poistaSarja(laji, i)"
               >
-                Poista sarja
+                Poista kilpasarja
               </button>
             </td>
           </tr>
@@ -214,12 +214,12 @@ function suurin(laji: MukautettuLaji): number {
       </table>
 
       <p class="yhteenveto">
-        {{ laji.kilpasarjat.length }} sarjaa, {{ laukauksiaYhteensa(laji) }} laukausta. Suurin tulos
-        {{ suurin(laji) }}.
+        {{ laji.kilpasarjat.length }} kilpasarjaa, {{ laukauksiaYhteensa(laji) }} laukausta. Suurin
+        tulos {{ suurin(laji) }}.
       </p>
 
       <div class="napit">
-        <button type="button" class="pikkunappi" @click="lisaaSarja(laji)">Lisää sarja</button>
+        <button type="button" class="pikkunappi" @click="lisaaSarja(laji)">Lisää kilpasarja</button>
         <button
           type="button"
           class="pikkunappi"
