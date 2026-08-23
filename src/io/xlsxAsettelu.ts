@@ -3,9 +3,6 @@ export const TIEDOSTO_VERSIO = 1
 
 export const SOVELLUS_NIMI = 'OsumaOnni'
 
-/** Muista päivittää julkaisun yhteydessä. */
-export const SOVELLUS_VERSIO = '0.1.0'
-
 export const META_VALILEHTI = '_meta'
 export const KISATIEDOT_VALILEHTI = 'Kisatiedot'
 export const YHDISTYKSET_VALILEHTI = 'Yhdistykset'

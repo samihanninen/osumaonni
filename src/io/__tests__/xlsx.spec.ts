@@ -14,6 +14,7 @@ import {
 } from '../xlsxAsettelu'
 import { LAJIT, resulRakenne } from '@/core/lajit'
 import { laskeLaji } from '@/core/laskenta'
+import { VERSIO } from '@/core/versio'
 import type { Kisa } from '@/types/kisa'
 
 function rakennaKisa() {
@@ -622,5 +623,32 @@ describe('mukautettu kisa Excelissä', () => {
     const tuotu = kisa.kilpailijat[0]!
     expect(tuotu.osallistumiset[lajiId]?.kilpasarjat[0]?.laukaukset[0]).toBe(10)
     expect(tuotu.osallistumiset[toinen.id]?.kilpasarjat[0]?.laukaukset[0]).toBe(7)
+  })
+})
+
+/*
+ * Tiedostoon merkitty sovellusversio oli käsin ylläpidetty vakio ja jäänyt arvoon
+ * 0.1.0, joten jokainen viety tiedosto väitti olevansa siitä versiosta. Se on juuri
+ * se tieto, jota vikaa selvitettäessä katsotaan, joten se johdetaan nyt
+ * package.jsonista samoin kuin sovelluksen alalaidassa näkyvä versio.
+ */
+describe('tiedostoon merkitty versio', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  it('on sovelluksen oikea versio', async () => {
+    const { store } = rakennaKisa()
+    const { tavut } = await vieKisa(store.kisa)
+    const wb = new ExcelJS.Workbook()
+    await wb.xlsx.load(tavut)
+
+    const ws = wb.getWorksheet(META_VALILEHTI)!
+    const arvot = new Map<string, string>()
+    ws.eachRow((rivi) => {
+      arvot.set(String(rivi.getCell(1).value ?? ''), String(rivi.getCell(2).value ?? ''))
+    })
+
+    expect(arvot.get('sovellusVersio')).toBe(VERSIO)
+    expect(arvot.get('sovellusVersio')).not.toBe('0.1.0')
+    expect(arvot.get('sovellusVersio')).toMatch(/^\d+\.\d+\.\d+$/)
   })
 })

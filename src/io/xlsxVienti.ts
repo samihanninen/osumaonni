@@ -5,6 +5,7 @@ import { laskeLaji } from '@/core/laskenta'
 import { sijoitukset } from '@/core/sijoitukset'
 import { onJoukkuekilpailu, yhdistysLaji, yhdistysYhteistulos } from '@/core/yhdistykset'
 import { kokonaiskilpailu } from '@/core/kokonaiskilpailu'
+import { VERSIO } from '@/core/versio'
 import {
   ENSIMMAINEN_DATARIVI,
   KAAVAT,
@@ -13,7 +14,6 @@ import {
   OTSIKKO_RIVI,
   PERUSSARAKKEET,
   SOVELLUS_NIMI,
-  SOVELLUS_VERSIO,
   TIEDOSTO_VERSIO,
   YHDISTYKSET_VALILEHTI,
   alue,
@@ -486,7 +486,9 @@ function kirjoitaMeta(
   const parit: [string, string | number][] = [
     ['tiedostoVersio', TIEDOSTO_VERSIO],
     ['sovellus', SOVELLUS_NIMI],
-    ['sovellusVersio', SOVELLUS_VERSIO],
+    // Versio tulee package.jsonista käännösaikana, ei käsin ylläpidettynä vakiona:
+    // tiedostoon merkitty versio on juuri se tieto, jota vikaa selvitettäessä katsotaan.
+    ['sovellusVersio', VERSIO],
     ['vientiAika', aika],
     ['kisaId', kisa.kisaId],
     ['kisaTyyppi', kisa.tyyppi],
