@@ -652,3 +652,60 @@ describe('tiedostoon merkitty versio', () => {
     expect(arvot.get('sovellusVersio')).toMatch(/^\d+\.\d+\.\d+$/)
   })
 })
+
+/*
+ * Yhdistys- ja kokonaiskilpailu Excelissä mukautetussa kisassa.
+ *
+ * Nämä osiot laskettiin RESUL-lajeista, joten mukautetun kisan taulukot jäivät
+ * tyhjiksi. Vika paljastui vasta kun lajilistan antaminen tehtiin pakolliseksi —
+ * oletus RESUL-lajeihin oli piilottanut sen.
+ */
+describe('mukautetun kisan yhdistyssivu', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  async function vieMukautettu() {
+    const store = useKisaStore()
+    store.asetaKisaTyyppi('mukautettu')
+    const laji = store.lisaaMukautettuLaji({ koodi: '3-as', nimi: 'Kolme asentoa' })
+    store.asetaKilpasarjat(laji.id, [{ laukauksia: 2 }, { laukauksia: 2 }])
+
+    const k = store.lisaaKilpailija({ etunimi: 'Sami', sukunimi: 'Hänninen', yhdistys: 'Nupures' })
+    store.lisaaOsallistuminen(k.id, laji.id)
+    for (let s = 0; s < 2; s++) {
+      for (let i = 0; i < 2; i++) store.asetaLaukaus(k.id, laji.id, s, i, 10)
+    }
+
+    const { tavut } = await vieKisa(store.kisa)
+    const wb = new ExcelJS.Workbook()
+    await wb.xlsx.load(tavut)
+    return wb.getWorksheet('Yhdistykset')!
+  }
+
+  it('lajisarakkeet tulevat kisan omista lajeista', async () => {
+    const ws = await vieMukautettu()
+
+    const otsikot: string[] = []
+    ws.getRow(5).eachCell((c) => otsikot.push(String(c.value ?? '')))
+    expect(otsikot).toContain('3-as')
+    expect(otsikot).not.toContain('RA1')
+  })
+
+  it('yhdistyksen tulos on mukana eikä taulukko jää tyhjäksi', async () => {
+    const ws = await vieMukautettu()
+
+    const tekstit: string[] = []
+    ws.eachRow((rivi) => rivi.eachCell((c) => tekstit.push(String(c.value ?? ''))))
+    expect(tekstit).toContain('Nupures')
+    // 4 × 10 summana.
+    expect(tekstit).toContain('40')
+  })
+
+  it('kokonaiskilpailu näyttää mukautetun kisan kilpailijan', async () => {
+    const ws = await vieMukautettu()
+
+    const tekstit: string[] = []
+    ws.eachRow((rivi) => rivi.eachCell((c) => tekstit.push(String(c.value ?? ''))))
+    expect(tekstit).toContain('Kokonaiskilpailu — henkilökohtainen')
+    expect(tekstit).toContain('Hänninen')
+  })
+})

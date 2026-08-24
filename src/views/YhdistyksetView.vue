@@ -21,14 +21,17 @@ const lajit = computed(() => kisanLajit(kisa.value))
 
 const optiot = computed(() => ({
   parhaita: parhaita.value,
-  lajit: lajit.value,
   ...(luokka.value === 'kaikki' ? {} : { luokka: luokka.value }),
 }))
 
-const yhteistulos = computed(() => yhdistysYhteistulos(kisa.value.kilpailijat, optiot.value))
+const yhteistulos = computed(() =>
+  yhdistysYhteistulos(kisa.value.kilpailijat, lajit.value, optiot.value),
+)
 
 function lajiTulokset(laji: LajiId) {
-  return yhdistysLaji(kisa.value.kilpailijat, laji, optiot.value)
+  const rakenne = lajit.value.find((l) => l.id === laji)
+  if (!rakenne) return []
+  return yhdistysLaji(kisa.value.kilpailijat, laji, rakenne, optiot.value)
 }
 
 /**
@@ -38,12 +41,11 @@ function lajiTulokset(laji: LajiId) {
  * mitään, koska se päättäisi sijoituksia perusteella jota kilpailijat eivät tiedä.
  */
 const henkilokohtainen = computed(() =>
-  kokonaiskilpailu(kisa.value.kilpailijat, {
-    lajit: lajit.value,
-    ...(kisa.value.tyyppi === 'resul'
-      ? { tasatuloksenRatkaisija: RESUL_TASATULOKSEN_RATKAISIJA }
-      : {}),
-  }),
+  kokonaiskilpailu(
+    kisa.value.kilpailijat,
+    lajit.value,
+    kisa.value.tyyppi === 'resul' ? { tasatuloksenRatkaisija: RESUL_TASATULOKSEN_RATKAISIJA } : {},
+  ),
 )
 
 /**

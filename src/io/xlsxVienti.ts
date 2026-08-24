@@ -4,7 +4,7 @@ import { kisanLajit, LAJI_KOODIT, LUOKAT, LUOKKA_NIMET, type LajiRakenne } from 
 import { laskeLaji } from '@/core/laskenta'
 import { sijoitukset } from '@/core/sijoitukset'
 import { onJoukkuekilpailu, yhdistysLaji, yhdistysYhteistulos } from '@/core/yhdistykset'
-import { kokonaiskilpailu } from '@/core/kokonaiskilpailu'
+import { kokonaiskilpailu, RESUL_TASATULOKSEN_RATKAISIJA } from '@/core/kokonaiskilpailu'
 import { VERSIO } from '@/core/versio'
 import {
   ENSIMMAINEN_DATARIVI,
@@ -344,14 +344,18 @@ function kirjoitaYhdistykset(wb: Workbook, kisa: Kisa) {
     : 'Yhdistyskilpailua ei järjestetty. Tilannekuva.'
   ws.getCell(2, 1).font = { size: 9, italic: true, color: { argb: 'FF62626C' } }
 
+  // Kisan lajit muodosta riippumatta: mukautetun kisan yhdistyskilpailu laskettiin
+  // aiemmin RESUL-lajeista, jolloin taulukot jäivät tyhjiksi.
+  const lajit = kisanLajit(kisa)
+
   let rivi = 4
-  if (!yhdistykset) return kirjoitaKokonaiskilpailu(ws, kisa, rivi)
+  if (!yhdistykset) return kirjoitaKokonaiskilpailu(ws, kisa, lajit, rivi)
 
   ws.getCell(rivi, 1).value = 'Yhteistulos'
   ws.getCell(rivi, 1).font = { bold: true, size: 11 }
   rivi++
 
-  const otsikot = ['Sija', 'Yhdistys', ...LAJI_KOODIT, 'Yhteensä']
+  const otsikot = ['Sija', 'Yhdistys', ...lajit.map((l) => l.koodi), 'Yhteensä']
   otsikot.forEach((n, i) => {
     const c = ws.getCell(rivi, i + 1)
     c.value = n
@@ -359,28 +363,22 @@ function kirjoitaYhdistykset(wb: Workbook, kisa: Kisa) {
   })
   rivi++
 
-  for (const r of yhdistysYhteistulos(kisa.kilpailijat, {
-    parhaita,
-    maaritykset: kisa.asetukset.lajiMaaritykset,
-  })) {
+  for (const r of yhdistysYhteistulos(kisa.kilpailijat, lajit, { parhaita })) {
     ws.getCell(rivi, 1).value = r.sija
     ws.getCell(rivi, 2).value = r.yhdistys
-    LAJI_KOODIT.forEach((laji, i) => {
-      ws.getCell(rivi, 3 + i).value = r.lajipisteet[laji] || null
+    lajit.forEach((l, i) => {
+      ws.getCell(rivi, 3 + i).value = r.lajipisteet[l.id] || null
     })
-    ws.getCell(rivi, 3 + LAJI_KOODIT.length).value = r.pisteet
+    ws.getCell(rivi, 3 + lajit.length).value = r.pisteet
     rivi++
   }
 
   rivi += 1
-  for (const laji of LAJI_KOODIT) {
-    const rivit = yhdistysLaji(kisa.kilpailijat, laji, {
-      parhaita,
-      maaritykset: kisa.asetukset.lajiMaaritykset,
-    })
+  for (const rakenne of lajit) {
+    const rivit = yhdistysLaji(kisa.kilpailijat, rakenne.id, rakenne, { parhaita })
     if (rivit.length === 0) continue
 
-    ws.getCell(rivi, 1).value = laji
+    ws.getCell(rivi, 1).value = rakenne.nimi
     ws.getCell(rivi, 1).font = { bold: true, size: 11 }
     rivi++
     ;['Sija', 'Yhdistys', 'Tulos', 'Ampujia', 'Huomioidut'].forEach((n, i) => {
@@ -403,35 +401,51 @@ function kirjoitaYhdistykset(wb: Workbook, kisa: Kisa) {
     rivi++
   }
 
-  kirjoitaKokonaiskilpailu(ws, kisa, rivi)
+  kirjoitaKokonaiskilpailu(ws, kisa, lajit, aloitusRiviKokonais(rivi))
+}
+
+/** Kokonaiskilpailun aloitusrivi; oma funktio vain luettavuuden vuoksi. */
+function aloitusRiviKokonais(rivi: number): number {
+  return rivi
 }
 
 /** Kokonaiskilpailu kirjoitetaan aina, myös ilman yhdistyskilpailua. */
-function kirjoitaKokonaiskilpailu(ws: Worksheet, kisa: Kisa, aloitusRivi: number) {
+function kirjoitaKokonaiskilpailu(
+  ws: Worksheet,
+  kisa: Kisa,
+  lajit: LajiRakenne[],
+  aloitusRivi: number,
+) {
   let rivi = aloitusRivi
   ws.getCell(rivi, 1).value = 'Kokonaiskilpailu — henkilökohtainen'
   ws.getCell(rivi, 1).font = { bold: true, size: 11 }
   rivi++
-  ;['Sija', 'Sukunimi', 'Etunimi', 'Yhdistys', ...LAJI_KOODIT, 'Yhteensä', 'Lajeja'].forEach(
-    (n, i) => {
-      const c = ws.getCell(rivi, i + 1)
-      c.value = n
-      tyylitaOtsikko(c)
-    },
-  )
+  ;[
+    'Sija',
+    'Sukunimi',
+    'Etunimi',
+    'Yhdistys',
+    ...lajit.map((l) => l.koodi),
+    'Yhteensä',
+    'Lajeja',
+  ].forEach((n, i) => {
+    const c = ws.getCell(rivi, i + 1)
+    c.value = n
+    tyylitaOtsikko(c)
+  })
   rivi++
-  for (const r of kokonaiskilpailu(kisa.kilpailijat, {
-    maaritykset: kisa.asetukset.lajiMaaritykset,
-  })) {
+  const ratkaisija =
+    kisa.tyyppi === 'resul' ? { tasatuloksenRatkaisija: RESUL_TASATULOKSEN_RATKAISIJA } : {}
+  for (const r of kokonaiskilpailu(kisa.kilpailijat, lajit, ratkaisija)) {
     ws.getCell(rivi, 1).value = r.sija
     ws.getCell(rivi, 2).value = r.kilpailija.sukunimi
     ws.getCell(rivi, 3).value = r.kilpailija.etunimi
     ws.getCell(rivi, 4).value = r.kilpailija.yhdistys
-    LAJI_KOODIT.forEach((laji, i) => {
-      ws.getCell(rivi, 5 + i).value = r.lajipisteet[laji]
+    lajit.forEach((l, i) => {
+      ws.getCell(rivi, 5 + i).value = r.lajipisteet[l.id]
     })
-    ws.getCell(rivi, 5 + LAJI_KOODIT.length).value = r.pisteet
-    ws.getCell(rivi, 6 + LAJI_KOODIT.length).value = r.lajeja
+    ws.getCell(rivi, 5 + lajit.length).value = r.pisteet
+    ws.getCell(rivi, 6 + lajit.length).value = r.lajeja
     rivi++
   }
 
@@ -534,6 +548,7 @@ function kirjoitaMeta(
       c.value = n
       c.font = { bold: true }
     })
+    // RESUL-kisan rakennetaulukko: nämä ovat aina lajikoodit, eivät kisan lajilista.
     LAJI_KOODIT.forEach((laji, i) => {
       const m = kisa.asetukset.lajiMaaritykset[laji]
       const rivi = alkuRivi + 1 + i

@@ -1,5 +1,5 @@
-import type { Kilpailija, LajiId, LajiMaaritys } from '@/types/kisa'
-import { LAJIT, LAJI_KOODIT, type LajiRakenne } from './lajit'
+import type { Kilpailija, LajiId } from '@/types/kisa'
+import { type LajiRakenne } from './lajit'
 import { laskeLaji } from './laskenta'
 import { vertaaNimia, TARKAN_TULKKAUKSEN_RAJA } from './sijoitukset'
 
@@ -41,20 +41,10 @@ export interface KokonaisRivi {
 
 export interface KokonaisOptiot {
   /**
-   * Vaaditaanko kaikki neljä lajia mukaan pääsemiseksi. Oletuksena ei — kesken oleva
+   * Vaaditaanko kisan kaikki lajit mukaan pääsemiseksi. Oletuksena ei — kesken oleva
    * kisa näyttää silloin osittaisen tilanteen.
    */
   vaadiKaikkiLajit?: boolean
-  /**
-   * Kisan lajikohtaiset rakenteet. Ilman näitä käytetään sääntöjen oletuksia, jolloin
-   * järjestäjän muokkaama tulossääntö ei vaikuttaisi laskentaan. Kutsujan on annettava
-   * nämä aina, kun käytettävissä on kisan omat asetukset.
-   */
-  maaritykset?: Record<LajiId, Pick<LajiMaaritys, 'tulosSaanto'>>
-  /**
-   * Lajit, joista kokonaiskilpailu muodostuu. Ilman tätä käytetään RESUL-lajeja.
-   */
-  lajit?: LajiRakenne[]
   /**
    * Laji, jonka parempi tulos ratkaisee tasatuloksen.
    *
@@ -67,12 +57,16 @@ export interface KokonaisOptiot {
 
 export function kokonaiskilpailu(
   kilpailijat: Kilpailija[],
+  /**
+   * Lajit, joista kokonaiskilpailu muodostuu. Pakollinen tarkoituksella: aiemmin tämä
+   * putosi RESUL-lajeihin, jolloin mukautetun kisan lajit jäivät kokonaan huomaamatta
+   * ja kilpailija tipahti tuloksista pois ilman virhettä.
+   */
+  lajit: LajiRakenne[],
   optiot: KokonaisOptiot = {},
 ): KokonaisRivi[] {
-  const { vaadiKaikkiLajit = false, maaritykset, tasatuloksenRatkaisija } = optiot
-  const lajit = optiot.lajit
-  const tunnisteet = lajit?.map((l) => l.id) ?? LAJI_KOODIT
-  const ratkaisija = tasatuloksenRatkaisija ?? (lajit ? undefined : RESUL_TASATULOKSEN_RATKAISIJA)
+  const { vaadiKaikkiLajit = false, tasatuloksenRatkaisija: ratkaisija } = optiot
+  const tunnisteet = lajit.map((l) => l.id)
 
   const rivit: Omit<KokonaisRivi, 'sija' | 'jaettu'>[] = []
 
@@ -87,10 +81,8 @@ export function kokonaiskilpailu(
     for (const laji of tunnisteet) {
       const osallistuminen = k.osallistumiset[laji]
       if (!osallistuminen) continue
-      const rakenne =
-        maaritykset?.[laji] ??
-        lajit?.find((l) => l.id === laji) ??
-        LAJIT[laji as keyof typeof LAJIT]
+      const rakenne = lajit.find((l) => l.id === laji)
+      if (!rakenne) continue
       const tulos = laskeLaji(laji, rakenne, osallistuminen)
       if (!tulos.aloitettu) continue
       // Turvallisuusrike sulkee kilpailijan pois koko kilpailusta.
@@ -127,7 +119,7 @@ export function kokonaiskilpailu(
   for (const nykyinen of tulos) {
     if (edellinen) {
       const samatPisteet = nykyinen.pisteet === edellinen.pisteet
-      // Sijoilla 1–8 myös RA2-tulos ratkaisee; sen jälkeen sama yhteistulos riittää.
+      // Sijoilla 1–8 myös ratkaisijalaji ratkaisee; sen jälkeen sama yhteistulos riittää.
       const tasa =
         edellinen.sija <= TARKAN_TULKKAUKSEN_RAJA && ratkaisija
           ? samatPisteet &&

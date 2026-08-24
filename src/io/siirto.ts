@@ -5,6 +5,7 @@ import {
   type Kisa,
   type KisaTyyppi,
   type Laji,
+  type LajiId,
   type Laukaus,
   type Luokka,
   type MukautettuLaji,
@@ -133,7 +134,8 @@ export function base32Pura(teksti: string): Uint8Array {
 export interface SiirtoRivi {
   /** Kilpailijan tunniste. Sama kuin lähettävällä laitteella. */
   id: string
-  laji: Laji
+  /** Lajin tunniste: RESUL-kisassa lajikoodi, mukautetussa lajin `id`. */
+  laji: LajiId
   luokka: Luokka
   /** Kilpasarjat tiiviinä merkkijonoina. */
   sarjat: string[]

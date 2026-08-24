@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { Kilpailija, Kilpasarja, Laji, Luokka } from '@/types/kisa'
-import { LAJIT, type LajiRakenne } from '../lajit'
+import { LAJIT, LAJI_KOODIT, resulRakenne, type LajiRakenne } from '../lajit'
 import { sijoitukset, vertaaNimia, TARKAN_TULKKAUKSEN_RAJA } from '../sijoitukset'
 import {
   yhdistysLaji,
@@ -9,6 +9,9 @@ import {
   JOUKKUEEN_KOKO,
 } from '../yhdistykset'
 import { kokonaiskilpailu, RESUL_TASATULOKSEN_RATKAISIJA } from '../kokonaiskilpailu'
+
+/** RESUL-lajit yhteisessä muodossa. Rakenne on nyt pakollinen argumentti. */
+const RESUL_LAJIT = LAJI_KOODIT.map((laji) => resulRakenne(laji, LAJIT[laji]))
 
 let seuraavaId = 0
 
@@ -69,7 +72,7 @@ describe('sijoitukset — perusjärjestys', () => {
       ampuja({ nimi: 'Bertta Berg', sarjat: [tasainen(9), tasainen(9)] }), // 90
       ampuja({ nimi: 'Cecil Cronberg', sarjat: [tasainen(8), tasainen(8)] }), // 80
     ]
-    const rivit = sijoitukset(kilpailijat, 'RA1', 'vakio')
+    const rivit = sijoitukset(kilpailijat, 'RA1', 'vakio', LAJIT.RA1)
     expect(rivit.map((r) => r.kilpailija.sukunimi)).toEqual(['Berg', 'Cronberg', 'Ahonen'])
     expect(rivit.map((r) => r.sija)).toEqual([1, 2, 3])
   })
@@ -84,7 +87,7 @@ describe('sijoitukset — perusjärjestys', () => {
       { laukaukset: Array.from({ length: 10 }, () => null) },
       { laukaukset: Array.from({ length: 10 }, () => null) },
     ]
-    const rivit = sijoitukset(kilpailijat, 'RA1', 'vakio')
+    const rivit = sijoitukset(kilpailijat, 'RA1', 'vakio', LAJIT.RA1)
     expect(rivit).toHaveLength(1)
     expect(rivit[0]!.kilpailija.sukunimi).toBe('Ahonen')
   })
@@ -96,8 +99,8 @@ describe('sijoitukset — luokat kilpailevat erikseen', () => {
       ampuja({ nimi: 'Vakio Ampuja', luokka: 'vakio', sarjat: [tasainen(7), tasainen(7)] }),
       ampuja({ nimi: 'Avoin Ampuja', luokka: 'avoin', sarjat: [tasainen(10), tasainen(10)] }),
     ]
-    const vakio = sijoitukset(kilpailijat, 'RA1', 'vakio')
-    const avoin = sijoitukset(kilpailijat, 'RA1', 'avoin')
+    const vakio = sijoitukset(kilpailijat, 'RA1', 'vakio', LAJIT.RA1)
+    const avoin = sijoitukset(kilpailijat, 'RA1', 'avoin', LAJIT.RA1)
 
     expect(vakio).toHaveLength(1)
     expect(vakio[0]!.kilpailija.etunimi).toBe('Vakio')
@@ -116,7 +119,7 @@ describe('sijoitukset — tasatulossääntö sijoilla 1–8', () => {
       ampuja({ nimi: 'Harva Osuja', sarjat: [ra1Sarja([10, 10, 10, 10, 10]), ra1Sarja([])] }),
       ampuja({ nimi: 'Tiheä Osuja', sarjat: [tasainen(5), ra1Sarja([])] }),
     ]
-    const rivit = sijoitukset(kilpailijat, 'RA1', 'vakio')
+    const rivit = sijoitukset(kilpailijat, 'RA1', 'vakio', LAJIT.RA1)
     expect(rivit[0]!.tulos.pisteet).toBe(50)
     expect(rivit[1]!.tulos.pisteet).toBe(50)
     expect(rivit[0]!.kilpailija.etunimi).toBe('Tiheä')
@@ -131,7 +134,7 @@ describe('sijoitukset — tasatulossääntö sijoilla 1–8', () => {
         sarjat: [['*', '*', '*', 10, 10, 10, 10, 10, 10, 10], ra1Sarja([])],
       }),
     ]
-    const rivit = sijoitukset(kilpailijat, 'RA1', 'vakio')
+    const rivit = sijoitukset(kilpailijat, 'RA1', 'vakio', LAJIT.RA1)
     expect(rivit[0]!.tulos.pisteet).toBe(100)
     expect(rivit[1]!.tulos.pisteet).toBe(100)
     expect(rivit[0]!.kilpailija.etunimi).toBe('Napoja')
@@ -145,7 +148,7 @@ describe('sijoitukset — tasatulossääntö sijoilla 1–8', () => {
       ampuja({ nimi: 'Heikko Toinen', sarjat: [parempi, tasainen(5)] }),
       ampuja({ nimi: 'Vahva Toinen', sarjat: [parempi, tasainen(8)] }),
     ]
-    const rivit = sijoitukset(kilpailijat, 'RA1', 'vakio')
+    const rivit = sijoitukset(kilpailijat, 'RA1', 'vakio', LAJIT.RA1)
     expect(rivit[0]!.kilpailija.etunimi).toBe('Vahva')
     expect(rivit.map((r) => r.sija)).toEqual([1, 2])
   })
@@ -155,7 +158,7 @@ describe('sijoitukset — tasatulossääntö sijoilla 1–8', () => {
       ampuja({ nimi: 'Bertta Berg', sarjat: [tasainen(8), tasainen(7)] }),
       ampuja({ nimi: 'Aaro Ahonen', sarjat: [tasainen(8), tasainen(7)] }),
     ]
-    const rivit = sijoitukset(kilpailijat, 'RA1', 'vakio')
+    const rivit = sijoitukset(kilpailijat, 'RA1', 'vakio', LAJIT.RA1)
     expect(rivit.map((r) => r.sija)).toEqual([1, 1])
     expect(rivit.every((r) => r.jaettu)).toBe(true)
     // Jaetut esitetään sukunimen mukaisessa aakkosjärjestyksessä.
@@ -168,7 +171,7 @@ describe('sijoitukset — tasatulossääntö sijoilla 1–8', () => {
       ampuja({ nimi: 'Bb Kaksi', sarjat: [tasainen(9), tasainen(9)] }),
       ampuja({ nimi: 'Cc Kolme', sarjat: [tasainen(5), tasainen(5)] }),
     ]
-    const rivit = sijoitukset(kilpailijat, 'RA1', 'vakio')
+    const rivit = sijoitukset(kilpailijat, 'RA1', 'vakio', LAJIT.RA1)
     expect(rivit.map((r) => r.sija)).toEqual([1, 1, 3])
   })
 })
@@ -188,7 +191,7 @@ describe('sijoitukset — sijat 9:stä eteenpäin', () => {
     )
     kilpailijat.push(ampuja({ nimi: 'Alfa Tihea', sarjat: [tasainen(5), ra1Sarja([])] }))
 
-    const rivit = sijoitukset(kilpailijat, 'RA1', 'vakio')
+    const rivit = sijoitukset(kilpailijat, 'RA1', 'vakio', LAJIT.RA1)
     const hannat = rivit.slice(8)
 
     expect(hannat).toHaveLength(2)
@@ -210,7 +213,7 @@ describe('sijoitukset — hylätyt', () => {
       ampuja({ nimi: 'Reilu Ampuja', sarjat: [tasainen(6), tasainen(6)] }),
       ampuja({ nimi: 'Hylätty Ampuja', sarjat: [tasainen(10), tasainen(10)], hylatty: true }),
     ]
-    const rivit = sijoitukset(kilpailijat, 'RA1', 'vakio')
+    const rivit = sijoitukset(kilpailijat, 'RA1', 'vakio', LAJIT.RA1)
     expect(rivit).toHaveLength(2)
     expect(rivit[0]!.kilpailija.etunimi).toBe('Reilu')
     expect(rivit[0]!.sija).toBe(1)
@@ -243,7 +246,7 @@ describe('yhdistyskilpailu', () => {
       ampuja({ nimi: 'D Nelja', yhdistys: 'Nupures', sarjat: [tasainen(7), tasainen(7)] }), // 70, ei mukaan
       ampuja({ nimi: 'E Viisi', yhdistys: 'KaRes', sarjat: [tasainen(6), tasainen(6)] }), // 60
     ]
-    const rivit = yhdistysLaji(kilpailijat, 'RA1')
+    const rivit = yhdistysLaji(kilpailijat, 'RA1', LAJIT.RA1)
     const nupures = rivit.find((r) => r.yhdistys === 'Nupures')!
     expect(nupures.pisteet).toBe(270)
     expect(nupures.huomioidut).toHaveLength(3)
@@ -260,7 +263,7 @@ describe('yhdistyskilpailu', () => {
     const kilpailijat = [
       ampuja({ nimi: 'A Yksi', yhdistys: 'FoRe', sarjat: [tasainen(5), tasainen(5)] }),
     ]
-    const rivit = yhdistysLaji(kilpailijat, 'RA1')
+    const rivit = yhdistysLaji(kilpailijat, 'RA1', LAJIT.RA1)
     expect(rivit[0]!.pisteet).toBe(50)
     expect(rivit[0]!.taysiJoukkue).toBe(false)
   })
@@ -275,7 +278,7 @@ describe('yhdistyskilpailu', () => {
         hylatty: true,
       }),
     ]
-    const rivit = yhdistysLaji(kilpailijat, 'RA1')
+    const rivit = yhdistysLaji(kilpailijat, 'RA1', LAJIT.RA1)
     expect(rivit[0]!.pisteet).toBe(50)
     expect(rivit[0]!.kilpailijoita).toBe(1)
   })
@@ -292,7 +295,7 @@ describe('yhdistyskilpailu', () => {
         },
       }),
     ]
-    const rivit = yhdistysYhteistulos(kilpailijat)
+    const rivit = yhdistysYhteistulos(kilpailijat, RESUL_LAJIT)
     expect(rivit[0]!.lajipisteet.RA1).toBe(100)
     expect(rivit[0]!.lajipisteet.RA2).toBe(162)
     expect(rivit[0]!.pisteet).toBe(262)
@@ -311,7 +314,7 @@ describe('kokonaiskilpailu', () => {
         },
       }),
     ]
-    const rivit = kokonaiskilpailu(kilpailijat)
+    const rivit = kokonaiskilpailu(kilpailijat, RESUL_LAJIT)
     expect(rivit[0]!.pisteet).toBe(150)
     expect(rivit[0]!.lajeja).toBe(2)
     expect(rivit[0]!.kaikkiLajit).toBe(false)
@@ -355,7 +358,11 @@ describe('kokonaiskilpailu', () => {
       { laukaukset: tasainen(10, 6) },
     ] // 180 → yhteensä 190
 
-    const rivit = kokonaiskilpailu([heikkoRa2, vahvaRa2])
+    // Ratkaisijalaji annetaan nimenomaisesti: RESUL-sääntö ei enää tule oletuksena,
+    // jotta mukautettu kisa ei saa sitä vahingossa.
+    const rivit = kokonaiskilpailu([heikkoRa2, vahvaRa2], RESUL_LAJIT, {
+      tasatuloksenRatkaisija: RESUL_TASATULOKSEN_RATKAISIJA,
+    })
     expect(rivit[0]!.pisteet).toBe(190)
     expect(rivit[1]!.pisteet).toBe(190)
     expect(rivit[0]!.kilpailija.etunimi).toBe('Vahva')
@@ -366,8 +373,8 @@ describe('kokonaiskilpailu', () => {
     const kilpailijat = [
       ampuja({ nimi: 'Yksi Laji', sarjat: [], lajit: { RA1: [tasainen(8), tasainen(8)] } }),
     ]
-    expect(kokonaiskilpailu(kilpailijat)).toHaveLength(1)
-    expect(kokonaiskilpailu(kilpailijat, { vaadiKaikkiLajit: true })).toHaveLength(0)
+    expect(kokonaiskilpailu(kilpailijat, RESUL_LAJIT)).toHaveLength(1)
+    expect(kokonaiskilpailu(kilpailijat, RESUL_LAJIT, { vaadiKaikkiLajit: true })).toHaveLength(0)
   })
 })
 
@@ -401,6 +408,7 @@ describe('RA2 sijoitukset käyttävät summaa', () => {
 describe('kisan omat rakenteet laskennassa', () => {
   /** RA1 summana parhaan sarjan sijaan — kuten jos sääntö olisi muuttunut. */
   const muokatut = { ...LAJIT, RA1: { ...LAJIT.RA1, tulosSaanto: 'summa' as const } }
+  const MUOKATUT_LAJIT = LAJI_KOODIT.map((laji) => resulRakenne(laji, muokatut[laji]))
 
   function kaksiTaytta() {
     return ampuja({
@@ -414,15 +422,15 @@ describe('kisan omat rakenteet laskennassa', () => {
   it('kokonaiskilpailu käyttää kisan rakenteita eikä oletuksia', () => {
     const kilpailijat = [kaksiTaytta()]
 
-    expect(kokonaiskilpailu(kilpailijat)[0]!.pisteet).toBe(100)
-    expect(kokonaiskilpailu(kilpailijat, { maaritykset: muokatut })[0]!.pisteet).toBe(200)
+    expect(kokonaiskilpailu(kilpailijat, RESUL_LAJIT)[0]!.pisteet).toBe(100)
+    expect(kokonaiskilpailu(kilpailijat, MUOKATUT_LAJIT)[0]!.pisteet).toBe(200)
   })
 
   it('yhdistysten yhteistulos käyttää kisan rakenteita eikä oletuksia', () => {
     const kilpailijat = [kaksiTaytta()]
 
-    expect(yhdistysYhteistulos(kilpailijat)[0]!.pisteet).toBe(100)
-    expect(yhdistysYhteistulos(kilpailijat, { maaritykset: muokatut })[0]!.pisteet).toBe(200)
+    expect(yhdistysYhteistulos(kilpailijat, RESUL_LAJIT)[0]!.pisteet).toBe(100)
+    expect(yhdistysYhteistulos(kilpailijat, MUOKATUT_LAJIT)[0]!.pisteet).toBe(200)
   })
 
   /*
@@ -443,7 +451,7 @@ describe('kisan omat rakenteet laskennassa', () => {
       }),
     ]
 
-    const rivi = yhdistysYhteistulos(kilpailijat, { maaritykset: muokatut })[0]!
+    const rivi = yhdistysYhteistulos(kilpailijat, MUOKATUT_LAJIT)[0]!
     expect(rivi.lajipisteet.RA1).toBe(200)
     expect(rivi.lajipisteet.RA2).toBe(162)
     expect(rivi.pisteet).toBe(362)
@@ -529,7 +537,7 @@ describe('mukautetun kisan tulokset', () => {
       mukautettuAmpuja('B Kaksi', [[9, 9], [9, 9], [9]], 'Nupures'),
     ]
 
-    const rivit = yhdistysYhteistulos(kilpailijat, { lajit: [kolmeAsentoa] })
+    const rivit = yhdistysYhteistulos(kilpailijat, [kolmeAsentoa])
 
     expect(rivit[0]?.yhdistys).toBe('Nupures')
     expect(rivit[0]?.lajipisteet.x1).toBe(50 + 45)
@@ -547,7 +555,7 @@ describe('mukautetun kisan tulokset', () => {
       mukautettuAmpuja('Bee Toinen', [[9, 9], [10, 8], [10]]), // 46
     ]
 
-    const rivit = kokonaiskilpailu(kilpailijat, { lajit: [kolmeAsentoa] })
+    const rivit = kokonaiskilpailu(kilpailijat, [kolmeAsentoa])
 
     expect(rivit[0]?.pisteet).toBe(46)
     expect(rivit[1]?.pisteet).toBe(46)
@@ -571,7 +579,7 @@ describe('mukautetun kisan tulokset', () => {
       lajit: { RA1: [tasainen(7)], RA2: [tasainen(10, 6)] },
     })
 
-    const rivit = kokonaiskilpailu([heikkoRa2, vahvaRa2], {
+    const rivit = kokonaiskilpailu([heikkoRa2, vahvaRa2], RESUL_LAJIT, {
       tasatuloksenRatkaisija: RESUL_TASATULOKSEN_RATKAISIJA,
     })
 

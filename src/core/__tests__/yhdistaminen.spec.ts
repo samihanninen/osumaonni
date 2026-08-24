@@ -441,3 +441,89 @@ describe('paketin kuvaus', () => {
     expect(kuvaus.kilpailijoita).toBe(1)
   })
 })
+
+/*
+ * Mukautetun kisan tulosten yhdistäminen.
+ *
+ * Osallistumisen rakenne haettiin aiemmin RESUL-oletuksista, joita mukautetulle lajille
+ * ei ole. Yhdistäminen kaatui siis juuri siinä tilanteessa, jonka ohje suosittelee:
+ * rinnakkainen kirjaaminen, jossa vastaanottajalla ei vielä ole osallistumista.
+ */
+describe('mukautetun kisan yhdistäminen', () => {
+  function mukautettuKisa(): Kisa {
+    return {
+      schemaVersion: 2,
+      tyyppi: 'mukautettu',
+      kisaId: 'ABCD2345',
+      kisatiedot: {
+        nimi: '',
+        jarjestaja: '',
+        paikka: '',
+        pvm: '',
+        kilpailunjohtaja: '',
+        tuomari: '',
+        kirjuri: '',
+        muistiinpanot: '',
+      },
+      asetukset: { laskettavatParhaat: 3, lajiMaaritykset: LAJIT },
+      sarjat: ['Yleinen'],
+      lajit: [
+        {
+          id: 'x1',
+          koodi: '3-as',
+          nimi: 'Kolme asentoa',
+          kilpasarjat: [{ laukauksia: 3 }, { laukauksia: 2 }],
+          tulosSaanto: 'summa',
+        },
+      ],
+      kilpailijat: [
+        {
+          id: 'k1',
+          etunimi: 'Sami',
+          sukunimi: 'Hänninen',
+          yhdistys: 'Nupures',
+          ikasarja: 'Yleinen',
+          osallistumiset: {},
+        },
+      ],
+    }
+  }
+
+  /** Osapaketti, jossa on tuloksia lajille jota vastaanottajalla ei vielä ole. */
+  function osapaketti(laji: string) {
+    return {
+      v: 3,
+      tyyppi: 'osa' as const,
+      kisaId: 'ABCD2345',
+      versio: 5,
+      laiteId: 'laite-b',
+      aika: '2026-06-15T10:00:00.000Z',
+      rivit: [
+        {
+          id: 'k1',
+          laji,
+          luokka: 'vakio' as const,
+          sarjat: ['A9H', 'A8'],
+          rangaistuksia: 0,
+          hylatty: false,
+        },
+      ],
+    }
+  }
+
+  it('luo osallistumisen mukautetun lajin rakenteen mukaan', () => {
+    const tulos = yhdista(mukautettuKisa(), osapaketti('x1'))
+
+    const sarjat = tulos.kisa.kilpailijat[0]?.osallistumiset.x1?.kilpasarjat
+    expect(sarjat?.map((s) => s.laukaukset.length)).toEqual([3, 2])
+    expect(sarjat?.[0]?.laukaukset).toEqual([10, 9, '-'])
+    expect(sarjat?.[1]?.laukaukset).toEqual([10, 8])
+  })
+
+  it('tuntematon laji ohitetaan eikä yhdistäminen kaadu', () => {
+    const tulos = yhdista(mukautettuKisa(), osapaketti('eiOlemassa'))
+
+    expect(tulos.kisa.kilpailijat[0]?.osallistumiset.eiOlemassa).toBeUndefined()
+    expect(tulos.paivitetytSarjat).toBe(0)
+  })
+})

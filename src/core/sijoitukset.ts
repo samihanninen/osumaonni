@@ -1,5 +1,4 @@
 import type { Kilpailija, LajiId, LajiMaaritys, Luokka } from '@/types/kisa'
-import { LAJIT } from './lajit'
 import { laskeLaji, vertaaPerusteita, type LajiTulos } from './laskenta'
 
 /**
@@ -148,9 +147,10 @@ export function sijoitukset(
   luokka: Luokka,
   /**
    * Lajin rakenne. Vain `tulosSaanto` luetaan, joten mukautetun lajin rakenne kelpaa
-   * sellaisenaan. RESUL-lajille oletus tulee säännöistä.
+   * sellaisenaan. Pakollinen: oletus sääntöjen rakenteisiin peitti aiemmin sen, että
+   * kutsuja oli unohtanut antaa kisan omat asetukset.
    */
-  maaritys: Pick<LajiMaaritys, 'tulosSaanto'> = LAJIT[laji as keyof typeof LAJIT],
+  maaritys: Pick<LajiMaaritys, 'tulosSaanto'>,
   optiot: SijoitusOptiot = {},
 ): SijoitusRivi[] {
   const { naytaHylatyt = true, naytaAloittamattomat = false } = optiot
