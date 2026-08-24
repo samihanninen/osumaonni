@@ -1,4 +1,15 @@
-import type { Laji, LajiMaaritys, Luokka } from '@/types/kisa'
+import type {
+  Kilpasarjamaaritys,
+  Kisa,
+  Laji,
+  LajiId,
+  LajiMaaritys,
+  Luokka,
+  MukautettuLaji,
+  SarjaId,
+  TulosSaanto,
+} from '@/types/kisa'
+import { RESUL_SARJAT } from '@/types/kisa'
 
 /**
  * Lajien rakenteet RESUL:n virallisten sääntöjen mukaan.
@@ -101,4 +112,120 @@ export function tyhjatKilpasarjat(m: LajiMaaritys): null[][] {
   return Array.from({ length: m.kilpasarjoja }, () =>
     Array.from({ length: m.laukauksiaSarjassa }, () => null),
   )
+}
+
+/**
+ * Lajin rakenne kisan muodosta riippumatta.
+ *
+ * Yhteinen esitys, jotta syöttö, sijoitukset ja vienti voivat käsitellä RESUL-lajia ja
+ * mukautettua lajia samalla koodilla. RESUL-lajin tasainen `kilpasarjoja ×
+ * laukauksiaSarjassa` avataan tässä sarjalistaksi; laskenta ei silti muutu, koska se
+ * lukee rakenteesta vain `tulosSaanto`-kentän.
+ */
+export interface LajiRakenne {
+  id: LajiId
+  koodi: string
+  nimi: string
+  kilpasarjat: Kilpasarjamaaritys[]
+  tulosSaanto: TulosSaanto
+}
+
+/** RESUL-lajin määritys yhteiseen muotoon. */
+export function resulRakenne(laji: Laji, m: LajiMaaritys): LajiRakenne {
+  return {
+    id: laji,
+    koodi: laji,
+    nimi: m.nimi,
+    kilpasarjat: Array.from({ length: m.kilpasarjoja }, () => ({
+      laukauksia: m.laukauksiaSarjassa,
+    })),
+    tulosSaanto: m.tulosSaanto,
+  }
+}
+
+/** Mukautetun lajin määritys yhteiseen muotoon. */
+export function mukautettuRakenne(laji: MukautettuLaji): LajiRakenne {
+  return {
+    id: laji.id,
+    koodi: laji.koodi,
+    nimi: laji.nimi,
+    kilpasarjat: laji.kilpasarjat,
+    tulosSaanto: laji.tulosSaanto,
+  }
+}
+
+/**
+ * Kisan lajit järjestyksessä, muodosta riippumatta.
+ *
+ * Tämä on se sauma, jonka varaan mukautettu kisa rakennetaan: kutsuja ei tiedä kumpaa
+ * muotoa kisa on. RESUL-kisassa lajit tulevat säännöistä ja järjestäjän mahdollisista
+ * muokkauksista, mukautetussa kisan omasta listasta.
+ */
+export function kisanLajit(kisa: Pick<Kisa, 'tyyppi' | 'asetukset' | 'lajit'>): LajiRakenne[] {
+  if (kisa.tyyppi === 'mukautettu') {
+    return (kisa.lajit ?? []).map(mukautettuRakenne)
+  }
+  return LAJI_KOODIT.map((laji) => resulRakenne(laji, kisa.asetukset.lajiMaaritykset[laji]))
+}
+
+/** Lajin kokonaislaukausmäärä yhteisessä muodossa. */
+export function rakenteenLaukaukset(r: LajiRakenne): number {
+  return r.kilpasarjat.reduce((s, k) => s + k.laukauksia, 0)
+}
+
+/** Pisimmän kilpasarjan pituus. Taulukkosyötössä sarakkeiden määrä. */
+export function pisinKilpasarja(r: LajiRakenne): number {
+  return r.kilpasarjat.reduce((s, k) => Math.max(s, k.laukauksia), 0)
+}
+
+/**
+ * Laukausten juokseva numerointi sarjojen yli.
+ *
+ * Taulukkosyöttö liikkuu laukauksesta toiseen yhtenä jonona, mutta sarjat voivat olla
+ * eri mittaisia — jakolasku sarjan pituudella ei siis kelpaa. Nämä kaksi funktiota
+ * hoitavat muunnoksen molempiin suuntiin.
+ */
+export function litteaksiIndeksiksi(r: LajiRakenne, sarja: number, laukaus: number): number {
+  let n = 0
+  for (let s = 0; s < sarja && s < r.kilpasarjat.length; s++) {
+    n += r.kilpasarjat[s]?.laukauksia ?? 0
+  }
+  return n + laukaus
+}
+
+export function litteastaIndeksista(
+  r: LajiRakenne,
+  littea: number,
+): { sarja: number; laukaus: number } | null {
+  if (littea < 0) return null
+  let jaljella = littea
+  for (let s = 0; s < r.kilpasarjat.length; s++) {
+    const pituus = r.kilpasarjat[s]?.laukauksia ?? 0
+    if (jaljella < pituus) return { sarja: s, laukaus: jaljella }
+    jaljella -= pituus
+  }
+  return null
+}
+
+/** Sarjan näkyvä nimi. Nimeämätön sarja numeroidaan. */
+export function sarjanNimi(r: LajiRakenne, sarja: number): string {
+  const nimi = r.kilpasarjat[sarja]?.nimi?.trim()
+  if (nimi) return nimi
+  return r.kilpasarjat.length === 1 ? 'Kilpasarja' : `Kilpasarja ${sarja + 1}`
+}
+
+/**
+ * Kisan sarjat muodosta riippumatta.
+ *
+ * RESUL-kisassa sarjat tulevat säännöistä (H, H50) eikä niitä voi muuttaa. Mukautetussa
+ * kisassa järjestäjä nimeää ne itse, eikä niiden tarvitse liittyä ikään.
+ */
+export function kisanSarjat(kisa: Pick<Kisa, 'tyyppi' | 'sarjat'>): SarjaId[] {
+  if (kisa.tyyppi === 'mukautettu') return kisa.sarjat ?? []
+  return [...RESUL_SARJAT]
+}
+
+/** Onko tunniste kisassa oleva laji? Käytetään reitin parametrin tarkistuksessa. */
+export function onKisanLaji(kisa: Pick<Kisa, 'tyyppi' | 'asetukset' | 'lajit'>, arvo: unknown) {
+  return typeof arvo === 'string' && kisanLajit(kisa).some((l) => l.id === arvo)
 }

@@ -1,6 +1,7 @@
-import type { Kilpailija, Kisa, Laji, Laukaus, Osallistuminen } from '@/types/kisa'
+import type { Kilpailija, Kisa, LajiId, Laukaus, Osallistuminen } from '@/types/kisa'
 import { merkitLaukauksiksi, type SiirtoRivi, type Siirtopaketti } from '@/io/siirto'
-import { LAJIT, LAJI_KOODIT } from './lajit'
+import { LAJIT, LAJI_KOODIT, kisanLajit } from './lajit'
+import { KISA_SKEEMA_VERSIO } from './skeema'
 import { uusiId } from './tunnus'
 
 /**
@@ -19,7 +20,7 @@ export interface Ristiriita {
   avain: string
   kilpailijaId: string
   nimi: string
-  laji: Laji
+  laji: LajiId
   kilpasarja: number
   oma: Laukaus[]
   saapuva: Laukaus[]
@@ -67,7 +68,7 @@ function pisteet(laukaukset: Laukaus[]): number {
   }, 0)
 }
 
-export function ristiriidanAvain(kilpailijaId: string, laji: Laji, kilpasarja: number): string {
+export function ristiriidanAvain(kilpailijaId: string, laji: LajiId, kilpasarja: number): string {
   return `${kilpailijaId}|${laji}|${kilpasarja}`
 }
 
@@ -89,13 +90,24 @@ function kopioi(kisa: Kisa): Kisa {
   return JSON.parse(JSON.stringify(kisa)) as Kisa
 }
 
-/** Luo tyhjän osallistumisen lajin rakenteen mukaan. */
-function tyhjaOsallistuminen(kisa: Kisa, laji: Laji, rivi: SiirtoRivi): Osallistuminen {
-  const maaritys = kisa.asetukset.lajiMaaritykset[laji] ?? LAJIT[laji]
+/**
+ * Luo tyhjän osallistumisen lajin rakenteen mukaan.
+ *
+ * Rakenne haetaan `kisanLajit`-sauman kautta, koska mukautetun kisan lajia ei löydy
+ * RESUL-oletuksista. Aiemmin haku putosi niihin, ja mukautetun lajin tuloksia
+ * yhdistettäessä laskenta kaatui — juuri siinä tilanteessa, jonka ohje suosittelee:
+ * rinnakkainen kirjaaminen, jossa vastaanottajalla ei vielä ole osallistumista.
+ *
+ * Palauttaa `null`, jos lajia ei ole kisassa lainkaan. Silloin rivi ohitetaan: tuloksia
+ * ei voi kirjata lajiin jota ei ole olemassa.
+ */
+function tyhjaOsallistuminen(kisa: Kisa, laji: LajiId, rivi: SiirtoRivi): Osallistuminen | null {
+  const rakenne = kisanLajit(kisa).find((l) => l.id === laji)
+  if (!rakenne) return null
   return {
     luokka: rivi.luokka,
-    kilpasarjat: Array.from({ length: maaritys.kilpasarjoja }, () => ({
-      laukaukset: Array.from({ length: maaritys.laukauksiaSarjassa }, () => null),
+    kilpasarjat: rakenne.kilpasarjat.map((s) => ({
+      laukaukset: Array.from({ length: s.laukauksia }, () => null),
     })),
     rangaistuksia: 0,
     hylatty: false,
@@ -174,7 +186,9 @@ export function yhdista(
         etunimi: rivi.etunimi ?? '',
         sukunimi: rivi.sukunimi ?? '',
         yhdistys: rivi.yhdistys ?? '',
-        ikasarja: rivi.ikasarja === 'H50' ? 'H50' : 'H',
+        // Sarja välitetään sellaisenaan: mukautetussa kisassa se on järjestäjän oma
+        // nimi, ja tunnistamattoman pakottaminen H:ksi hukkaisi sen huomaamatta.
+        ikasarja: rivi.ikasarja?.trim() || 'H',
         osallistumiset: {},
       }
       tulos.kilpailijat.push(kilpailija)
@@ -183,7 +197,10 @@ export function yhdista(
 
     let osallistuminen = kilpailija.osallistumiset[rivi.laji]
     if (!osallistuminen) {
-      osallistuminen = tyhjaOsallistuminen(tulos, rivi.laji, rivi)
+      const uusi = tyhjaOsallistuminen(tulos, rivi.laji, rivi)
+      // Tuntematon laji ohitetaan riviltä — muut rivit yhdistetään silti.
+      if (!uusi) continue
+      osallistuminen = uusi
       kilpailija.osallistumiset[rivi.laji] = osallistuminen
     }
 
@@ -280,7 +297,7 @@ function rakennaKisaPaketista(paketti: Siirtopaketti): Kisa {
     etunimi: k.etunimi,
     sukunimi: k.sukunimi,
     yhdistys: k.yhdistys,
-    ikasarja: k.ikasarja === 'H50' ? 'H50' : 'H',
+    ikasarja: k.ikasarja?.trim() || 'H',
     osallistumiset: {},
   }))
 
@@ -299,7 +316,11 @@ function rakennaKisaPaketista(paketti: Siirtopaketti): Kisa {
   }
 
   return {
-    schemaVersion: 1,
+    schemaVersion: KISA_SKEEMA_VERSIO,
+    // Puuttuva muoto tarkoittaa RESUL-kisaa; lähettäjä jättää sen pois oletustapauksessa.
+    tyyppi: paketti.kisaTyyppi ?? 'resul',
+    ...(paketti.mukautetutLajit ? { lajit: paketti.mukautetutLajit } : {}),
+    ...(paketti.mukautetutSarjat ? { sarjat: paketti.mukautetutSarjat } : {}),
     kisaId: paketti.kisaId,
     kisatiedot: paketti.kisatiedot ?? {
       nimi: '',
@@ -348,6 +369,7 @@ export function laskeVersio(kisa: Kisa): number {
   let n = 0
   for (const k of kisa.kilpailijat) {
     for (const osallistuminen of Object.values(k.osallistumiset)) {
+      if (!osallistuminen) continue
       for (const sarja of osallistuminen.kilpasarjat) {
         for (const laukaus of sarja.laukaukset) {
           if (laukaus !== null && laukaus !== undefined) n++
@@ -364,12 +386,12 @@ export interface PakettiYhteenveto {
   laiteNimi: string
   aika: string
   kilpailijoita: number
-  lajit: Laji[]
+  lajit: LajiId[]
   eriKisa: boolean
 }
 
 export function kuvaaPaketti(paketti: Siirtopaketti, oma: Kisa): PakettiYhteenveto {
-  const lajit = new Set<Laji>()
+  const lajit = new Set<LajiId>()
   let kilpailijoita = 0
 
   if (paketti.tyyppi === 'taysi') {

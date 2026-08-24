@@ -4,9 +4,17 @@ import ExcelJS from 'exceljs'
 import { useKisaStore } from '@/stores/kisa'
 import { vieKisa, vientiTiedostonimi } from '../xlsxVienti'
 import { tuoKisa, TuontiVirhe } from '../xlsxTuonti'
-import { luoAsettelu, sarakeKirjain, tuloskorttiNimi, META_VALILEHTI } from '../xlsxAsettelu'
-import { LAJIT } from '@/core/lajit'
+import {
+  luoAsettelu,
+  puhdistaSivunNimi,
+  sarakeKirjain,
+  tuloskorttiNimi,
+  uniikkiSivunNimi,
+  META_VALILEHTI,
+} from '../xlsxAsettelu'
+import { LAJIT, resulRakenne } from '@/core/lajit'
 import { laskeLaji } from '@/core/laskenta'
+import { VERSIO } from '@/core/versio'
 import type { Kisa } from '@/types/kisa'
 
 function rakennaKisa() {
@@ -75,7 +83,7 @@ describe('sarakekirjaimet', () => {
 
 describe('asettelu seuraa lajin rakennetta', () => {
   it('RA1: kaksi kymmenen laukauksen lohkoa', () => {
-    const a = luoAsettelu(LAJIT.RA1)
+    const a = luoAsettelu(resulRakenne('RA1', LAJIT.RA1))
     expect(a.laukausAlku(0)).toBe(7)
     expect(a.laukausLoppu(0)).toBe(16)
     expect(a.sarjaYht(0)).toBe(17)
@@ -84,7 +92,7 @@ describe('asettelu seuraa lajin rakennetta', () => {
   })
 
   it('RA2: kolme kuuden laukauksen lohkoa', () => {
-    const a = luoAsettelu(LAJIT.RA2)
+    const a = luoAsettelu(resulRakenne('RA2', LAJIT.RA2))
     expect(a.laukausAlku(0)).toBe(7)
     expect(a.laukausLoppu(0)).toBe(12)
     expect(a.laukausAlku(1)).toBe(16)
@@ -131,7 +139,7 @@ describe('vienti', () => {
     await wb.xlsx.load(tavut)
 
     const ws = wb.getWorksheet(tuloskorttiNimi('RA1'))!
-    const a = luoAsettelu(LAJIT.RA1)
+    const a = luoAsettelu(resulRakenne('RA1', LAJIT.RA1))
     // Ahonen on ensimmäinen sukunimen mukaan.
     const rivi = 4
 
@@ -153,7 +161,7 @@ describe('vienti', () => {
     await wb.xlsx.load(tavut)
 
     const ws = wb.getWorksheet(tuloskorttiNimi('RA1'))!
-    const a = luoAsettelu(LAJIT.RA1)
+    const a = luoAsettelu(resulRakenne('RA1', LAJIT.RA1))
     const odotettu = laskeLaji('RA1', LAJIT.RA1, sami.osallistumiset.RA1!)
 
     // Hänninen on toinen rivi (Ahonen ensin).
@@ -170,7 +178,7 @@ describe('vienti', () => {
     await wb.xlsx.load(tavut)
 
     const ws = wb.getWorksheet(tuloskorttiNimi('RA1'))!
-    const a = luoAsettelu(LAJIT.RA1)
+    const a = luoAsettelu(resulRakenne('RA1', LAJIT.RA1))
     const rivi = 5 // Hänninen
     expect(ws.getCell(rivi, a.laukausAlku(0)).value).toBe('*')
     expect(ws.getCell(rivi, a.laukausAlku(0) + 1).value).toBe(2)
@@ -319,7 +327,7 @@ describe('kierros: käsin tehdyt korjaukset', () => {
   it('korjattu laukaus menee läpi ja tulos lasketaan uudelleen', async () => {
     const { store } = rakennaKisa()
     const { tavut } = await vieKisa(store.kisa)
-    const a = luoAsettelu(LAJIT.RA1)
+    const a = luoAsettelu(resulRakenne('RA1', LAJIT.RA1))
 
     // Hänninen rivi 5: muutetaan toisen sarjan kaikki neloset kympeiksi.
     const tuotu = await muokkaaJaTuo(tavut, (ws) => {
@@ -336,7 +344,7 @@ describe('kierros: käsin tehdyt korjaukset', () => {
   it('vanhentuneet johdetut sarakkeet eivät voi jäädä voimaan', async () => {
     const { store } = rakennaKisa()
     const { tavut } = await vieKisa(store.kisa)
-    const a = luoAsettelu(LAJIT.RA1)
+    const a = luoAsettelu(resulRakenne('RA1', LAJIT.RA1))
 
     // Rikotaan tarkoituksella välisumma. Tuonti ei saa käyttää sitä.
     const tuotu = await muokkaaJaTuo(tavut, (ws) => {
@@ -354,7 +362,7 @@ describe('kierros: käsin tehdyt korjaukset', () => {
   it('käsin lisätty kilpailija ilman tunnusta luetaan uutena', async () => {
     const { store } = rakennaKisa()
     const { tavut } = await vieKisa(store.kisa)
-    const a = luoAsettelu(LAJIT.RA1)
+    const a = luoAsettelu(resulRakenne('RA1', LAJIT.RA1))
 
     const tuotu = await muokkaaJaTuo(tavut, (ws) => {
       const rivi = 7
@@ -389,7 +397,7 @@ describe('kierros: käsin tehdyt korjaukset', () => {
   it('kelvoton laukausarvo tulkitaan tyhjäksi eikä kaada tuontia', async () => {
     const { store } = rakennaKisa()
     const { tavut } = await vieKisa(store.kisa)
-    const a = luoAsettelu(LAJIT.RA1)
+    const a = luoAsettelu(resulRakenne('RA1', LAJIT.RA1))
 
     const tuotu = await muokkaaJaTuo(tavut, (ws) => {
       ws.getCell(5, a.laukausAlku(0)).value = 'roskaa'
@@ -436,5 +444,268 @@ describe('tuonnin virhetilanteet', () => {
     wb.addWorksheet('Jotain muuta')
     const tavut = (await wb.xlsx.writeBuffer()) as ArrayBuffer
     await expect(tuoKisa(tavut)).rejects.toThrow(/Tuloskortti/)
+  })
+})
+
+/*
+ * Mukautetun kisan sarjanimet kulkevat tiedoston läpi sellaisenaan. Aiemmin tuonti
+ * pakotti tunnistamattoman sarjan H:ksi, mikä olisi hukannut koko luokittelun — ja
+ * juuri tiedostosta luettu sarja on se, jonka järjestäjä on saattanut korjata käsin.
+ */
+describe('mukautetun kisan sarjat tiedostossa', () => {
+  it('säilyttää järjestäjän omat sarjanimet', async () => {
+    const { store } = rakennaKisa()
+    const sami = store.kisa.kilpailijat.find((k) => k.sukunimi === 'Hänninen')!
+    store.paivitaKilpailija(sami.id, { ikasarja: 'Veteraanit' })
+
+    const { kisa } = await kierrata(store.kisa)
+
+    const tuotu = kisa.kilpailijat.find((k) => k.sukunimi === 'Hänninen')
+    expect(tuotu?.ikasarja).toBe('Veteraanit')
+  })
+
+  it('tyhjä sarja palautuu H:ksi eikä jää tyhjäksi', async () => {
+    const { store } = rakennaKisa()
+    const sami = store.kisa.kilpailijat.find((k) => k.sukunimi === 'Hänninen')!
+    store.paivitaKilpailija(sami.id, { ikasarja: '   ' })
+
+    const { kisa } = await kierrata(store.kisa)
+
+    const tuotu = kisa.kilpailijat.find((k) => k.sukunimi === 'Hänninen')
+    expect(tuotu?.ikasarja).toBe('H')
+  })
+})
+
+/**
+ * Excelin sivunimet mukautetussa kisassa.
+ *
+ * Lajikoodi on käyttäjän kirjoittamaa tekstiä, mutta Excelin sivunimi on enintään 31
+ * merkkiä eikä siinä saa olla merkkejä `: \ / ? * [ ]`. Kielletty merkki saisi Excelin
+ * hylkäämään koko tiedoston, joten nimi on siistittävä ennen kirjoittamista.
+ */
+describe('sivunimien rajoitukset', () => {
+  it('poistaa Excelin kieltämät merkit', () => {
+    expect(puhdistaSivunNimi('RA1/RA2')).toBe('RA1-RA2')
+    expect(puhdistaSivunNimi('Kisa: [2026]')).toBe('Kisa- -2026-')
+    expect(puhdistaSivunNimi('Miksi*tämä?')).toBe('Miksi-tämä-')
+    expect(puhdistaSivunNimi('polku\\alku')).toBe('polku-alku')
+  })
+
+  it('katkaisee 31 merkkiin', () => {
+    const pitka = 'Tämä on aivan liian pitkä lajin nimi Exceliin'
+    expect(puhdistaSivunNimi(pitka)).toHaveLength(31)
+  })
+
+  it('tyhjästä tulee oletusnimi', () => {
+    expect(puhdistaSivunNimi('')).toBe('Laji')
+    expect(puhdistaSivunNimi('   ')).toBe('Laji')
+    // Heittomerkki nimen reunassa ei kelpaa Excelille.
+    expect(puhdistaSivunNimi("'Makuu'")).toBe('Makuu')
+  })
+
+  it('erottaa samannimiset lajit toisistaan', () => {
+    const kaytetyt = new Set<string>()
+    expect(uniikkiSivunNimi('Makuu', kaytetyt)).toBe('Makuu')
+    expect(uniikkiSivunNimi('Makuu', kaytetyt)).toBe('Makuu (2)')
+    // Excel vertaa nimiä kirjainkoosta riippumatta.
+    expect(uniikkiSivunNimi('makuu', kaytetyt)).toBe('makuu (3)')
+  })
+
+  it('uniikki nimi pysyy 31 merkissä myös numeropäätteellä', () => {
+    const kaytetyt = new Set<string>()
+    const pitka = 'Kolmen asennon kisa pitkällä nimellä'
+    uniikkiSivunNimi(pitka, kaytetyt)
+    const toinen = uniikkiSivunNimi(pitka, kaytetyt)
+    expect(toinen.length).toBeLessThanOrEqual(31)
+    expect(toinen.endsWith('(2)')).toBe(true)
+  })
+})
+
+/**
+ * Mukautetun kisan vienti ja tuonti.
+ *
+ * Tuonti ei etsi välilehteä lajikoodin perusteella vaan `_meta`:n tallentaman nimen
+ * mukaan: koodi on käyttäjän tekstiä ja nimi on voinut siistiytyä tai saada
+ * numeropäätteen, joten arvaus osuisi väärään välilehteen tai ei mihinkään.
+ */
+describe('mukautettu kisa Excelissä', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  function rakennaMukautettu() {
+    const store = useKisaStore()
+    store.asetaKisaTyyppi('mukautettu')
+    store.kisa.kisatiedot.nimi = 'Kolmen asennon kisa'
+    store.lisaaSarja('Veteraanit')
+
+    const laji = store.lisaaMukautettuLaji({ koodi: '3-as', nimi: 'Kolme asentoa' })
+    store.asetaKilpasarjat(laji.id, [
+      { nimi: 'Makuu', laukauksia: 3 },
+      { nimi: 'Polvi', laukauksia: 2 },
+      { nimi: 'Pysty', laukauksia: 1 },
+    ])
+
+    const k = store.lisaaKilpailija({ etunimi: 'Sami', sukunimi: 'Hänninen', yhdistys: 'Nupures' })
+    store.paivitaKilpailija(k.id, { ikasarja: 'Veteraanit' })
+    store.lisaaOsallistuminen(k.id, laji.id)
+    store.asetaLaukaus(k.id, laji.id, 0, 0, 10)
+    store.asetaLaukaus(k.id, laji.id, 0, 1, '*')
+    store.asetaLaukaus(k.id, laji.id, 1, 0, 9)
+    store.asetaLaukaus(k.id, laji.id, 2, 0, 8)
+
+    return { store, lajiId: laji.id }
+  }
+
+  it('säilyttää kisan muodon ja lajin määrittelyn', async () => {
+    const { store } = rakennaMukautettu()
+
+    const { kisa } = await kierrata(store.kisa)
+
+    expect(kisa.tyyppi).toBe('mukautettu')
+    expect(kisa.lajit).toHaveLength(1)
+    expect(kisa.lajit?.[0]?.koodi).toBe('3-as')
+    expect(kisa.lajit?.[0]?.nimi).toBe('Kolme asentoa')
+    expect(kisa.lajit?.[0]?.tulosSaanto).toBe('summa')
+  })
+
+  it('säilyttää eri mittaiset ja nimetyt sarjat', async () => {
+    const { store } = rakennaMukautettu()
+
+    const { kisa } = await kierrata(store.kisa)
+
+    expect(kisa.lajit?.[0]?.kilpasarjat).toEqual([
+      { nimi: 'Makuu', laukauksia: 3 },
+      { nimi: 'Polvi', laukauksia: 2 },
+      { nimi: 'Pysty', laukauksia: 1 },
+    ])
+  })
+
+  it('säilyttää kirjatut laukaukset oikeissa sarjoissa', async () => {
+    const { store, lajiId } = rakennaMukautettu()
+
+    const { kisa } = await kierrata(store.kisa)
+
+    const o = kisa.kilpailijat[0]?.osallistumiset[lajiId]
+    expect(o?.kilpasarjat.map((s) => s.laukaukset)).toEqual([[10, '*', null], [9, null], [8]])
+  })
+
+  it('säilyttää kisan sarjat ja kilpailijan sarjan', async () => {
+    const { store } = rakennaMukautettu()
+
+    const { kisa } = await kierrata(store.kisa)
+
+    expect(kisa.sarjat).toEqual(['Yleinen', 'Veteraanit'])
+    expect(kisa.kilpailijat[0]?.ikasarja).toBe('Veteraanit')
+  })
+
+  /* Kielletty merkki koodissa ei saa estää vientiä eikä katkaista tuontia. */
+  it('lajikoodin kielletyt merkit eivät riko tiedostoa', async () => {
+    const { store, lajiId } = rakennaMukautettu()
+    store.paivitaMukautettuLaji(lajiId, { koodi: '3/as:[x]' })
+
+    const { kisa } = await kierrata(store.kisa)
+
+    expect(kisa.lajit?.[0]?.koodi).toBe('3/as:[x]')
+    expect(kisa.kilpailijat[0]?.osallistumiset[lajiId]?.kilpasarjat[0]?.laukaukset[0]).toBe(10)
+  })
+
+  /* Kaksi samannimistä lajia päätyy eri välilehdille eikä sekoitu keskenään. */
+  it('samannimiset lajit pysyvät erillään', async () => {
+    const { store, lajiId } = rakennaMukautettu()
+    const toinen = store.lisaaMukautettuLaji({ koodi: '3-as', nimi: 'Kolme asentoa' })
+    store.asetaKilpasarjat(toinen.id, [{ laukauksia: 2 }])
+    const k = store.kisa.kilpailijat[0]!
+    store.lisaaOsallistuminen(k.id, toinen.id)
+    store.asetaLaukaus(k.id, toinen.id, 0, 0, 7)
+
+    const { kisa } = await kierrata(store.kisa)
+
+    expect(kisa.lajit).toHaveLength(2)
+    const tuotu = kisa.kilpailijat[0]!
+    expect(tuotu.osallistumiset[lajiId]?.kilpasarjat[0]?.laukaukset[0]).toBe(10)
+    expect(tuotu.osallistumiset[toinen.id]?.kilpasarjat[0]?.laukaukset[0]).toBe(7)
+  })
+})
+
+/*
+ * Tiedostoon merkitty sovellusversio oli käsin ylläpidetty vakio ja jäänyt arvoon
+ * 0.1.0, joten jokainen viety tiedosto väitti olevansa siitä versiosta. Se on juuri
+ * se tieto, jota vikaa selvitettäessä katsotaan, joten se johdetaan nyt
+ * package.jsonista samoin kuin sovelluksen alalaidassa näkyvä versio.
+ */
+describe('tiedostoon merkitty versio', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  it('on sovelluksen oikea versio', async () => {
+    const { store } = rakennaKisa()
+    const { tavut } = await vieKisa(store.kisa)
+    const wb = new ExcelJS.Workbook()
+    await wb.xlsx.load(tavut)
+
+    const ws = wb.getWorksheet(META_VALILEHTI)!
+    const arvot = new Map<string, string>()
+    ws.eachRow((rivi) => {
+      arvot.set(String(rivi.getCell(1).value ?? ''), String(rivi.getCell(2).value ?? ''))
+    })
+
+    expect(arvot.get('sovellusVersio')).toBe(VERSIO)
+    expect(arvot.get('sovellusVersio')).not.toBe('0.1.0')
+    expect(arvot.get('sovellusVersio')).toMatch(/^\d+\.\d+\.\d+$/)
+  })
+})
+
+/*
+ * Yhdistys- ja kokonaiskilpailu Excelissä mukautetussa kisassa.
+ *
+ * Nämä osiot laskettiin RESUL-lajeista, joten mukautetun kisan taulukot jäivät
+ * tyhjiksi. Vika paljastui vasta kun lajilistan antaminen tehtiin pakolliseksi —
+ * oletus RESUL-lajeihin oli piilottanut sen.
+ */
+describe('mukautetun kisan yhdistyssivu', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  async function vieMukautettu() {
+    const store = useKisaStore()
+    store.asetaKisaTyyppi('mukautettu')
+    const laji = store.lisaaMukautettuLaji({ koodi: '3-as', nimi: 'Kolme asentoa' })
+    store.asetaKilpasarjat(laji.id, [{ laukauksia: 2 }, { laukauksia: 2 }])
+
+    const k = store.lisaaKilpailija({ etunimi: 'Sami', sukunimi: 'Hänninen', yhdistys: 'Nupures' })
+    store.lisaaOsallistuminen(k.id, laji.id)
+    for (let s = 0; s < 2; s++) {
+      for (let i = 0; i < 2; i++) store.asetaLaukaus(k.id, laji.id, s, i, 10)
+    }
+
+    const { tavut } = await vieKisa(store.kisa)
+    const wb = new ExcelJS.Workbook()
+    await wb.xlsx.load(tavut)
+    return wb.getWorksheet('Yhdistykset')!
+  }
+
+  it('lajisarakkeet tulevat kisan omista lajeista', async () => {
+    const ws = await vieMukautettu()
+
+    const otsikot: string[] = []
+    ws.getRow(5).eachCell((c) => otsikot.push(String(c.value ?? '')))
+    expect(otsikot).toContain('3-as')
+    expect(otsikot).not.toContain('RA1')
+  })
+
+  it('yhdistyksen tulos on mukana eikä taulukko jää tyhjäksi', async () => {
+    const ws = await vieMukautettu()
+
+    const tekstit: string[] = []
+    ws.eachRow((rivi) => rivi.eachCell((c) => tekstit.push(String(c.value ?? ''))))
+    expect(tekstit).toContain('Nupures')
+    // 4 × 10 summana.
+    expect(tekstit).toContain('40')
+  })
+
+  it('kokonaiskilpailu näyttää mukautetun kisan kilpailijan', async () => {
+    const ws = await vieMukautettu()
+
+    const tekstit: string[] = []
+    ws.eachRow((rivi) => rivi.eachCell((c) => tekstit.push(String(c.value ?? ''))))
+    expect(tekstit).toContain('Kokonaiskilpailu — henkilökohtainen')
+    expect(tekstit).toContain('Hänninen')
   })
 })

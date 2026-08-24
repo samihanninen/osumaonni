@@ -173,3 +173,83 @@ describe('kisan tallennuksen luku', () => {
     })
   })
 })
+
+/*
+ * Päivitystilanne kokonaisuudessaan: laitteella on version 1 tallennus, sovellus
+ * päivittyy, ja kisan on jatkuttava keskeytyksettä. Tämä on se polku, jonka käyttäjä
+ * kokee kesken kisan tehdyn päivityksen jälkeen.
+ */
+describe('päivitys version 1 tallennuksesta', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    nollaaLuentaTila()
+    pystytaPinia()
+  })
+
+  function kirjoitaVersio1() {
+    localStorage.setItem(
+      'kisa',
+      JSON.stringify({
+        kisa: {
+          schemaVersion: 1,
+          kisaId: 'VANHA123',
+          kisatiedot: {
+            nimi: 'Kesken oleva kisa',
+            jarjestaja: '',
+            paikka: '',
+            pvm: '',
+            kilpailunjohtaja: '',
+            tuomari: '',
+            kirjuri: '',
+            muistiinpanot: '',
+          },
+          asetukset: { laskettavatParhaat: 3, lajiMaaritykset: {} },
+          kilpailijat: [
+            {
+              id: 'k1',
+              etunimi: 'Sami',
+              sukunimi: 'Hänninen',
+              yhdistys: 'Nupures',
+              ikasarja: 'H',
+              osallistumiset: {
+                RA1: {
+                  luokka: 'vakio',
+                  kilpasarjat: [{ laukaukset: [10, 9, 8] }],
+                  rangaistuksia: 0,
+                  hylatty: false,
+                },
+              },
+            },
+          ],
+        },
+      }),
+    )
+  }
+
+  it('kisa latautuu ja tulokset säilyvät', () => {
+    kirjoitaVersio1()
+
+    const store = useKisaStore()
+
+    expect(store.skeemaTila).toBe('migroitu')
+    expect(store.kisa.kisaId).toBe('VANHA123')
+    expect(store.kisa.tyyppi).toBe('resul')
+    expect(store.kilpailijoita).toBe(1)
+    expect(store.kisa.kilpailijat[0]?.osallistumiset.RA1?.kilpasarjat[0]?.laukaukset).toEqual([
+      10, 9, 8,
+    ])
+  })
+
+  /* Migroitu kisa kirjoitetaan takaisin uudella versionumerolla, ei vanhalla. */
+  it('tallentuu jatkossa uudella versiolla', async () => {
+    kirjoitaVersio1()
+
+    const store = useKisaStore()
+    store.lisaaKilpailija({ etunimi: 'Toinen', sukunimi: 'Ampuja', yhdistys: 'Nupures' })
+    await nextTick()
+
+    const tallennettu = JSON.parse(localStorage.getItem('kisa') ?? '{}')
+    expect(tallennettu.kisa.schemaVersion).toBe(KISA_SKEEMA_VERSIO)
+    expect(tallennettu.kisa.tyyppi).toBe('resul')
+  })
+})

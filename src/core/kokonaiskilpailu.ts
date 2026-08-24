@@ -1,5 +1,5 @@
-import type { Kilpailija, Laji, LajiMaaritys } from '@/types/kisa'
-import { LAJIT, LAJI_KOODIT } from './lajit'
+import type { Kilpailija, LajiId } from '@/types/kisa'
+import { type LajiRakenne } from './lajit'
 import { laskeLaji } from './laskenta'
 import { vertaaNimia, TARKAN_TULKKAUKSEN_RAJA } from './sijoitukset'
 
@@ -23,53 +23,67 @@ import { vertaaNimia, TARKAN_TULKKAUKSEN_RAJA } from './sijoitukset'
  * siis tämän sovelluksen tulkinta, ei sääntöteksti.
  */
 
+/** RESUL-sääntöjen mukainen tasatuloksen ratkaisijalaji kokonaiskilpailussa. */
+export const RESUL_TASATULOKSEN_RATKAISIJA = 'RA2'
+
 export interface KokonaisRivi {
   sija: number
   jaettu: boolean
   kilpailija: Kilpailija
   /** Lajikohtaiset pisteet. Laji johon ei osallistuttu on `null`. */
-  lajipisteet: Record<Laji, number | null>
+  lajipisteet: Record<LajiId, number | null>
   pisteet: number
   /** Montako lajia kilpailija on ampunut? */
   lajeja: number
-  /** Onko kaikki neljä lajia ammuttu? */
+  /** Onko kisan kaikki lajit ammuttu? */
   kaikkiLajit: boolean
 }
 
 export interface KokonaisOptiot {
   /**
-   * Vaaditaanko kaikki neljä lajia mukaan pääsemiseksi. Oletuksena ei — kesken oleva
+   * Vaaditaanko kisan kaikki lajit mukaan pääsemiseksi. Oletuksena ei — kesken oleva
    * kisa näyttää silloin osittaisen tilanteen.
    */
   vaadiKaikkiLajit?: boolean
   /**
-   * Kisan lajikohtaiset rakenteet. Ilman näitä käytetään sääntöjen oletuksia, jolloin
-   * järjestäjän muokkaama tulossääntö ei vaikuttaisi laskentaan. Kutsujan on annettava
-   * nämä aina, kun käytettävissä on kisan omat asetukset.
+   * Laji, jonka parempi tulos ratkaisee tasatuloksen.
+   *
+   * RESUL-kisassa `RA2`, koska sääntöjen tasatuloskohta sanoo niin. Mukautetussa
+   * kisassa vastaavaa sääntöä ei ole, joten ilman tätä tasatulos ratkeaa sukunimen
+   * mukaan — arvattu ratkaisijalaji olisi pahempi kuin ei mitään.
    */
-  maaritykset?: Record<Laji, LajiMaaritys>
+  tasatuloksenRatkaisija?: LajiId
 }
 
 export function kokonaiskilpailu(
   kilpailijat: Kilpailija[],
+  /**
+   * Lajit, joista kokonaiskilpailu muodostuu. Pakollinen tarkoituksella: aiemmin tämä
+   * putosi RESUL-lajeihin, jolloin mukautetun kisan lajit jäivät kokonaan huomaamatta
+   * ja kilpailija tipahti tuloksista pois ilman virhettä.
+   */
+  lajit: LajiRakenne[],
   optiot: KokonaisOptiot = {},
 ): KokonaisRivi[] {
-  const { vaadiKaikkiLajit = false, maaritykset } = optiot
+  const { vaadiKaikkiLajit = false, tasatuloksenRatkaisija: ratkaisija } = optiot
+  const tunnisteet = lajit.map((l) => l.id)
 
   const rivit: Omit<KokonaisRivi, 'sija' | 'jaettu'>[] = []
 
   for (const k of kilpailijat) {
-    const lajipisteet = { RA1: null, RA2: null, RA3: null, RA4: null } as Record<
-      Laji,
+    const lajipisteet = Object.fromEntries(tunnisteet.map((l) => [l, null])) as Record<
+      LajiId,
       number | null
     >
     let pisteet = 0
     let lajeja = 0
 
-    for (const laji of LAJI_KOODIT) {
+    for (const laji of tunnisteet) {
       const osallistuminen = k.osallistumiset[laji]
       if (!osallistuminen) continue
-      const tulos = laskeLaji(laji, maaritykset?.[laji] ?? LAJIT[laji], osallistuminen)
+      const rakenne = lajit.find((l) => l.id === laji)
+      if (!rakenne) continue
+      const tulos = laskeLaji(laji, rakenne, osallistuminen)
       if (!tulos.aloitettu) continue
       // Turvallisuusrike sulkee kilpailijan pois koko kilpailusta.
       if (tulos.hylatty) {
@@ -83,7 +97,7 @@ export function kokonaiskilpailu(
     }
 
     if (lajeja === 0) continue
-    const kaikkiLajit = LAJI_KOODIT.every((l) => lajipisteet[l] !== null)
+    const kaikkiLajit = tunnisteet.every((l) => lajipisteet[l] !== null)
     if (vaadiKaikkiLajit && !kaikkiLajit) continue
 
     rivit.push({ kilpailija: k, lajipisteet, pisteet, lajeja, kaikkiLajit })
@@ -91,9 +105,11 @@ export function kokonaiskilpailu(
 
   const jarjestetyt = rivit.sort((a, b) => {
     if (a.pisteet !== b.pisteet) return b.pisteet - a.pisteet
-    // Tasatuloksen ratkaisee parempi RA2:n tulos.
-    const ra2 = (b.lajipisteet.RA2 ?? -1) - (a.lajipisteet.RA2 ?? -1)
-    if (ra2 !== 0) return ra2
+    // Tasatuloksen ratkaisee ratkaisijalajin parempi tulos, jos sellainen on.
+    if (ratkaisija) {
+      const ero = (b.lajipisteet[ratkaisija] ?? -1) - (a.lajipisteet[ratkaisija] ?? -1)
+      if (ero !== 0) return ero
+    }
     return vertaaNimia(a.kilpailija, b.kilpailija)
   })
 
@@ -103,10 +119,11 @@ export function kokonaiskilpailu(
   for (const nykyinen of tulos) {
     if (edellinen) {
       const samatPisteet = nykyinen.pisteet === edellinen.pisteet
-      // Sijoilla 1–8 myös RA2-tulos ratkaisee; sen jälkeen sama yhteistulos riittää.
+      // Sijoilla 1–8 myös ratkaisijalaji ratkaisee; sen jälkeen sama yhteistulos riittää.
       const tasa =
-        edellinen.sija <= TARKAN_TULKKAUKSEN_RAJA
-          ? samatPisteet && (nykyinen.lajipisteet.RA2 ?? -1) === (edellinen.lajipisteet.RA2 ?? -1)
+        edellinen.sija <= TARKAN_TULKKAUKSEN_RAJA && ratkaisija
+          ? samatPisteet &&
+            (nykyinen.lajipisteet[ratkaisija] ?? -1) === (edellinen.lajipisteet[ratkaisija] ?? -1)
           : samatPisteet
       if (tasa) nykyinen.sija = edellinen.sija
     }

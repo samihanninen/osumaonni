@@ -1,5 +1,16 @@
 import { deflate, inflate } from 'pako'
-import { NAPAKYMPPI, OHI, type Kisa, type Laji, type Laukaus, type Luokka } from '@/types/kisa'
+import {
+  NAPAKYMPPI,
+  OHI,
+  type Kisa,
+  type KisaTyyppi,
+  type Laji,
+  type LajiId,
+  type Laukaus,
+  type Luokka,
+  type MukautettuLaji,
+  type SarjaId,
+} from '@/types/kisa'
 import { LAJI_KOODIT } from '@/core/lajit'
 
 /**
@@ -14,11 +25,17 @@ import { LAJI_KOODIT } from '@/core/lajit'
  * Sama muoto kulkee myös linkissä ja tiedostossa — siirtotapa on vaihdettavissa.
  */
 
-/** Muodon versio. Kasvatetaan, jos rakenne muuttuu yhteensopimattomasti. */
-export const SIIRTO_VERSIO = 2
+/**
+ * Muodon versio. Kasvatetaan, jos rakenne muuttuu yhteensopimattomasti.
+ *
+ * Versio 3 lisäsi kisan muodon ja mukautetun kisan lajit. Vanhempi sovellus ei osaa
+ * lukea mukautettua kisaa lainkaan — se näkisi tuloksia lajeille, joita se ei tunne —
+ * joten yhteensopivuutta taaksepäin ei ole.
+ */
+export const SIIRTO_VERSIO = 3
 
 /** Vanhin muoto, jonka tämä versio osaa lukea. */
-export const VANHIN_TUETTU = 2
+export const VANHIN_TUETTU = 3
 
 /** Tunniste, josta paketti tunnistetaan. */
 export const TUNNISTE = 'OO1'
@@ -117,7 +134,8 @@ export function base32Pura(teksti: string): Uint8Array {
 export interface SiirtoRivi {
   /** Kilpailijan tunniste. Sama kuin lähettävällä laitteella. */
   id: string
-  laji: Laji
+  /** Lajin tunniste: RESUL-kisassa lajikoodi, mukautetussa lajin `id`. */
+  laji: LajiId
   luokka: Luokka
   /** Kilpasarjat tiiviinä merkkijonoina. */
   sarjat: string[]
@@ -174,6 +192,15 @@ export interface Siirtopaketti {
   aika: string
 
   // --- Vain täydessä paketissa ---
+  /**
+   * Kisan muoto. Puuttuva arvo tarkoittaa RESUL-kisaa, jotta kenttä voidaan jättää
+   * pois tavallisimmassa tapauksessa — QR-koodissa jokainen merkki maksaa.
+   */
+  kisaTyyppi?: KisaTyyppi
+  /** Mukautetun kisan lajit. RESUL-kisassa puuttuu: lajit tulevat säännöistä. */
+  mukautetutLajit?: MukautettuLaji[]
+  /** Mukautetun kisan sarjat. Ilman näitä vastaanottaja ei tiedä kisan luokittelua. */
+  mukautetutSarjat?: SarjaId[]
   kisatiedot?: Kisa['kisatiedot']
   laskettavatParhaat?: number
   rakenteet?: Partial<Record<Laji, TiivisRakenne>>
@@ -457,6 +484,15 @@ export function rakennaTayspaketti(
     laiteId: tunnisteet.laiteId,
     ...(tunnisteet.laiteNimi ? { laiteNimi: tunnisteet.laiteNimi } : {}),
     aika: tunnisteet.aika,
+    // RESUL on oletus, joten se jätetään pois — muuten jokainen tavallinen paketti
+    // kantaisi turhaa kenttää.
+    ...(kisa.tyyppi === 'mukautettu'
+      ? {
+          kisaTyyppi: 'mukautettu' as const,
+          mukautetutLajit: kisa.lajit ?? [],
+          mukautetutSarjat: kisa.sarjat ?? [],
+        }
+      : {}),
     kisatiedot: kisa.kisatiedot,
     laskettavatParhaat: kisa.asetukset.laskettavatParhaat,
     rakenteet,

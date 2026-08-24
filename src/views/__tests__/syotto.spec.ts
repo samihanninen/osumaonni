@@ -6,7 +6,7 @@ import SyottoView from '../SyottoView.vue'
 import TuloskorttiTaulukko from '@/components/TuloskorttiTaulukko.vue'
 import { useKisaStore } from '@/stores/kisa'
 import { useLaiteStore } from '@/stores/laite'
-import { LAJIT } from '@/core/lajit'
+import { LAJIT, resulRakenne } from '@/core/lajit'
 import type { Kilpailija } from '@/types/kisa'
 
 /**
@@ -226,7 +226,7 @@ describe('TuloskorttiTaulukko — näppäimistösyöttö', () => {
       props: {
         kilpailijat: [store.kisa.kilpailijat[0]!],
         laji: 'RA1',
-        maaritys: LAJIT.RA1,
+        rakenne: resulRakenne('RA1', LAJIT.RA1),
       },
     })
   }
@@ -344,10 +344,79 @@ describe('TuloskorttiTaulukko — näppäimistösyöttö', () => {
       props: {
         kilpailijat: [store.kisa.kilpailijat[0]!],
         laji: 'RA1',
-        maaritys: LAJIT.RA1,
+        rakenne: resulRakenne('RA1', LAJIT.RA1),
         lukittu: true,
       },
     })
     expect(wrapper.findAll('.ruutu')[0]!.attributes('disabled')).toBeDefined()
+  })
+})
+
+/**
+ * Mukautettu kisa syötössä.
+ *
+ * Olennaista on eri mittaiset sarjat: taulukkosyöttö numeroi laukaukset yhtenä jonona,
+ * joten tasamittaisuuteen nojaava jakolasku menisi väärään ruutuun heti ensimmäisen
+ * lyhyen sarjan jälkeen.
+ */
+describe('SyottoView — mukautettu kisa', () => {
+  let store: ReturnType<typeof useKisaStore>
+  let lajiId: string
+
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    store = useKisaStore()
+    store.asetaKisaTyyppi('mukautettu')
+    const laji = store.lisaaMukautettuLaji({ koodi: '3-as', nimi: 'Kolme asentoa' })
+    lajiId = laji.id
+    store.asetaKilpasarjat(lajiId, [
+      { nimi: 'Makuu', laukauksia: 3 },
+      { nimi: 'Polvi', laukauksia: 2 },
+      { nimi: 'Pysty', laukauksia: 1 },
+    ])
+    const k = store.lisaaKilpailija({ etunimi: 'Sami', sukunimi: 'Hänninen', yhdistys: 'Nupures' })
+    store.lisaaOsallistuminen(k.id, lajiId)
+  })
+
+  it('näyttää lajin oman lyhenteen ja sarjarakenteen', async () => {
+    const wrapper = await asenna(lajiId)
+
+    expect(wrapper.text()).toContain('3-as')
+    // Eri mittaiset sarjat luetellaan, koska kertolasku ei kuvaisi niitä.
+    expect(wrapper.text()).toContain('3 + 2 + 1 laukausta')
+  })
+
+  it('näyttää sarjojen omat nimet', async () => {
+    const wrapper = await asenna(lajiId)
+
+    expect(wrapper.text()).toContain('Makuu')
+    expect(wrapper.text()).toContain('Polvi')
+    expect(wrapper.text()).toContain('Pysty')
+  })
+
+  it('kirjaa laukauksen mukautettuun lajiin', async () => {
+    const wrapper = await asenna(lajiId)
+
+    await arvoNappain(wrapper, '9').trigger('click')
+
+    const k = store.kisa.kilpailijat[0]!
+    expect(k.osallistumiset[lajiId]?.kilpasarjat[0]?.laukaukset[0]).toBe(9)
+  })
+
+  it('sarjoissa on kussakin oma määrä ruutuja', async () => {
+    const wrapper = await asenna(lajiId)
+
+    // Kortissa yksi ruutu per laukaus: 3 + 2 + 1.
+    expect(wrapper.findAll('.ruutu')).toHaveLength(6)
+
+    const sarjat = store.kisa.kilpailijat[0]!.osallistumiset[lajiId]!.kilpasarjat
+    expect(sarjat.map((s) => s.laukaukset.length)).toEqual([3, 2, 1])
+  })
+
+  it('kertoo jos kisassa ei ole lajeja', async () => {
+    store.poistaMukautettuLaji(lajiId)
+    const wrapper = await asenna('mitaan')
+
+    expect(wrapper.text()).toContain('Kisassa ei ole vielä lajeja')
   })
 })

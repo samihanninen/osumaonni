@@ -1,18 +1,36 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watchEffect } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useKisaStore } from '@/stores/kisa'
-import { LAJI_KOODIT, LUOKAT, LUOKKA_NIMET } from '@/core/lajit'
-import type { IkaSarja, Laji, Luokka } from '@/types/kisa'
+import { kisanLajit, kisanSarjat, LUOKAT, LUOKKA_NIMET } from '@/core/lajit'
+import type { LajiId, Luokka, SarjaId } from '@/types/kisa'
 
 const store = useKisaStore()
 const { kisa, yhdistysEhdotukset } = storeToRefs(store)
 
-const IKASARJAT: IkaSarja[] = ['H', 'H50']
+/** Kisan sarjat: RESUL-kisassa H ja H50, mukautetussa järjestäjän omat. */
+const sarjat = computed(() => kisanSarjat(kisa.value))
 
-const uusi = ref({ etunimi: '', sukunimi: '', yhdistys: '', ikasarja: 'H' as IkaSarja })
+const uusi = ref({ etunimi: '', sukunimi: '', yhdistys: '', ikasarja: '' as SarjaId })
+
+/*
+ * Lomakkeen sarjavalinta pidetään kelvollisena. Kisan muoto tai sarjalista voi vaihtua
+ * kesken kaiken, ja tyhjä valinta tekisi kilpailijasta sarjattoman — hän ei näkyisi
+ * missään sarjakohtaisessa tuloksessa.
+ */
+watchEffect(() => {
+  if (!sarjat.value.includes(uusi.value.ikasarja)) {
+    uusi.value.ikasarja = sarjat.value[0] ?? ''
+  }
+})
 const virhe = ref('')
 const poistoVahvistus = ref<string | null>(null)
+
+/** Kisan lajit muodosta riippumatta: RESUL-kisassa RA1–RA4, mukautetussa omat lajit. */
+const lajit = computed(() => kisanLajit(kisa.value))
+
+/** RESUL-kisassa sarjat ovat ikäsarjoja; mukautetussa ne eivät liity ikään. */
+const sarjaOtsikko = computed(() => (kisa.value.tyyppi === 'resul' ? 'Ikäsarja' : 'Sarja'))
 
 const kilpailijat = computed(() =>
   [...kisa.value.kilpailijat].sort(
@@ -35,16 +53,16 @@ function lisaa() {
   document.getElementById('etunimi')?.focus()
 }
 
-function osallistuu(id: string, laji: Laji): boolean {
+function osallistuu(id: string, laji: LajiId): boolean {
   return Boolean(store.kilpailija(id)?.osallistumiset[laji])
 }
 
-function vaihdaOsallistuminen(id: string, laji: Laji, mukana: boolean) {
+function vaihdaOsallistuminen(id: string, laji: LajiId, mukana: boolean) {
   if (mukana) store.lisaaOsallistuminen(id, laji)
   else store.poistaOsallistuminen(id, laji)
 }
 
-function luokka(id: string, laji: Laji): Luokka | '' {
+function luokka(id: string, laji: LajiId): Luokka | '' {
   return store.kilpailija(id)?.osallistumiset[laji]?.luokka ?? ''
 }
 
@@ -98,9 +116,9 @@ function poista(id: string) {
           <span class="vihje">Valitse listalta, niin kirjoitusasu pysyy samana.</span>
         </div>
         <div class="kentta">
-          <label for="ikasarja">Ikäsarja</label>
+          <label for="ikasarja">{{ sarjaOtsikko }}</label>
           <select id="ikasarja" v-model="uusi.ikasarja">
-            <option v-for="s in IKASARJAT" :key="s" :value="s">{{ s }}</option>
+            <option v-for="s in sarjat" :key="s" :value="s">{{ s }}</option>
           </select>
         </div>
       </div>
@@ -164,17 +182,17 @@ function poista(id: string) {
                 />
               </div>
               <div class="kentta">
-                <label :for="`ika-${k.id}`">Ikäsarja</label>
+                <label :for="`ika-${k.id}`">{{ sarjaOtsikko }}</label>
                 <select
                   :id="`ika-${k.id}`"
                   :value="k.ikasarja"
                   @change="
                     store.paivitaKilpailija(k.id, {
-                      ikasarja: ($event.target as HTMLSelectElement).value as IkaSarja,
+                      ikasarja: ($event.target as HTMLSelectElement).value,
                     })
                   "
                 >
-                  <option v-for="s in IKASARJAT" :key="s" :value="s">{{ s }}</option>
+                  <option v-for="s in sarjat" :key="s" :value="s">{{ s }}</option>
                 </select>
               </div>
             </div>
@@ -183,25 +201,29 @@ function poista(id: string) {
           <fieldset class="lajit">
             <legend>Lajit ja aseluokat</legend>
             <div class="lajilista">
-              <div v-for="laji in LAJI_KOODIT" :key="laji" class="laji">
+              <div v-for="laji in lajit" :key="laji.id" class="laji">
                 <label class="valinta">
                   <input
                     type="checkbox"
-                    :checked="osallistuu(k.id, laji)"
+                    :checked="osallistuu(k.id, laji.id)"
                     @change="
-                      vaihdaOsallistuminen(k.id, laji, ($event.target as HTMLInputElement).checked)
+                      vaihdaOsallistuminen(
+                        k.id,
+                        laji.id,
+                        ($event.target as HTMLInputElement).checked,
+                      )
                     "
                   />
-                  <span>{{ laji }}</span>
+                  <span :title="laji.nimi">{{ laji.koodi }}</span>
                 </label>
                 <select
-                  v-if="osallistuu(k.id, laji)"
-                  :aria-label="`${laji}: aseluokka`"
-                  :value="luokka(k.id, laji)"
+                  v-if="osallistuu(k.id, laji.id)"
+                  :aria-label="`${laji.koodi}: aseluokka`"
+                  :value="luokka(k.id, laji.id)"
                   @change="
                     store.asetaLuokka(
                       k.id,
-                      laji,
+                      laji.id,
                       ($event.target as HTMLSelectElement).value as Luokka,
                     )
                   "

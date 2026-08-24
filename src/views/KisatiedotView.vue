@@ -1,14 +1,55 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useKisaStore } from '@/stores/kisa'
 import { LAJI_KOODIT, laukauksiaYhteensa, suurinTulos } from '@/core/lajit'
 import { onJoukkuekilpailu } from '@/core/yhdistykset'
 import KisanPaattaminen from '@/components/KisanPaattaminen.vue'
-import type { Laji, TulosSaanto } from '@/types/kisa'
+import MukautetutLajit from '@/components/MukautetutLajit.vue'
+import MukautetutSarjat from '@/components/MukautetutSarjat.vue'
+import type { KisaTyyppi, Laji, TulosSaanto } from '@/types/kisa'
 
 const store = useKisaStore()
 const { kisa } = storeToRefs(store)
+
+const MUODOT: { arvo: KisaTyyppi; nimi: string }[] = [
+  { arvo: 'resul', nimi: 'RESUL (RA1–RA4)' },
+  { arvo: 'mukautettu', nimi: 'Mukautettu kisa' },
+]
+
+const muodonVaihto = ref<KisaTyyppi | null>(null)
+
+/** Kirjattujen laukausten määrä koko kisassa. Kertoo mitä muodon vaihto maksaisi. */
+const kirjattuja = computed(() => {
+  let n = 0
+  for (const k of kisa.value.kilpailijat) {
+    for (const o of Object.values(k.osallistumiset)) {
+      for (const sarja of o?.kilpasarjat ?? []) {
+        for (const laukaus of sarja.laukaukset) if (laukaus !== null) n++
+      }
+    }
+  }
+  return n
+})
+
+/** Tyhjässä kisassa muodon voi vaihtaa suoraan; muuten se on peruuttamaton menetys. */
+function vaihdaMuoto(tyyppi: KisaTyyppi) {
+  if (tyyppi === kisa.value.tyyppi) return
+  const onMitaanMenetettavaa = kisa.value.kilpailijat.some(
+    (k) => Object.keys(k.osallistumiset).length > 0,
+  )
+  if (!onMitaanMenetettavaa) {
+    store.asetaKisaTyyppi(tyyppi)
+    return
+  }
+  muodonVaihto.value = tyyppi
+}
+
+function vahvistaMuoto() {
+  if (!muodonVaihto.value) return
+  store.asetaKisaTyyppi(muodonVaihto.value)
+  muodonVaihto.value = null
+}
 
 const tiedot = computed(() => kisa.value.kisatiedot)
 const asetukset = computed(() => kisa.value.asetukset)
@@ -32,6 +73,49 @@ function paivitaSaanto(laji: Laji, arvo: string) {
   <section class="sivu">
     <h1>Kisatiedot</h1>
     <p>Täytä kisan perustiedot. Ne eivät vaikuta laskentaan, vaan näkyvät tuloslistoissa.</p>
+
+    <fieldset>
+      <legend>Kisan muoto</legend>
+      <p class="vihje">
+        RESUL-kisassa lajit ja säännöt ovat virallisia eikä niitä voi lisätä tai poistaa.
+        Mukautetussa kisassa määrittelet lajit itse — esimerkiksi kolmen asennon kisan tai oman
+        kilpailun. Kisa on aina yhtä muotoa.
+      </p>
+      <div class="muodot" role="group" aria-label="Kisan muoto">
+        <button
+          v-for="m in MUODOT"
+          :key="m.arvo"
+          type="button"
+          class="pikkunappi"
+          :class="{ 'pikkunappi--valittu': kisa.tyyppi === m.arvo }"
+          @click="vaihdaMuoto(m.arvo)"
+        >
+          {{ m.nimi }}
+        </button>
+      </div>
+
+      <!--
+        Muodon vaihto tulkitsee kirjatut tulokset uudelleen: lajit tulevat eri paikasta,
+        joten vanhat osallistumiset jäisivät osoittamaan lajeihin joita kisassa ei ole.
+      -->
+      <p v-if="muodonVaihto" class="varmistus" role="alert">
+        <strong>Vaihdetaanko kisan muoto?</strong>
+        Kisassa on {{ store.kilpailijoita }} kilpailijaa ja {{ kirjattuja }} kirjattua laukausta.
+        Muodon vaihto poistaa kaikki osallistumiset ja tulokset — kilpailijat säilyvät. Tätä ei voi
+        peruuttaa.
+        <span class="napit">
+          <button type="button" class="pikkunappi vaarallinen" @click="vahvistaMuoto">
+            Kyllä, vaihda muoto
+          </button>
+          <button type="button" class="pikkunappi" @click="muodonVaihto = null">Peruuta</button>
+        </span>
+      </p>
+    </fieldset>
+
+    <template v-if="kisa.tyyppi === 'mukautettu'">
+      <MukautetutSarjat />
+      <MukautetutLajit />
+    </template>
 
     <fieldset>
       <legend>Kisan perustiedot</legend>
@@ -111,7 +195,8 @@ function paivitaSaanto(laji: Laji, arvo: string) {
       </div>
     </fieldset>
 
-    <fieldset>
+    <!-- Vain RESUL-kisassa: mukautetun kisan lajit määritellään omassa osiossaan. -->
+    <fieldset v-if="kisa.tyyppi === 'resul'">
       <legend>Lajien rakenne</legend>
       <p class="vihje rakenne-vihje">
         Oletukset ovat RESUL:n sääntöjen mukaiset (versiot 1.6 / 2025). Muokkaa vain, jos säännöt
@@ -213,6 +298,31 @@ function paivitaSaanto(laji: Laji, arvo: string) {
 }
 .palautus {
   margin: 0.85rem 0;
+}
+.muodot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+.napit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+.vaarallinen {
+  border-color: var(--vari-virhe);
+  color: var(--vari-virhe);
+}
+.varmistus {
+  margin-top: 0.6rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--vari-virhe);
+  border-radius: var(--reunapyoristys);
+  background: var(--vari-virhe-tausta);
+  color: var(--vari-virhe);
+  font-size: 0.88rem;
 }
 .piilotettu {
   position: absolute;

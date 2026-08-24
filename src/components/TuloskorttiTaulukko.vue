@@ -1,16 +1,28 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue'
-import type { Kilpailija, Laji, LajiMaaritys, Laukaus, Luokka } from '@/types/kisa'
+import type { Kilpailija, LajiId, Laukaus, Luokka } from '@/types/kisa'
 import { laskeLaji } from '@/core/laskenta'
 import { jasennaLaukaus, laukausKenttaan, onLopullinenMerkki, onSyottoMerkki } from '@/core/laukaus'
-import { LUOKAT, LUOKKA_NIMET } from '@/core/lajit'
+import {
+  LUOKAT,
+  LUOKKA_NIMET,
+  litteaksiIndeksiksi,
+  litteastaIndeksista,
+  pisinKilpasarja,
+  rakenteenLaukaukset,
+  sarjanNimi,
+  type LajiRakenne,
+} from '@/core/lajit'
 
 const props = defineProps<{
   kilpailijat: Kilpailija[]
-  laji: Laji
-  maaritys: LajiMaaritys
+  laji: LajiId
+  rakenne: LajiRakenne
   lukittu?: boolean
 }>()
+
+/** Sarakkeiden määrä: pisin sarja. Lyhyemmät täytetään tyhjillä soluilla. */
+const pisin = computed(() => pisinKilpasarja(props.rakenne))
 
 const emit = defineEmits<{
   syota: [id: string, sarja: number, laukaus: number, arvo: Laukaus]
@@ -23,7 +35,7 @@ const tulokset = computed(() => {
   const map = new Map<string, ReturnType<typeof laskeLaji>>()
   for (const k of props.kilpailijat) {
     const o = k.osallistumiset[props.laji]
-    if (o) map.set(k.id, laskeLaji(props.laji, props.maaritys, o))
+    if (o) map.set(k.id, laskeLaji(props.laji, props.rakenne, o))
   }
   return map
 })
@@ -38,9 +50,7 @@ function ruudunId(id: string, sarja: number, laukaus: number): string {
 }
 
 /** Litteä indeksi: mahdollistaa siirtymisen sarjan rajan yli samalla rivillä. */
-const laukauksiaRivilla = computed(
-  () => props.maaritys.kilpasarjoja * props.maaritys.laukauksiaSarjassa,
-)
+const laukauksiaRivilla = computed(() => rakenteenLaukaukset(props.rakenne))
 
 function siirryRuutuun(rivi: number, litteaIndeksi: number) {
   const rivit = props.kilpailijat.length
@@ -50,8 +60,9 @@ function siirryRuutuun(rivi: number, litteaIndeksi: number) {
 
   const kohde = props.kilpailijat[rivi]
   if (!kohde) return
-  const sarja = Math.floor(litteaIndeksi / props.maaritys.laukauksiaSarjassa)
-  const laukaus = litteaIndeksi % props.maaritys.laukauksiaSarjassa
+  const kohta = litteastaIndeksista(props.rakenne, litteaIndeksi)
+  if (!kohta) return
+  const { sarja, laukaus } = kohta
 
   void nextTick(() => {
     const el = document.getElementById(ruudunId(kohde.id, sarja, laukaus))
@@ -73,9 +84,9 @@ function kirjaa(rivi: number, littea: number, arvo: Laukaus): boolean {
   const k = props.kilpailijat[rivi]
   if (!k) return false
   if (littea < 0 || littea >= laukauksiaRivilla.value) return false
-  const sarja = Math.floor(littea / props.maaritys.laukauksiaSarjassa)
-  const laukaus = littea % props.maaritys.laukauksiaSarjassa
-  emit('syota', k.id, sarja, laukaus, arvo)
+  const kohta = litteastaIndeksista(props.rakenne, littea)
+  if (!kohta) return false
+  emit('syota', k.id, kohta.sarja, kohta.laukaus, arvo)
   return true
 }
 
@@ -86,7 +97,7 @@ function kasitteleNappain(
   sarja: number,
   laukaus: number,
 ) {
-  const littea = sarja * props.maaritys.laukauksiaSarjassa + laukaus
+  const littea = litteaksiIndeksiksi(props.rakenne, sarja, laukaus)
 
   switch (e.key) {
     case 'ArrowRight':
@@ -194,7 +205,7 @@ function poistuRuudusta() {
           <th>Yhdistys</th>
           <th>Luokka</th>
           <th>Sarja</th>
-          <th v-for="i in maaritys.laukauksiaSarjassa" :key="i" class="numero kapea">
+          <th v-for="i in pisin" :key="i" class="numero kapea">
             {{ i }}
           </th>
           <th class="numero">Yht</th>
@@ -208,29 +219,29 @@ function poistuRuudusta() {
       <tbody>
         <template v-for="(k, rivi) in kilpailijat" :key="k.id">
           <tr
-            v-for="sarja in maaritys.kilpasarjoja"
-            :key="`${k.id}-${sarja}`"
-            :class="{ 'rivi--eka': sarja === 1, 'rivi--hylatty': tulokset.get(k.id)?.hylatty }"
+            v-for="(sarjaMaaritys, sIdx) in rakenne.kilpasarjat"
+            :key="`${k.id}-${sIdx}`"
+            :class="{ 'rivi--eka': sIdx === 0, 'rivi--hylatty': tulokset.get(k.id)?.hylatty }"
           >
             <!-- Nimi ja muut kilpailijatiedot vain ensimmäisellä sarjarivillä. -->
             <th
-              v-if="sarja === 1"
+              v-if="sIdx === 0"
               scope="rowgroup"
               class="numero kiinni-vasen"
-              :rowspan="maaritys.kilpasarjoja"
+              :rowspan="rakenne.kilpasarjat.length"
             >
               {{ rivi + 1 }}
             </th>
             <th
-              v-if="sarja === 1"
+              v-if="sIdx === 0"
               scope="rowgroup"
               class="kiinni-nimi nimisolu"
-              :rowspan="maaritys.kilpasarjoja"
+              :rowspan="rakenne.kilpasarjat.length"
             >
               {{ k.sukunimi }}<span class="etunimi">, {{ k.etunimi }}</span>
             </th>
-            <td v-if="sarja === 1" :rowspan="maaritys.kilpasarjoja">{{ k.yhdistys || '—' }}</td>
-            <td v-if="sarja === 1" :rowspan="maaritys.kilpasarjoja">
+            <td v-if="sIdx === 0" :rowspan="rakenne.kilpasarjat.length">{{ k.yhdistys || '—' }}</td>
+            <td v-if="sIdx === 0" :rowspan="rakenne.kilpasarjat.length">
               <select
                 class="luokkavalinta"
                 :aria-label="`${k.sukunimi}: aseluokka`"
@@ -242,19 +253,19 @@ function poistuRuudusta() {
               </select>
             </td>
 
-            <th scope="row" class="sarjasolu">
-              S{{ sarja }}
+            <th scope="row" class="sarjasolu" :title="sarjanNimi(rakenne, sIdx)">
+              {{ sarjaMaaritys.nimi?.trim() || `S${sIdx + 1}` }}
               <span
-                v-if="tulokset.get(k.id)?.laskevaSarja === sarja - 1"
+                v-if="tulokset.get(k.id)?.laskevaSarja === sIdx"
                 class="laskeva"
                 title="Huomioidaan tuloksessa"
                 >●</span
               >
             </th>
 
-            <td v-for="(arvo, i) in laukaukset(k, sarja - 1)" :key="i" class="ruutusolu">
+            <td v-for="(arvo, i) in laukaukset(k, sIdx)" :key="i" class="ruutusolu">
               <input
-                :id="ruudunId(k.id, sarja - 1, i)"
+                :id="ruudunId(k.id, sIdx, i)"
                 type="text"
                 inputmode="numeric"
                 autocomplete="off"
@@ -262,24 +273,34 @@ function poistuRuudusta() {
                 class="ruutu"
                 :class="{ 'ruutu--napa': arvo === '*', 'ruutu--ohi': arvo === '-' || arvo === 0 }"
                 :disabled="lukittu"
-                :aria-label="`${k.sukunimi}, sarja ${sarja}, laukaus ${i + 1}`"
+                :aria-label="`${k.sukunimi}, sarja ${sIdx + 1}, laukaus ${i + 1}`"
                 :value="laukausKenttaan(arvo)"
-                @keydown="kasitteleNappain($event, k, rivi, sarja - 1, i)"
-                @input="kasitteleSyote($event, k, sarja - 1, i)"
+                @keydown="kasitteleNappain($event, k, rivi, sIdx, i)"
+                @input="kasitteleSyote($event, k, sIdx, i)"
                 @blur="poistuRuudusta"
                 @focus="($event.target as HTMLInputElement).select()"
               />
             </td>
 
-            <td class="numero">{{ tulokset.get(k.id)?.sarjat[sarja - 1]?.pisteet ?? 0 }}</td>
+            <!--
+              Lyhyemmän sarjan loppuun tyhjät solut, jotta sarakkeet pysyvät kohdakkain
+              silloinkin kun sarjat ovat eri mittaisia.
+            -->
+            <td
+              v-for="i in pisin - sarjaMaaritys.laukauksia"
+              :key="`tyhja-${i}`"
+              class="ruutusolu tyhjasolu"
+            ></td>
+
+            <td class="numero">{{ tulokset.get(k.id)?.sarjat[sIdx]?.pisteet ?? 0 }}</td>
             <td class="numero napasolu">
-              {{ tulokset.get(k.id)?.sarjat[sarja - 1]?.navat || '' }}
+              {{ tulokset.get(k.id)?.sarjat[sIdx]?.navat || '' }}
             </td>
 
-            <td v-if="sarja === 1" class="numero tulossolu" :rowspan="maaritys.kilpasarjoja">
+            <td v-if="sIdx === 0" class="numero tulossolu" :rowspan="rakenne.kilpasarjat.length">
               {{ tulokset.get(k.id)?.pisteet ?? 0 }}
             </td>
-            <td v-if="sarja === 1" class="numero" :rowspan="maaritys.kilpasarjoja">
+            <td v-if="sIdx === 0" class="numero" :rowspan="rakenne.kilpasarjat.length">
               <input
                 type="number"
                 min="0"
@@ -293,7 +314,7 @@ function poistuRuudusta() {
                 "
               />
             </td>
-            <td v-if="sarja === 1" :rowspan="maaritys.kilpasarjoja">
+            <td v-if="sIdx === 0" :rowspan="rakenne.kilpasarjat.length">
               <input
                 type="checkbox"
                 class="hylkays"

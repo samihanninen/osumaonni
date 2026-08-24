@@ -13,7 +13,10 @@ yksityiskohdat ovat README-tiedostossa — täällä on vain se mitä radalla ta
 2. **Avaa sovellus kerran verkossa** ennen radalle lähtöä, jotta uusin versio ja
    kaikki näkymät ehtivät latautua laitteen muistiin.
 3. **Kirjaa kisatiedot.** Nimi, järjestäjä, paikka, päivämäärä ja vastuuhenkilöt.
-   Valitse kisatyyppi — se ratkaisee lasketaanko tulos summana vai parhaana sarjana.
+   Valitse kisan muoto: **RESUL** (RA1–RA4 virallisin säännöin) tai **mukautettu kisa**,
+   jossa määrittelet lajit, kilpasarjat ja sarjat itse — esimerkiksi kolmen asennon kisan.
+   Tee tämä valinta ennen kilpailijoiden lisäämistä: muodon vaihtaminen jälkikäteen
+   poistaa kirjatut tulokset.
 4. **Lisää kilpailijat.** Nimi, yhdistys ja lajit joihin hän osallistuu.
 5. **Vie tulokset kertaalleen tiedostoon** jo ennen aloitusta. Näin varmistat että
    vienti toimii tällä laitteella, etkä opettele sitä kesken kisan.
@@ -76,9 +79,12 @@ Yhdistäminen ei tarvitse verkkoyhteyttä — QR-koodi siirtää tiedot laittees
 suoraan.
 
 > Kaikissa laitteissa on oltava **sama versio** sovelluksesta. Versio näkyy jokaisen
-> sivun alalaidassa, esimerkiksi `v1.0.0`. Jos versiot eroavat, sovellus kertoo siitä
+> sivun alalaidassa, esimerkiksi `v1.3.0`. Jos versiot eroavat, sovellus kertoo siitä
 > eikä lue koodia. Päivittäkää silloin kaikki laitteet — mutta mieluiten ennen kisaa,
 > ei kesken sen.
+>
+> Versio 1.2 ja 1.3 **eivät** vaihda tuloksia keskenään, joten tarkistakaa numero
+> jokaisesta laitteesta ennen kisan alkua.
 
 ---
 

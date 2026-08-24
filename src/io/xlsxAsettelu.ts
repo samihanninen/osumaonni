@@ -1,23 +1,56 @@
-import type { Laji, LajiMaaritys } from '@/types/kisa'
-
 /** Tiedostomuodon versio. Kasvatetaan, jos asettelu muuttuu yhteensopimattomasti. */
 export const TIEDOSTO_VERSIO = 1
 
 export const SOVELLUS_NIMI = 'OsumaOnni'
 
-/** Muista päivittää julkaisun yhteydessä. */
-export const SOVELLUS_VERSIO = '0.1.0'
-
 export const META_VALILEHTI = '_meta'
 export const KISATIEDOT_VALILEHTI = 'Kisatiedot'
 export const YHDISTYKSET_VALILEHTI = 'Yhdistykset'
 
-export function tuloskorttiNimi(laji: Laji): string {
-  return `Tuloskortti ${laji}`
+/**
+ * Excelin sivunimen rajoitukset.
+ *
+ * Nimi on enintään 31 merkkiä eikä siinä saa olla merkkejä `: \ / ? * [ ]`. Mukautetun
+ * kisan lajikoodi on käyttäjän kirjoittamaa tekstiä, joten se voi rikkoa kumpaakin
+ * sääntöä — kielletty merkki saisi Excelin hylkäämään koko tiedoston.
+ */
+const SIVUNIMEN_MAKSIMI = 31
+const KIELLETYT = /[:\\/?*[\]]/g
+
+export function puhdistaSivunNimi(nimi: string, oletus = 'Laji'): string {
+  const siisti = nimi.replace(KIELLETYT, '-').replace(/\s+/g, ' ').trim()
+  // Excel ei hyväksy myöskään heittomerkkiä nimen alussa tai lopussa.
+  const ilmanHeittomerkkeja = siisti.replace(/^'+|'+$/g, '')
+  return (ilmanHeittomerkkeja || oletus).slice(0, SIVUNIMEN_MAKSIMI)
 }
 
-export function sijoituksetNimi(laji: Laji): string {
-  return `Sijoitukset ${laji}`
+/**
+ * Tekee nimestä uniikin. Excel vertaa sivunimiä kirjainkoosta riippumatta, ja kaksi
+ * samannimistä lajia on mukautetussa kisassa täysin mahdollista.
+ */
+export function uniikkiSivunNimi(ehdotus: string, kaytetyt: Set<string>): string {
+  const perus = puhdistaSivunNimi(ehdotus)
+  if (!kaytetyt.has(perus.toLowerCase())) {
+    kaytetyt.add(perus.toLowerCase())
+    return perus
+  }
+  for (let n = 2; n < 1000; n++) {
+    const pate = ` (${n})`
+    const ehdokas = perus.slice(0, SIVUNIMEN_MAKSIMI - pate.length) + pate
+    if (!kaytetyt.has(ehdokas.toLowerCase())) {
+      kaytetyt.add(ehdokas.toLowerCase())
+      return ehdokas
+    }
+  }
+  return perus
+}
+
+export function tuloskorttiNimi(koodi: string): string {
+  return puhdistaSivunNimi(`Tuloskortti ${koodi}`)
+}
+
+export function sijoituksetNimi(koodi: string): string {
+  return puhdistaSivunNimi(`Sijoitukset ${koodi}`)
 }
 
 /** Sarakenumero (1 = A) kirjaimeksi. ExcelJS ei tarjoa tätä julkisesti. */
@@ -62,7 +95,10 @@ export const PERUSSARAKKEET = [
 export interface Asettelu {
   /** Kilpasarjojen määrä. */
   kilpasarjoja: number
-  laukauksiaSarjassa: number
+  /** Laukausten määrä kilpasarjassa `s`. Sarjat voivat olla eri mittaisia. */
+  laukauksia: (s: number) => number
+  /** Pisin kilpasarja. Otsikkorivin laukausnumerot kirjoitetaan tähän asti. */
+  pisin: number
   /** Ensimmäinen laukaussarake kilpasarjassa `s` (0-alkuinen). */
   laukausAlku: (s: number) => number
   laukausLoppu: (s: number) => number
@@ -83,18 +119,33 @@ export interface Asettelu {
 /** Kolme johdettua saraketta kilpasarjaa kohti: Yht, ★ ja Isk. */
 const JOHDETUT_PER_SARJA = 3
 
-export function luoAsettelu(maaritys: LajiMaaritys): Asettelu {
-  const { kilpasarjoja, laukauksiaSarjassa } = maaritys
+/**
+ * Tuloskortin asettelu lajin rakenteesta.
+ *
+ * Sarjat voivat olla eri mittaisia, joten sarakkeiden paikat lasketaan sarjojen
+ * pituuksista kumulatiivisesti — ei kertolaskuna, joka pätisi vain tasamittaisiin.
+ */
+export function luoAsettelu(rakenne: { kilpasarjat: readonly { laukauksia: number }[] }): Asettelu {
   const perus = PERUSSARAKKEET.length
+  const pituudet = rakenne.kilpasarjat.map((k) => k.laukauksia)
+  const kilpasarjoja = pituudet.length
 
-  const lohko = laukauksiaSarjassa + JOHDETUT_PER_SARJA
-  const laukausAlku = (s: number) => perus + s * lohko + 1
-  const laukausLoppu = (s: number) => laukausAlku(s) + laukauksiaSarjassa - 1
+  // Kumulatiiviset alkusarakkeet: jokainen sarja vie laukauksensa + kolme johdettua.
+  const alut: number[] = []
+  let sarake = perus + 1
+  for (const pituus of pituudet) {
+    alut.push(sarake)
+    sarake += pituus + JOHDETUT_PER_SARJA
+  }
+
+  const laukauksia = (s: number) => pituudet[s] ?? 0
+  const laukausAlku = (s: number) => alut[s] ?? perus + 1
+  const laukausLoppu = (s: number) => laukausAlku(s) + laukauksia(s) - 1
   const sarjaYht = (s: number) => laukausLoppu(s) + 1
   const sarjaNavat = (s: number) => laukausLoppu(s) + 2
   const sarjaIskemat = (s: number) => laukausLoppu(s) + 3
 
-  const jalkeen = perus + kilpasarjoja * lohko
+  const jalkeen = sarake - 1
   const tulos = jalkeen + 1
   const iskemat = jalkeen + 2
   const navat = jalkeen + 3
@@ -105,7 +156,8 @@ export function luoAsettelu(maaritys: LajiMaaritys): Asettelu {
 
   return {
     kilpasarjoja,
-    laukauksiaSarjassa,
+    laukauksia,
+    pisin: pituudet.reduce((s, p) => Math.max(s, p), 0),
     laukausAlku,
     laukausLoppu,
     sarjaYht,

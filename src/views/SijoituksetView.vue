@@ -3,26 +3,34 @@ import { computed, ref } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useKisaStore } from '@/stores/kisa'
-import { LAJI_KOODIT, LUOKAT, LUOKKA_NIMET, onLaji } from '@/core/lajit'
+import { kisanLajit, kisanSarjat, LUOKAT, LUOKKA_NIMET, sarjanNimi } from '@/core/lajit'
 import { sijoitukset } from '@/core/sijoitukset'
-import type { IkaSarja, Laji, Luokka } from '@/types/kisa'
+import type { LajiId, Luokka, SarjaId } from '@/types/kisa'
 
 const route = useRoute()
 const store = useKisaStore()
 const { kisa } = storeToRefs(store)
 
-const laji = computed<Laji>(() => {
+/** Kisan lajit muodosta riippumatta. */
+const lajit = computed(() => kisanLajit(kisa.value))
+
+const laji = computed<LajiId>(() => {
   const p = route.params.laji
   const arvo = Array.isArray(p) ? p[0] : p
-  return onLaji(arvo) ? arvo : 'RA1'
+  if (typeof arvo === 'string' && lajit.value.some((l) => l.id === arvo)) return arvo
+  return lajit.value[0]?.id ?? ''
 })
 
-const maaritys = computed(() => kisa.value.asetukset.lajiMaaritykset[laji.value])
+const rakenne = computed(() => lajit.value.find((l) => l.id === laji.value))
+
+/** RESUL-kisassa sarjat ovat ikäsarjoja; mukautetussa ne eivät liity ikään. */
+const sarjaOtsikko = computed(() => (kisa.value.tyyppi === 'resul' ? 'Ikäsarja' : 'Sarja'))
 
 const luokka = ref<Luokka>('vakio')
-const ikasarjaSuodatin = ref<IkaSarja | 'kaikki'>('kaikki')
+const ikasarjaSuodatin = ref<SarjaId | 'kaikki'>('kaikki')
 
-const IKASARJAT: IkaSarja[] = ['H', 'H50']
+/** Kisan sarjat: RESUL-kisassa H ja H50, mukautetussa järjestäjän omat. */
+const sarjat = computed(() => kisanSarjat(kisa.value))
 
 /**
  * Suodatetut kilpailijat. Kun ikäsarja on rajattu, sijoitukset lasketaan **rajauksen
@@ -36,11 +44,11 @@ const suodatetut = computed(() =>
 )
 
 const rivit = computed(() =>
-  sijoitukset(suodatetut.value, laji.value, luokka.value, maaritys.value),
+  rakenne.value ? sijoitukset(suodatetut.value, laji.value, luokka.value, rakenne.value) : [],
 )
 
 const otsikko = computed(() => {
-  const osat = [laji.value, LUOKKA_NIMET[luokka.value]]
+  const osat = [rakenne.value?.koodi ?? laji.value, LUOKKA_NIMET[luokka.value]]
   if (ikasarjaSuodatin.value !== 'kaikki') osat.push(ikasarjaSuodatin.value)
   return osat.join(' · ')
 })
@@ -61,13 +69,14 @@ function sijaTeksti(sija: number): string {
 
     <nav class="lajivalinta" aria-label="Laji">
       <RouterLink
-        v-for="l in LAJI_KOODIT"
-        :key="l"
-        :to="{ name: 'sijoitukset', params: { laji: l } }"
+        v-for="l in lajit"
+        :key="l.id"
+        :to="{ name: 'sijoitukset', params: { laji: l.id } }"
         class="lajinappi"
-        :class="{ 'lajinappi--valittu': l === laji }"
+        :class="{ 'lajinappi--valittu': l.id === laji }"
+        :title="l.nimi"
       >
-        {{ l }}
+        {{ l.koodi }}
       </RouterLink>
     </nav>
 
@@ -89,8 +98,8 @@ function sijaTeksti(sija: number): string {
       </div>
 
       <div class="suodatin">
-        <span class="suodatin-otsikko">Ikäsarja</span>
-        <div class="napit" role="group" aria-label="Ikäsarja">
+        <span class="suodatin-otsikko">{{ sarjaOtsikko }}</span>
+        <div class="napit" role="group" :aria-label="sarjaOtsikko">
           <button
             type="button"
             class="pikkunappi"
@@ -100,7 +109,7 @@ function sijaTeksti(sija: number): string {
             Kaikki
           </button>
           <button
-            v-for="s in IKASARJAT"
+            v-for="s in sarjat"
             :key="s"
             type="button"
             class="pikkunappi"
@@ -116,7 +125,7 @@ function sijaTeksti(sija: number): string {
     <h2 class="tulososio">{{ otsikko }}</h2>
     <p class="selite">
       Tasatuloksen ratkaisee iskemien määrä, sitten napakympit, kympit, ysit ja niin edelleen.
-      <template v-if="maaritys.tulosSaanto === 'paras'">
+      <template v-if="rakenne?.tulosSaanto === 'paras'">
         Tarvittaessa myös huonompi kilpasarja.
       </template>
       Sijalta 9 alkaen tasatulokset jaetaan sukunimen mukaisessa aakkosjärjestyksessä.
@@ -137,8 +146,16 @@ function sijaTeksti(sija: number): string {
             <th class="numero">Sija</th>
             <th>Nimi</th>
             <th>Yhdistys</th>
-            <th>Ikäsarja</th>
-            <th v-for="i in maaritys.kilpasarjoja" :key="i" class="numero">S{{ i }}</th>
+            <th>{{ sarjaOtsikko }}</th>
+            <!-- Sarjan oma nimi otsikkoon, jotta kolmen asennon kisassa näkyy asento. -->
+            <th
+              v-for="(sarja, i) in rakenne?.kilpasarjat ?? []"
+              :key="i"
+              class="numero"
+              :title="rakenne ? sarjanNimi(rakenne, i) : ''"
+            >
+              {{ sarja.nimi?.trim() || 'S' + (i + 1) }}
+            </th>
             <th class="numero">Tulos</th>
             <th class="numero" title="Iskemien määrä">Isk.</th>
             <th class="numero" title="Napakympit">★</th>

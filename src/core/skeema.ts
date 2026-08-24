@@ -21,7 +21,7 @@ import type { Kisa } from '@/types/kisa'
  * taulukkoon. Pelkkä uusi valinnainen kenttä ei vaadi kasvatusta, koska vanha tallennus
  * latautuu siitä huolimatta oikein.
  */
-export const KISA_SKEEMA_VERSIO = 1
+export const KISA_SKEEMA_VERSIO = 2
 
 /**
  * Miten tallennuksen luku päättyi.
@@ -50,12 +50,20 @@ export type Migraatio = (kisa: Record<string, unknown>) => Record<string, unknow
 
 /**
  * Migraatiot versionumeron mukaan: avain `n` muuntaa version `n` versioksi `n + 1`.
- *
- * Tyhjä, koska versio 1 on ensimmäinen. Ensimmäinen rakennemuutos lisää tänne avaimen
- * `1`, kasvattaa `KISA_SKEEMA_VERSIO`:n kahteen ja tuo mukanaan testin, joka lataa
- * aidon version 1 tallennuksen läpi ketjun.
  */
-export const MIGRAATIOT: Record<number, Migraatio> = {}
+export const MIGRAATIOT: Record<number, Migraatio> = {
+  /**
+   * 1 → 2: kisalle lisätään muoto.
+   *
+   * Ennen versiota 2 kisoja oli vain yhdenlaisia, joten kaikki vanhat tallennukset ovat
+   * RESUL-kisoja. Lajeja ei kirjoiteta: RESUL-kisan lajit tulevat säännöistä, eivät
+   * tallennuksesta.
+   *
+   * Kilpailijoiden `osallistumiset` säilyvät sellaisenaan, koska RESUL-kisassa lajin
+   * tunniste on lajikoodi — sama avain kuin ennenkin.
+   */
+  1: (kisa) => ({ ...kisa, tyyppi: 'resul' }),
+}
 
 /**
  * Ajaa migraatiot yksi versio kerrallaan. Ketjuna eikä hyppäyksinä, jotta jokainen

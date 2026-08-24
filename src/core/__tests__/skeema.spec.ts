@@ -133,3 +133,71 @@ describe('migraatiot', () => {
     expect(tulos.tallennettu).toBeUndefined()
   })
 })
+
+/*
+ * Migraatio 1 → 2 on ensimmäinen oikea versiosiirtymä. Testit ajetaan sellaista
+ * tallennusta vasten, jollaisen versio 1.2.0 laitteelle kirjoitti — ei rakennetta,
+ * joka on johdettu nykyisistä tyypeistä, koska silloin testi seuraisi koodia eikä
+ * kertoisi mitään käyttäjän laitteella olevasta tiedosta.
+ */
+describe('migraatio 1 → 2: kisan muoto', () => {
+  /** Versio 1:n mukainen tallennus: yksi kilpailija ja kirjattu sarja. */
+  const VERSIO_1 = JSON.stringify({
+    kisa: {
+      schemaVersion: 1,
+      kisaId: 'ABCD2345',
+      kisatiedot: { nimi: 'Syyskisa 2026', jarjestaja: 'Nupures' },
+      asetukset: {
+        laskettavatParhaat: 3,
+        lajiMaaritykset: {
+          RA1: { koodi: 'RA1', kilpasarjoja: 2, laukauksiaSarjassa: 10, tulosSaanto: 'paras' },
+        },
+      },
+      kilpailijat: [
+        {
+          id: 'k1',
+          etunimi: 'Sami',
+          sukunimi: 'Hänninen',
+          yhdistys: 'Nupures',
+          ikasarja: 'H',
+          osallistumiset: {
+            RA1: {
+              luokka: 'vakio',
+              kilpasarjat: [{ laukaukset: [10, '*', 9, null, null, null, null, null, null, null] }],
+              rangaistuksia: 0,
+              hylatty: false,
+            },
+          },
+        },
+      ],
+    },
+  })
+
+  it('merkitsee vanhan kisan RESUL-kisaksi', () => {
+    const tulos = lueTallennettu(VERSIO_1)
+
+    expect(tulos.tila).toBe('migroitu')
+    expect(tulos.loydettyVersio).toBe(1)
+    expect(tulos.tallennettu?.kisa.tyyppi).toBe('resul')
+    expect(tulos.tallennettu?.kisa.schemaVersion).toBe(KISA_SKEEMA_VERSIO)
+  })
+
+  /* Tärkein lupaus: päivitys ei saa hukata kirjattuja tuloksia. */
+  it('säilyttää kisan tiedot ja kirjatut laukaukset', () => {
+    const kisa = lueTallennettu(VERSIO_1).tallennettu?.kisa
+
+    expect(kisa?.kisaId).toBe('ABCD2345')
+    expect(kisa?.kisatiedot.nimi).toBe('Syyskisa 2026')
+    expect(kisa?.asetukset.laskettavatParhaat).toBe(3)
+    expect(kisa?.kilpailijat).toHaveLength(1)
+    expect(kisa?.kilpailijat[0]?.sukunimi).toBe('Hänninen')
+    expect(
+      kisa?.kilpailijat[0]?.osallistumiset.RA1?.kilpasarjat[0]?.laukaukset.slice(0, 3),
+    ).toEqual([10, '*', 9])
+  })
+
+  /* RESUL-kisan lajit tulevat säännöistä, joten niitä ei kirjoiteta tallennukseen. */
+  it('ei lisää lajilistaa RESUL-kisaan', () => {
+    expect(lueTallennettu(VERSIO_1).tallennettu?.kisa.lajit).toBeUndefined()
+  })
+})
