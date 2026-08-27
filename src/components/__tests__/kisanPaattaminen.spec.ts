@@ -25,7 +25,7 @@ describe('KisanPaattaminen', () => {
   })
 
   function lisaaTuloksia() {
-    const k = kisa.lisaaKilpailija({ etunimi: 'Sami', sukunimi: 'Hänninen', yhdistys: 'Nupures' })
+    const k = kisa.lisaaKilpailija({ etunimi: 'Sanna', sukunimi: 'Hakala', yhdistys: 'Nupures' })
     kisa.lisaaOsallistuminen(k.id, 'RA1')
     kisa.asetaLaukaus(k.id, 'RA1', 0, 0, 10)
     return k

@@ -156,8 +156,8 @@ describe('migraatio 1 → 2: kisan muoto', () => {
       kilpailijat: [
         {
           id: 'k1',
-          etunimi: 'Sami',
-          sukunimi: 'Hänninen',
+          etunimi: 'Sanna',
+          sukunimi: 'Hakala',
           yhdistys: 'Nupures',
           ikasarja: 'H',
           osallistumiset: {
@@ -190,7 +190,7 @@ describe('migraatio 1 → 2: kisan muoto', () => {
     expect(kisa?.kisatiedot.nimi).toBe('Syyskisa 2026')
     expect(kisa?.asetukset.laskettavatParhaat).toBe(3)
     expect(kisa?.kilpailijat).toHaveLength(1)
-    expect(kisa?.kilpailijat[0]?.sukunimi).toBe('Hänninen')
+    expect(kisa?.kilpailijat[0]?.sukunimi).toBe('Hakala')
     expect(
       kisa?.kilpailijat[0]?.osallistumiset.RA1?.kilpasarjat[0]?.laukaukset.slice(0, 3),
     ).toEqual([10, '*', 9])

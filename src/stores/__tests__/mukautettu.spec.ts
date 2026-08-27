@@ -50,7 +50,7 @@ describe('mukautetun kisan lajit', () => {
   it('osallistuminen luodaan lajin sarjojen mukaisena', () => {
     const laji = store.lisaaMukautettuLaji()
     store.asetaKilpasarjat(laji.id, [{ laukauksia: 3 }, { laukauksia: 5 }])
-    const k = store.lisaaKilpailija({ etunimi: 'Sami', sukunimi: 'Hänninen', yhdistys: 'Nupures' })
+    const k = store.lisaaKilpailija({ etunimi: 'Sanna', sukunimi: 'Hakala', yhdistys: 'Nupures' })
 
     store.lisaaOsallistuminen(k.id, laji.id)
 

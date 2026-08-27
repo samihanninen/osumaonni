@@ -68,7 +68,7 @@ describe('näkymien renderöinti', () => {
     const store = useKisaStore()
     const wrapper = mount(KilpailijatView, { global: globaalit })
 
-    await wrapper.get('#etunimi').setValue('Sami')
+    await wrapper.get('#etunimi').setValue('Sanna')
     await wrapper.get('form').trigger('submit')
 
     expect(store.kilpailijoita).toBe(0)
@@ -79,8 +79,8 @@ describe('näkymien renderöinti', () => {
     const store = useKisaStore()
     const wrapper = mount(KilpailijatView, { global: globaalit })
 
-    await wrapper.get('#etunimi').setValue('Sami')
-    await wrapper.get('#sukunimi').setValue('Hänninen')
+    await wrapper.get('#etunimi').setValue('Sanna')
+    await wrapper.get('#sukunimi').setValue('Hakala')
     await wrapper.get('#yhdistys').setValue('Nupures')
     await wrapper.get('form').trigger('submit')
 
@@ -95,8 +95,8 @@ describe('näkymien renderöinti', () => {
     const store = useKisaStore()
     const wrapper = mount(KilpailijatView, { global: globaalit })
 
-    await wrapper.get('#etunimi').setValue('Sami')
-    await wrapper.get('#sukunimi').setValue('Hänninen')
+    await wrapper.get('#etunimi').setValue('Sanna')
+    await wrapper.get('#sukunimi').setValue('Hakala')
     await wrapper.get('form').trigger('submit')
 
     const id = store.kisa.kilpailijat[0]!.id
@@ -119,7 +119,7 @@ describe('näkymien renderöinti', () => {
     const store = useKisaStore()
     const wrapper = mount(KilpailijatView, { global: globaalit })
 
-    await wrapper.get('#sukunimi').setValue('Hänninen')
+    await wrapper.get('#sukunimi').setValue('Hakala')
     await wrapper.get('form').trigger('submit')
     expect(store.kilpailijoita).toBe(1)
 

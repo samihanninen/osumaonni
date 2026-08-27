@@ -109,7 +109,7 @@ describe('kisan tallennuksen luku', () => {
       const alkuperainen = localStorage.getItem('kisa')
 
       const store = useKisaStore()
-      store.lisaaKilpailija({ etunimi: 'Sami', sukunimi: 'Hänninen', yhdistys: 'Nupures' })
+      store.lisaaKilpailija({ etunimi: 'Sanna', sukunimi: 'Hakala', yhdistys: 'Nupures' })
       // Tallennus kirjoitetaan vasta seuraavalla tikillä.
       await nextTick()
 
@@ -155,7 +155,7 @@ describe('kisan tallennuksen luku', () => {
   describe('kirjoitus', () => {
     it('leimaa tallennukseen nykyisen version', async () => {
       const store = useKisaStore()
-      store.lisaaKilpailija({ etunimi: 'Sami', sukunimi: 'Hänninen', yhdistys: 'Nupures' })
+      store.lisaaKilpailija({ etunimi: 'Sanna', sukunimi: 'Hakala', yhdistys: 'Nupures' })
       await nextTick()
 
       const tallennettu = JSON.parse(localStorage.getItem('kisa') ?? '{}')
@@ -165,7 +165,7 @@ describe('kisan tallennuksen luku', () => {
     /* Tallennukseen ei saa vuotaa muuta kuin kisa: versiointi lupaa tunnetun rakenteen. */
     it('tallentaa vain kisan', async () => {
       const store = useKisaStore()
-      store.lisaaKilpailija({ etunimi: 'Sami', sukunimi: 'Hänninen', yhdistys: 'Nupures' })
+      store.lisaaKilpailija({ etunimi: 'Sanna', sukunimi: 'Hakala', yhdistys: 'Nupures' })
       await nextTick()
 
       const tallennettu = JSON.parse(localStorage.getItem('kisa') ?? '{}')
@@ -207,8 +207,8 @@ describe('päivitys version 1 tallennuksesta', () => {
           kilpailijat: [
             {
               id: 'k1',
-              etunimi: 'Sami',
-              sukunimi: 'Hänninen',
+              etunimi: 'Sanna',
+              sukunimi: 'Hakala',
               yhdistys: 'Nupures',
               ikasarja: 'H',
               osallistumiset: {

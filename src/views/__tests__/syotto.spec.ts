@@ -50,8 +50,8 @@ describe('SyottoView — kosketusnäppäimistö', () => {
     setActivePinia(createPinia())
     store = useKisaStore()
     kilpailija = store.lisaaKilpailija({
-      etunimi: 'Sami',
-      sukunimi: 'Hänninen',
+      etunimi: 'Sanna',
+      sukunimi: 'Hakala',
       yhdistys: 'Nupures',
     })
     store.lisaaOsallistuminen(kilpailija.id, 'RA1')
@@ -135,7 +135,7 @@ describe('SyottoView — kosketusnäppäimistö', () => {
 
     const seuraava = wrapper.findAll('.nappain').find((n) => n.text().includes('Seuraava'))!
     await seuraava.trigger('click')
-    expect(wrapper.text()).toContain('Sami Hänninen')
+    expect(wrapper.text()).toContain('Sanna Hakala')
     expect(wrapper.get('.laskuri').text()).toBe('2 / 2')
   })
 
@@ -149,9 +149,9 @@ describe('SyottoView — kosketusnäppäimistö', () => {
     expect(wrapper.text()).toContain('Aada Ahonen')
 
     // Kolmanteen suoraan, ilman kahta erillistä "Seuraava"-napautusta.
-    // Aakkosjärjestys: Ahonen (0), Cronberg (1), Hänninen (2).
+    // Aakkosjärjestys: Ahonen (0), Cronberg (1), Hakala (2).
     await wrapper.get('#kilpailijavalinta').setValue('2')
-    expect(wrapper.text()).toContain('Sami Hänninen')
+    expect(wrapper.text()).toContain('Sanna Hakala')
     expect(wrapper.get('.laskuri').text()).toBe('3 / 3')
 
     await wrapper.get('#kilpailijavalinta').setValue('1')
@@ -217,7 +217,7 @@ describe('TuloskorttiTaulukko — näppäimistösyöttö', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     store = useKisaStore()
-    kilpailija = store.lisaaKilpailija({ etunimi: 'Sami', sukunimi: 'Hänninen', yhdistys: 'N' })
+    kilpailija = store.lisaaKilpailija({ etunimi: 'Sanna', sukunimi: 'Hakala', yhdistys: 'N' })
     store.lisaaOsallistuminen(kilpailija.id, 'RA1')
   })
 
@@ -374,7 +374,7 @@ describe('SyottoView — mukautettu kisa', () => {
       { nimi: 'Polvi', laukauksia: 2 },
       { nimi: 'Pysty', laukauksia: 1 },
     ])
-    const k = store.lisaaKilpailija({ etunimi: 'Sami', sukunimi: 'Hänninen', yhdistys: 'Nupures' })
+    const k = store.lisaaKilpailija({ etunimi: 'Sanna', sukunimi: 'Hakala', yhdistys: 'Nupures' })
     store.lisaaOsallistuminen(k.id, lajiId)
   })
 

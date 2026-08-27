@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, ref, watchEffect } from 'vue'
+import { computed, ref, watch, watchEffect } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useKisaStore } from '@/stores/kisa'
 import { kisanLajit, kisanSarjat, LUOKAT, LUOKKA_NIMET } from '@/core/lajit'
-import type { LajiId, Luokka, SarjaId } from '@/types/kisa'
+import type { Kilpailija, LajiId, Luokka, SarjaId } from '@/types/kisa'
 
 const store = useKisaStore()
 const { kisa, yhdistysEhdotukset } = storeToRefs(store)
@@ -32,12 +32,40 @@ const lajit = computed(() => kisanLajit(kisa.value))
 /** RESUL-kisassa sarjat ovat ikäsarjoja; mukautetussa ne eivät liity ikään. */
 const sarjaOtsikko = computed(() => (kisa.value.tyyppi === 'resul' ? 'Ikäsarja' : 'Sarja'))
 
-const kilpailijat = computed(() =>
-  [...kisa.value.kilpailijat].sort(
-    (a, b) =>
-      a.sukunimi.localeCompare(b.sukunimi, 'fi') || a.etunimi.localeCompare(b.etunimi, 'fi'),
-  ),
-)
+/**
+ * Näyttöjärjestys sukunimen mukaan — mutta **ei kesken kirjoittamisen.**
+ *
+ * Nimikentät tallentavat joka näppäimenpainalluksella, jotta mitään ei jää tallentamatta
+ * jos sovellus suljetaan kesken muokkauksen. Jos lista järjestettäisiin suoraan nimen
+ * mukaan, rivi vaihtaisi paikkaa kirjaimen välissä: "Pertti Man" ja "Sanna M…" — M nostaa
+ * Samin ensimmäiseksi ja kolmas kirjain pudottaa takaisin. Kohdistus seurasi liikkuvaa
+ * riviä tai jäi väärään kenttään, eikä nimeä voinut kirjoittaa loppuun.
+ *
+ * Järjestys lasketaan siksi tunnisteiden listana, joka päivittyy vasta kun kilpailijoita
+ * lisätään tai poistetaan tai kun nimikenttä menettää kohdistuksen.
+ */
+const jarjestys = ref<string[]>([])
+
+function vertaaNimia(a: Kilpailija, b: Kilpailija): number {
+  return a.sukunimi.localeCompare(b.sukunimi, 'fi') || a.etunimi.localeCompare(b.etunimi, 'fi')
+}
+
+function jarjestaUudelleen() {
+  jarjestys.value = [...kisa.value.kilpailijat].sort(vertaaNimia).map((k) => k.id)
+}
+
+// Lisäys ja poisto muuttavat listaa; silloin järjestys saa muuttua.
+watch(() => kisa.value.kilpailijat.map((k) => k.id).join(), jarjestaUudelleen, { immediate: true })
+
+const kilpailijat = computed(() => {
+  const indeksi = new Map(kisa.value.kilpailijat.map((k) => [k.id, k]))
+  const jarjestetyt = jarjestys.value
+    .map((id) => indeksi.get(id))
+    .filter((k): k is Kilpailija => Boolean(k))
+  // Turvaverkko: jos joku on jäänyt järjestyksen ulkopuolelle, se näkyy silti.
+  const puuttuvat = kisa.value.kilpailijat.filter((k) => !jarjestys.value.includes(k.id))
+  return [...jarjestetyt, ...puuttuvat]
+})
 
 function lisaa() {
   const sukunimi = uusi.value.sukunimi.trim()
@@ -152,6 +180,7 @@ function poista(id: string) {
                       etunimi: ($event.target as HTMLInputElement).value,
                     })
                   "
+                  @blur="jarjestaUudelleen"
                 />
               </div>
               <div class="kentta">
@@ -165,6 +194,7 @@ function poista(id: string) {
                       sukunimi: ($event.target as HTMLInputElement).value,
                     })
                   "
+                  @blur="jarjestaUudelleen"
                 />
               </div>
               <div class="kentta">

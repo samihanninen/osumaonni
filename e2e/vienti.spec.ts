@@ -13,7 +13,7 @@ import { avaaKisalla, napautaMonta, siirry } from './apurit'
 
 const AMPUJAT = [
   { etunimi: 'Aada', sukunimi: 'Ahonen', yhdistys: 'KaRes' },
-  { etunimi: 'Sami', sukunimi: 'Hänninen', yhdistys: 'Nupures' },
+  { etunimi: 'Sanna', sukunimi: 'Hakala', yhdistys: 'Nupures' },
 ]
 
 test('vienti lataa Excel-tiedoston', async ({ page }) => {

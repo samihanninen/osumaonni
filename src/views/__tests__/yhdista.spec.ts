@@ -58,7 +58,7 @@ function kloonaa<T>(arvo: T): T {
 function perustaKisa() {
   const store = useKisaStore()
   const a = store.lisaaKilpailija({ etunimi: 'Aada', sukunimi: 'Ahonen', yhdistys: 'KaRes' })
-  const b = store.lisaaKilpailija({ etunimi: 'Sami', sukunimi: 'Hänninen', yhdistys: 'Nupures' })
+  const b = store.lisaaKilpailija({ etunimi: 'Sanna', sukunimi: 'Hakala', yhdistys: 'Nupures' })
   store.lisaaOsallistuminen(a.id, 'RA1')
   store.lisaaOsallistuminen(b.id, 'RA1')
   return { store, a, b }
