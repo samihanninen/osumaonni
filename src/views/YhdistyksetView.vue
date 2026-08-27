@@ -230,22 +230,6 @@ const onTuloksia = computed(() =>
   flex-wrap: wrap;
   gap: 0.25rem;
 }
-.pikkunappi {
-  min-height: 40px;
-  padding: 0.3rem 0.7rem;
-  font: inherit;
-  font-size: 0.9rem;
-  border: 1px solid var(--vari-reuna);
-  border-radius: var(--reunapyoristys);
-  background: var(--vari-tausta-korotettu);
-  color: var(--vari-teksti-himmea);
-  cursor: pointer;
-}
-.pikkunappi--valittu {
-  border-color: var(--vari-korostus);
-  color: var(--vari-korostus);
-  font-weight: 700;
-}
 
 h2 {
   font-size: 1.05rem;

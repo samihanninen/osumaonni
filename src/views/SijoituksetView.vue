@@ -255,26 +255,6 @@ function sijaTeksti(sija: number): string {
   display: flex;
   gap: 0.25rem;
 }
-.pikkunappi {
-  min-height: 40px;
-  padding: 0.3rem 0.7rem;
-  font: inherit;
-  font-size: 0.9rem;
-  border: 1px solid var(--vari-reuna);
-  border-radius: var(--reunapyoristys);
-  background: var(--vari-tausta-korotettu);
-  color: var(--vari-teksti-himmea);
-  cursor: pointer;
-}
-.pikkunappi small {
-  opacity: 0.7;
-  font-size: 0.78rem;
-}
-.pikkunappi--valittu {
-  border-color: var(--vari-korostus);
-  color: var(--vari-korostus);
-  font-weight: 700;
-}
 
 .tulososio {
   font-size: 1.05rem;

@@ -167,51 +167,54 @@ function suurin(laji: MukautettuLaji): number {
         </div>
       </div>
 
-      <table class="sarjat">
-        <thead>
-          <tr>
-            <th>Kilpasarja</th>
-            <th>Nimi</th>
-            <th class="numero">Laukauksia</th>
-            <th><span class="piilotettu">Toiminnot</span></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(sarja, i) in laji.kilpasarjat" :key="i">
-            <th scope="row">{{ i + 1 }}.</th>
-            <td>
-              <input
-                type="text"
-                :placeholder="`Sarja ${i + 1}`"
-                :aria-label="`${laji.nimi}: sarjan ${i + 1} nimi`"
-                :value="sarja.nimi ?? ''"
-                @change="asetaNimi(laji, i, ($event.target as HTMLInputElement).value)"
-              />
-            </td>
-            <td class="numero">
-              <input
-                class="pieni"
-                type="number"
-                min="1"
-                max="100"
-                :aria-label="`${laji.nimi}: sarjan ${i + 1} laukausmäärä`"
-                :value="sarja.laukauksia"
-                @change="asetaPituus(laji, i, ($event.target as HTMLInputElement).value)"
-              />
-            </td>
-            <td>
-              <button
-                type="button"
-                class="pikkunappi"
-                :disabled="laji.kilpasarjat.length <= 1"
-                @click="poistaSarja(laji, i)"
-              >
-                Poista kilpasarja
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <!-- Kehys vierittää kapealla näytöllä, jottei nimikenttä puristu olemattomiin. -->
+      <div class="taulukko-kehys">
+        <table class="sarjat">
+          <thead>
+            <tr>
+              <th>Kilpasarja</th>
+              <th>Nimi</th>
+              <th class="numero">Laukauksia</th>
+              <th><span class="piilotettu">Toiminnot</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(sarja, i) in laji.kilpasarjat" :key="i">
+              <th scope="row">{{ i + 1 }}.</th>
+              <td>
+                <input
+                  type="text"
+                  :placeholder="`Sarja ${i + 1}`"
+                  :aria-label="`${laji.nimi}: sarjan ${i + 1} nimi`"
+                  :value="sarja.nimi ?? ''"
+                  @change="asetaNimi(laji, i, ($event.target as HTMLInputElement).value)"
+                />
+              </td>
+              <td class="numero">
+                <input
+                  class="pieni"
+                  type="number"
+                  min="1"
+                  max="100"
+                  :aria-label="`${laji.nimi}: sarjan ${i + 1} laukausmäärä`"
+                  :value="sarja.laukauksia"
+                  @change="asetaPituus(laji, i, ($event.target as HTMLInputElement).value)"
+                />
+              </td>
+              <td>
+                <button
+                  type="button"
+                  class="pikkunappi"
+                  :disabled="laji.kilpasarjat.length <= 1"
+                  @click="poistaSarja(laji, i)"
+                >
+                  Poista kilpasarja
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
       <p class="yhteenveto">
         {{ laji.kilpasarjat.length }} kilpasarjaa, {{ laukauksiaYhteensa(laji) }} laukausta. Suurin
@@ -290,6 +293,10 @@ function suurin(laji: MukautettuLaji): number {
 
 .sarjat {
   width: 100%;
+}
+/* Nimikenttä ei saa kutistua luettavuuden alle; taulukko vierittyy sen sijaan. */
+.sarjat td input[type='text'] {
+  min-width: 8rem;
 }
 .sarjat .numero {
   text-align: right;

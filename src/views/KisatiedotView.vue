@@ -81,13 +81,14 @@ function paivitaSaanto(laji: Laji, arvo: string) {
         Mukautetussa kisassa määrittelet lajit itse — esimerkiksi kolmen asennon kisan tai oman
         kilpailun. Kisa on aina yhtä muotoa.
       </p>
-      <div class="muodot" role="group" aria-label="Kisan muoto">
+      <div class="valintapalkki" role="group" aria-label="Kisan muoto">
         <button
           v-for="m in MUODOT"
           :key="m.arvo"
           type="button"
-          class="pikkunappi"
-          :class="{ 'pikkunappi--valittu': kisa.tyyppi === m.arvo }"
+          class="valintapalkki-osa"
+          :class="{ 'valintapalkki-osa--valittu': kisa.tyyppi === m.arvo }"
+          :aria-pressed="kisa.tyyppi === m.arvo"
           @click="vaihdaMuoto(m.arvo)"
         >
           {{ m.nimi }}
@@ -298,12 +299,6 @@ function paivitaSaanto(laji: Laji, arvo: string) {
 }
 .palautus {
   margin: 0.85rem 0;
-}
-.muodot {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-bottom: 0.5rem;
 }
 .napit {
   display: flex;
