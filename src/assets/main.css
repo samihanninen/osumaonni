@@ -298,3 +298,84 @@ th.numero {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/*
+ * Pikkunappi: suodattimet ja muut kevyet valinnat, esimerkiksi aseluokka ja sarja.
+ *
+ * Oli aiemmin kahdesti näkymien omissa scoped-tyyleissä, jolloin sitä käyttävät
+ * komponentit jäivät kokonaan tyylittelemättä — scoped-tyyli ei vuoda muualle. Siksi
+ * tämä kuuluu yhteiseen tiedostoon.
+ */
+.pikkunappi {
+  min-height: 40px;
+  padding: 0.3rem 0.7rem;
+  font: inherit;
+  font-size: 0.9rem;
+  border: 1px solid var(--vari-reuna);
+  border-radius: var(--reunapyoristys);
+  background: var(--vari-tausta-korotettu);
+  color: var(--vari-teksti-himmea);
+  cursor: pointer;
+}
+.pikkunappi small {
+  opacity: 0.7;
+  font-size: 0.78rem;
+}
+.pikkunappi--valittu {
+  border-color: var(--vari-korostus);
+  color: var(--vari-korostus);
+  font-weight: 700;
+}
+.pikkunappi:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/*
+ * Valintapalkki: kahden toisensa poissulkevan vaihtoehdon valinta.
+ *
+ * Erotettu suodatinnapeista tarkoituksella. Suodatin rajaa näkymää, mutta tällä
+ * valitaan mitä kisa *on* — valinta muuttaa laskentaa eikä sitä tehdä kuin kerran.
+ * Napit ovat kiinni toisissaan yhtenä palkkina, jolloin ne luetaan yhtenä valintana
+ * eikä kahtena erillisenä kytkimenä.
+ *
+ * Valittu puolisko täytetään, ei pelkkää reunusta: kirkkaassa valossa käsivarren
+ * mitan päästä värillinen reunus jää helposti huomaamatta — sama havainto kuin
+ * napakympin näppäimessä.
+ *
+ * Toteutettu painikkeilla eikä radiovalinnoilla: radioryhmässä nuolinäppäin vaihtaisi
+ * arvoa heti kohdistuksen ollessa siinä, ja kisan muodon vaihtuminen huomaamatta
+ * tyhjentäisi kirjatut tulokset.
+ */
+.valintapalkki {
+  display: flex;
+  width: 100%;
+  max-width: 34rem;
+  border: 1px solid var(--vari-reuna);
+  border-radius: var(--reunapyoristys);
+  overflow: hidden;
+  background: var(--vari-tausta-korotettu);
+}
+.valintapalkki-osa {
+  flex: 1 1 0;
+  /* Isompi kuin tavallinen nappi: tämä on sivun päävalinta. */
+  min-height: 48px;
+  padding: 0.6rem 0.9rem;
+  border: none;
+  background: transparent;
+  color: var(--vari-teksti);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.valintapalkki-osa + .valintapalkki-osa {
+  border-left: 1px solid var(--vari-reuna);
+}
+.valintapalkki-osa:hover:not(.valintapalkki-osa--valittu) {
+  background: var(--vari-korostus-himmea);
+}
+.valintapalkki-osa--valittu {
+  background: var(--vari-korostus);
+  color: #fff;
+}

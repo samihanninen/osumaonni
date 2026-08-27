@@ -35,15 +35,19 @@ const laji = computed(() => {
       <span class="tunnus-nimi">OsumaOnni</span>
     </RouterLink>
 
-    <!-- Järjestys noudattaa kisan kulkua: syöttö ensin, koska sitä käytetään eniten. -->
+    <!--
+      Järjestys noudattaa kisan kulkua: perustaminen, kilpailijat, tulokset, yhdistäminen
+      ja lopuksi vienti. Syöttö on silti ensimmäisenä, koska kisapäivänä siihen palataan
+      kerta toisensa jälkeen — muihin käydään harvakseltaan.
+    -->
     <nav class="valikko" aria-label="Päävalikko">
       <RouterLink :to="`/syota/${laji}`" class="valikko-ensisijainen">Syötä tulokset</RouterLink>
-      <RouterLink :to="`/tulokset/${laji}`">Sijoitukset</RouterLink>
+      <RouterLink to="/kisatiedot">Kisatiedot</RouterLink>
       <RouterLink to="/kilpailijat">Kilpailijat</RouterLink>
+      <RouterLink :to="`/tulokset/${laji}`">Sijoitukset</RouterLink>
       <RouterLink to="/yhdistykset">Yhdistykset</RouterLink>
       <RouterLink to="/yhdista">Yhdistä</RouterLink>
       <RouterLink to="/vienti">Vienti</RouterLink>
-      <RouterLink to="/kisatiedot">Kisatiedot</RouterLink>
       <RouterLink to="/ohje">Ohje</RouterLink>
     </nav>
   </header>
@@ -136,8 +140,8 @@ const laji = computed(() => {
   font-size: 0.95rem;
   font-weight: 600;
   white-space: nowrap;
-  /* Riittävä kosketuskohde ilman että palkki kasvaa liian korkeaksi. */
-  min-height: 40px;
+  /* Sama 44px:n kosketuskohde kuin muillakin napeilla; tätä palkkia käytetään eniten. */
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
 }
