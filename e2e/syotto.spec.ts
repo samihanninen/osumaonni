@@ -11,7 +11,7 @@ import { avaaKisalla, napauta, napautaMonta } from './apurit'
 
 const AMPUJAT = [
   { etunimi: 'Aada', sukunimi: 'Ahonen', yhdistys: 'KaRes' },
-  { etunimi: 'Sami', sukunimi: 'Hänninen', yhdistys: 'Nupures' },
+  { etunimi: 'Sanna', sukunimi: 'Hakala', yhdistys: 'Nupures' },
 ]
 
 test.describe('kosketusnäppäimistö', () => {
@@ -80,7 +80,7 @@ test.describe('kosketusnäppäimistö', () => {
     await expect(page.locator('.laskuri')).toHaveText('1 / 2')
 
     await page.locator('.nappain', { hasText: 'Seuraava' }).click()
-    await expect(page.locator('.nimi')).toHaveText('Sami Hänninen')
+    await expect(page.locator('.nimi')).toHaveText('Sanna Hakala')
     await expect(page.locator('.laskuri')).toHaveText('2 / 2')
 
     await page.locator('#kilpailijavalinta').selectOption('0')
@@ -242,7 +242,7 @@ test.describe('mahtuminen kapealle näytölle', () => {
     await avaaKisalla(
       page,
       [
-        { etunimi: 'Sami', sukunimi: 'Hänninen', yhdistys: 'Nupures' },
+        { etunimi: 'Sanna', sukunimi: 'Hakala', yhdistys: 'Nupures' },
         { etunimi: 'Aada', sukunimi: 'Ahonen', yhdistys: 'KaRes' },
       ],
       { polku: '/#/syota/RA1', syottotapa: 'nappaimisto' },
@@ -258,7 +258,7 @@ test.describe('mahtuminen kapealle näytölle', () => {
   })
 
   test('QR-koodi mahtuu ruudulle', async ({ page }) => {
-    await avaaKisalla(page, [{ etunimi: 'Sami', sukunimi: 'Hänninen', yhdistys: 'Nupures' }], {
+    await avaaKisalla(page, [{ etunimi: 'Sanna', sukunimi: 'Hakala', yhdistys: 'Nupures' }], {
       polku: '/#/yhdista',
     })
 

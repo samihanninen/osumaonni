@@ -95,14 +95,14 @@ describe('yhdistäminen — perusteet', () => {
   })
 
   it('eri kisasta yhdistettäessä kilpailija tunnistetaan nimen perusteella', () => {
-    const { store } = luoKisa([['Sami', 'Hänninen']])
+    const { store } = luoKisa([['Sanna', 'Hakala']])
 
     // Toinen laite on perustanut oman kisan, joten tunnisteet ovat eri.
     setActivePinia(createPinia())
     const toinen = useKisaStore()
     const k = toinen.lisaaKilpailija({
-      etunimi: 'Sami',
-      sukunimi: 'Hänninen',
+      etunimi: 'Sanna',
+      sukunimi: 'Hakala',
       yhdistys: 'Nupures',
     })
     toinen.lisaaOsallistuminen(k.id, 'RA1')
@@ -118,7 +118,7 @@ describe('yhdistäminen — perusteet', () => {
   })
 
   it('eri niminen kilpailija lisätään uutena', () => {
-    const { store } = luoKisa([['Sami', 'Hänninen']])
+    const { store } = luoKisa([['Sanna', 'Hakala']])
 
     setActivePinia(createPinia())
     const toinen = useKisaStore()
@@ -221,7 +221,7 @@ describe('yhdistäminen — ristiriidat', () => {
 
   /** Kaksi laitetta ovat kirjanneet saman sarjan eri tavalla. */
   function ristiriitaTilanne() {
-    const { store, kisa } = luoKisa([['Sami', 'Hänninen']])
+    const { store, kisa } = luoKisa([['Sanna', 'Hakala']])
     const id = kisa.kilpailijat[0]!.id
     kirjaa(store, id, [9, 9, 9])
 
@@ -243,7 +243,7 @@ describe('yhdistäminen — ristiriidat', () => {
 
     const r = tulos.ristiriidat[0]!
     expect(r.avain).toBe(ristiriidanAvain(id, 'RA1', 0))
-    expect(r.nimi).toBe('Hänninen, Sami')
+    expect(r.nimi).toBe('Hakala, Sanna')
     expect(r.omaPisteet).toBe(27)
     expect(r.saapuvaPisteet).toBe(30)
   })
@@ -479,8 +479,8 @@ describe('mukautetun kisan yhdistäminen', () => {
       kilpailijat: [
         {
           id: 'k1',
-          etunimi: 'Sami',
-          sukunimi: 'Hänninen',
+          etunimi: 'Sanna',
+          sukunimi: 'Hakala',
           yhdistys: 'Nupures',
           ikasarja: 'Yleinen',
           osallistumiset: {},

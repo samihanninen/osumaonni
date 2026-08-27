@@ -25,21 +25,21 @@ function rakennaKisa() {
   store.kisa.kisatiedot.pvm = '15.6.2026'
 
   // RA1 (2 × 10, parempi sarja) — napakymppejä, ohilaukauksia ja rangaistus.
-  const sami = store.lisaaKilpailija({
-    etunimi: 'Sami',
-    sukunimi: 'Hänninen',
+  const sanna = store.lisaaKilpailija({
+    etunimi: 'Sanna',
+    sukunimi: 'Hakala',
     yhdistys: 'Nupures',
   })
-  store.lisaaOsallistuminen(sami.id, 'RA1', 'vakio')
+  store.lisaaOsallistuminen(sanna.id, 'RA1', 'vakio')
   const ra1 = ['*', 2, '*', 10, 9, 8, '-', 7, 6, 5] as const
-  ra1.forEach((v, i) => store.asetaLaukaus(sami.id, 'RA1', 0, i, v))
-  for (let i = 0; i < 10; i++) store.asetaLaukaus(sami.id, 'RA1', 1, i, 4)
-  store.asetaRangaistukset(sami.id, 'RA1', 1)
+  ra1.forEach((v, i) => store.asetaLaukaus(sanna.id, 'RA1', 0, i, v))
+  for (let i = 0; i < 10; i++) store.asetaLaukaus(sanna.id, 'RA1', 1, i, 4)
+  store.asetaRangaistukset(sanna.id, 'RA1', 1)
 
   // RA2 (3 × 6, summa) samalle kilpailijalle — testaa myös roolin yhdistämisen.
-  store.lisaaOsallistuminen(sami.id, 'RA2', 'avoin')
+  store.lisaaOsallistuminen(sanna.id, 'RA2', 'avoin')
   for (let s = 0; s < 3; s++) {
-    for (let i = 0; i < 6; i++) store.asetaLaukaus(sami.id, 'RA2', s, i, 7 + s)
+    for (let i = 0; i < 6; i++) store.asetaLaukaus(sanna.id, 'RA2', s, i, 7 + s)
   }
 
   // Toinen kilpailija, eri yhdistys ja ikäsarja, hylätty.
@@ -63,7 +63,7 @@ function rakennaKisa() {
   store.lisaaOsallistuminen(kalevi.id, 'RA3')
   for (let i = 0; i < 10; i++) store.asetaLaukaus(kalevi.id, 'RA3', 0, i, 6)
 
-  return { store, sami, aada, kalevi }
+  return { store, sanna, aada, kalevi }
 }
 
 async function kierrata(kisa: Kisa) {
@@ -155,18 +155,18 @@ describe('vienti', () => {
   })
 
   it('kaavoihin talletetaan myös laskettu arvo, jotta luku onnistuu ilman Exceliä', async () => {
-    const { store, sami } = rakennaKisa()
+    const { store, sanna } = rakennaKisa()
     const { tavut } = await vieKisa(store.kisa)
     const wb = new ExcelJS.Workbook()
     await wb.xlsx.load(tavut)
 
     const ws = wb.getWorksheet(tuloskorttiNimi('RA1'))!
     const a = luoAsettelu(resulRakenne('RA1', LAJIT.RA1))
-    const odotettu = laskeLaji('RA1', LAJIT.RA1, sami.osallistumiset.RA1!)
+    const odotettu = laskeLaji('RA1', LAJIT.RA1, sanna.osallistumiset.RA1!)
 
-    // Hänninen on toinen rivi (Ahonen ensin).
+    // Hakala on toinen rivi (Ahonen ensin).
     const rivi = 5
-    expect(ws.getCell(rivi, 2).value).toBe('Hänninen')
+    expect(ws.getCell(rivi, 2).value).toBe('Hakala')
     expect(ws.getCell(rivi, a.sarjaYht(0)).result).toBe(odotettu.sarjat[0]!.pisteet)
     expect(ws.getCell(rivi, a.tulos).result).toBe(odotettu.pisteet)
   })
@@ -179,7 +179,7 @@ describe('vienti', () => {
 
     const ws = wb.getWorksheet(tuloskorttiNimi('RA1'))!
     const a = luoAsettelu(resulRakenne('RA1', LAJIT.RA1))
-    const rivi = 5 // Hänninen
+    const rivi = 5 // Hakala
     expect(ws.getCell(rivi, a.laukausAlku(0)).value).toBe('*')
     expect(ws.getCell(rivi, a.laukausAlku(0) + 1).value).toBe(2)
     expect(ws.getCell(rivi, a.laukausAlku(0) + 6).value).toBe('-')
@@ -228,27 +228,27 @@ describe('kierros: vienti → tuonti', () => {
     const { kisa, kilpailijoita } = await kierrata(store.kisa)
 
     expect(kilpailijoita).toBe(3)
-    const sami = kisa.kilpailijat.find((k) => k.sukunimi === 'Hänninen')!
-    // Hänninen esiintyy sekä RA1- että RA2-välilehdellä, mutta on yksi kilpailija.
-    expect(Object.keys(sami.osallistumiset).sort()).toEqual(['RA1', 'RA2'])
+    const sanna = kisa.kilpailijat.find((k) => k.sukunimi === 'Hakala')!
+    // Hakala esiintyy sekä RA1- että RA2-välilehdellä, mutta on yksi kilpailija.
+    expect(Object.keys(sanna.osallistumiset).sort()).toEqual(['RA1', 'RA2'])
   })
 
   it('säilyttää laukaukset merkkeineen', async () => {
     const { store } = rakennaKisa()
     const { kisa } = await kierrata(store.kisa)
 
-    const sami = kisa.kilpailijat.find((k) => k.sukunimi === 'Hänninen')!
-    const laukaukset = sami.osallistumiset.RA1!.kilpasarjat[0]!.laukaukset
+    const sanna = kisa.kilpailijat.find((k) => k.sukunimi === 'Hakala')!
+    const laukaukset = sanna.osallistumiset.RA1!.kilpasarjat[0]!.laukaukset
     expect(laukaukset).toEqual(['*', 2, '*', 10, 9, 8, '-', 7, 6, 5])
-    expect(sami.osallistumiset.RA1!.kilpasarjat[1]!.laukaukset.every((l) => l === 4)).toBe(true)
+    expect(sanna.osallistumiset.RA1!.kilpasarjat[1]!.laukaukset.every((l) => l === 4)).toBe(true)
   })
 
   it('säilyttää lasketut tulokset identtisinä', async () => {
-    const { store, sami } = rakennaKisa()
-    const ennen = laskeLaji('RA1', LAJIT.RA1, sami.osallistumiset.RA1!)
+    const { store, sanna } = rakennaKisa()
+    const ennen = laskeLaji('RA1', LAJIT.RA1, sanna.osallistumiset.RA1!)
 
     const { kisa } = await kierrata(store.kisa)
-    const tuotu = kisa.kilpailijat.find((k) => k.sukunimi === 'Hänninen')!
+    const tuotu = kisa.kilpailijat.find((k) => k.sukunimi === 'Hakala')!
     const jalkeen = laskeLaji('RA1', kisa.asetukset.lajiMaaritykset.RA1, tuotu.osallistumiset.RA1!)
 
     expect(jalkeen.pisteet).toBe(ennen.pisteet)
@@ -261,10 +261,10 @@ describe('kierros: vienti → tuonti', () => {
     const { store } = rakennaKisa()
     const { kisa } = await kierrata(store.kisa)
 
-    const sami = kisa.kilpailijat.find((k) => k.sukunimi === 'Hänninen')!
-    expect(sami.osallistumiset.RA1!.luokka).toBe('vakio')
-    expect(sami.osallistumiset.RA2!.luokka).toBe('avoin')
-    expect(sami.osallistumiset.RA1!.rangaistuksia).toBe(1)
+    const sanna = kisa.kilpailijat.find((k) => k.sukunimi === 'Hakala')!
+    expect(sanna.osallistumiset.RA1!.luokka).toBe('vakio')
+    expect(sanna.osallistumiset.RA2!.luokka).toBe('avoin')
+    expect(sanna.osallistumiset.RA1!.rangaistuksia).toBe(1)
 
     const aada = kisa.kilpailijat.find((k) => k.sukunimi === 'Ahonen')!
     expect(aada.ikasarja).toBe('H50')
@@ -276,8 +276,8 @@ describe('kierros: vienti → tuonti', () => {
     const { store } = rakennaKisa()
     const { kisa } = await kierrata(store.kisa)
 
-    const sami = kisa.kilpailijat.find((k) => k.sukunimi === 'Hänninen')!
-    const ra2 = sami.osallistumiset.RA2!
+    const sanna = kisa.kilpailijat.find((k) => k.sukunimi === 'Hakala')!
+    const ra2 = sanna.osallistumiset.RA2!
     expect(ra2.kilpasarjat).toHaveLength(3)
     expect(ra2.kilpasarjat[0]!.laukaukset).toHaveLength(6)
     expect(ra2.kilpasarjat[2]!.laukaukset.every((l) => l === 9)).toBe(true)
@@ -302,8 +302,8 @@ describe('kierros: vienti → tuonti', () => {
     const toinen = await kierrata(ensimmainen.kisa)
 
     expect(toinen.kilpailijoita).toBe(ensimmainen.kilpailijoita)
-    const a = ensimmainen.kisa.kilpailijat.find((k) => k.sukunimi === 'Hänninen')!
-    const b = toinen.kisa.kilpailijat.find((k) => k.sukunimi === 'Hänninen')!
+    const a = ensimmainen.kisa.kilpailijat.find((k) => k.sukunimi === 'Hakala')!
+    const b = toinen.kisa.kilpailijat.find((k) => k.sukunimi === 'Hakala')!
     expect(b.osallistumiset.RA1!.kilpasarjat).toEqual(a.osallistumiset.RA1!.kilpasarjat)
   })
 })
@@ -329,13 +329,13 @@ describe('kierros: käsin tehdyt korjaukset', () => {
     const { tavut } = await vieKisa(store.kisa)
     const a = luoAsettelu(resulRakenne('RA1', LAJIT.RA1))
 
-    // Hänninen rivi 5: muutetaan toisen sarjan kaikki neloset kympeiksi.
+    // Hakala rivi 5: muutetaan toisen sarjan kaikki neloset kympeiksi.
     const tuotu = await muokkaaJaTuo(tavut, (ws) => {
       for (let i = 0; i < 10; i++) ws.getCell(5, a.laukausAlku(1) + i).value = 10
     })
 
-    const sami = tuotu.kisa.kilpailijat.find((k) => k.sukunimi === 'Hänninen')!
-    const tulos = laskeLaji('RA1', LAJIT.RA1, sami.osallistumiset.RA1!)
+    const sanna = tuotu.kisa.kilpailijat.find((k) => k.sukunimi === 'Hakala')!
+    const tulos = laskeLaji('RA1', LAJIT.RA1, sanna.osallistumiset.RA1!)
     // Toinen sarja on nyt 100, ja se on parempi; rangaistus −2 → 98.
     expect(tulos.laskevaSarja).toBe(1)
     expect(tulos.pisteet).toBe(98)
@@ -352,8 +352,8 @@ describe('kierros: käsin tehdyt korjaukset', () => {
       ws.getCell(5, a.tulos).value = 12345
     })
 
-    const sami = tuotu.kisa.kilpailijat.find((k) => k.sukunimi === 'Hänninen')!
-    const tulos = laskeLaji('RA1', LAJIT.RA1, sami.osallistumiset.RA1!)
+    const sanna = tuotu.kisa.kilpailijat.find((k) => k.sukunimi === 'Hakala')!
+    const tulos = laskeLaji('RA1', LAJIT.RA1, sanna.osallistumiset.RA1!)
     expect(tulos.pisteet).not.toBe(12345)
     // * 2 * 10 9 8 - 7 6 5 → 10+2+10+10+9+8+0+7+6+5 = 67
     expect(tulos.sarjat[0]!.pisteet).toBe(67)
@@ -404,8 +404,8 @@ describe('kierros: käsin tehdyt korjaukset', () => {
       ws.getCell(5, a.laukausAlku(0) + 1).value = 42
     })
 
-    const sami = tuotu.kisa.kilpailijat.find((k) => k.sukunimi === 'Hänninen')!
-    const laukaukset = sami.osallistumiset.RA1!.kilpasarjat[0]!.laukaukset
+    const sanna = tuotu.kisa.kilpailijat.find((k) => k.sukunimi === 'Hakala')!
+    const laukaukset = sanna.osallistumiset.RA1!.kilpasarjat[0]!.laukaukset
     expect(laukaukset[0]).toBeNull()
     expect(laukaukset[1]).toBeNull()
   })
@@ -455,23 +455,23 @@ describe('tuonnin virhetilanteet', () => {
 describe('mukautetun kisan sarjat tiedostossa', () => {
   it('säilyttää järjestäjän omat sarjanimet', async () => {
     const { store } = rakennaKisa()
-    const sami = store.kisa.kilpailijat.find((k) => k.sukunimi === 'Hänninen')!
-    store.paivitaKilpailija(sami.id, { ikasarja: 'Veteraanit' })
+    const sanna = store.kisa.kilpailijat.find((k) => k.sukunimi === 'Hakala')!
+    store.paivitaKilpailija(sanna.id, { ikasarja: 'Veteraanit' })
 
     const { kisa } = await kierrata(store.kisa)
 
-    const tuotu = kisa.kilpailijat.find((k) => k.sukunimi === 'Hänninen')
+    const tuotu = kisa.kilpailijat.find((k) => k.sukunimi === 'Hakala')
     expect(tuotu?.ikasarja).toBe('Veteraanit')
   })
 
   it('tyhjä sarja palautuu H:ksi eikä jää tyhjäksi', async () => {
     const { store } = rakennaKisa()
-    const sami = store.kisa.kilpailijat.find((k) => k.sukunimi === 'Hänninen')!
-    store.paivitaKilpailija(sami.id, { ikasarja: '   ' })
+    const sanna = store.kisa.kilpailijat.find((k) => k.sukunimi === 'Hakala')!
+    store.paivitaKilpailija(sanna.id, { ikasarja: '   ' })
 
     const { kisa } = await kierrata(store.kisa)
 
-    const tuotu = kisa.kilpailijat.find((k) => k.sukunimi === 'Hänninen')
+    const tuotu = kisa.kilpailijat.find((k) => k.sukunimi === 'Hakala')
     expect(tuotu?.ikasarja).toBe('H')
   })
 })
@@ -544,7 +544,7 @@ describe('mukautettu kisa Excelissä', () => {
       { nimi: 'Pysty', laukauksia: 1 },
     ])
 
-    const k = store.lisaaKilpailija({ etunimi: 'Sami', sukunimi: 'Hänninen', yhdistys: 'Nupures' })
+    const k = store.lisaaKilpailija({ etunimi: 'Sanna', sukunimi: 'Hakala', yhdistys: 'Nupures' })
     store.paivitaKilpailija(k.id, { ikasarja: 'Veteraanit' })
     store.lisaaOsallistuminen(k.id, laji.id)
     store.asetaLaukaus(k.id, laji.id, 0, 0, 10)
@@ -669,7 +669,7 @@ describe('mukautetun kisan yhdistyssivu', () => {
     const laji = store.lisaaMukautettuLaji({ koodi: '3-as', nimi: 'Kolme asentoa' })
     store.asetaKilpasarjat(laji.id, [{ laukauksia: 2 }, { laukauksia: 2 }])
 
-    const k = store.lisaaKilpailija({ etunimi: 'Sami', sukunimi: 'Hänninen', yhdistys: 'Nupures' })
+    const k = store.lisaaKilpailija({ etunimi: 'Sanna', sukunimi: 'Hakala', yhdistys: 'Nupures' })
     store.lisaaOsallistuminen(k.id, laji.id)
     for (let s = 0; s < 2; s++) {
       for (let i = 0; i < 2; i++) store.asetaLaukaus(k.id, laji.id, s, i, 10)
@@ -706,6 +706,6 @@ describe('mukautetun kisan yhdistyssivu', () => {
     const tekstit: string[] = []
     ws.eachRow((rivi) => rivi.eachCell((c) => tekstit.push(String(c.value ?? ''))))
     expect(tekstit).toContain('Kokonaiskilpailu — henkilökohtainen')
-    expect(tekstit).toContain('Hänninen')
+    expect(tekstit).toContain('Hakala')
   })
 })

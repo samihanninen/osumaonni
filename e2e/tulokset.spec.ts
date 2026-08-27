@@ -9,8 +9,8 @@ test.describe('kilpailijat', () => {
 
     await expect(page.getByText('Ei vielä kilpailijoita')).toBeVisible()
 
-    await page.locator('#etunimi').fill('Sami')
-    await page.locator('#sukunimi').fill('Hänninen')
+    await page.locator('#etunimi').fill('Sanna')
+    await page.locator('#sukunimi').fill('Hakala')
     await page.locator('#yhdistys').fill('Nupures')
     await page.getByRole('button', { name: 'Lisää kilpailija' }).click()
 
@@ -71,7 +71,7 @@ test.describe('sijoitukset', () => {
 
   const AMPUJAT = [
     { etunimi: 'Aada', sukunimi: 'Ahonen', yhdistys: 'KaRes', ikasarja: 'H50' as const },
-    { etunimi: 'Sami', sukunimi: 'Hänninen', yhdistys: 'Nupures' },
+    { etunimi: 'Sanna', sukunimi: 'Hakala', yhdistys: 'Nupures' },
     {
       etunimi: 'Otto',
       sukunimi: 'Optiikka',
@@ -100,15 +100,15 @@ test.describe('sijoitukset', () => {
     await avaaKisalla(page, AMPUJAT, { polku: '/#/syota/RA1', syottotapa: 'nappaimisto' })
 
     await kirjaa(page, 0, '7') // Ahonen, vakio → 70
-    await kirjaa(page, 1, '9') // Hänninen, vakio → 90
+    await kirjaa(page, 1, '9') // Hakala, vakio → 90
     await kirjaa(page, 2, '10') // Optiikka, avoin → 100
 
     await siirry(page, '/#/tulokset/RA1')
 
-    // Vakioluokka: Hänninen ensin, Ahonen toisena. Avoimen luokan ampuja ei näy.
+    // Vakioluokka: Hakala ensin, Ahonen toisena. Avoimen luokan ampuja ei näy.
     const rivit = page.locator('tbody tr')
     await expect(rivit).toHaveCount(2)
-    await expect(rivit.nth(0)).toContainText('Hänninen')
+    await expect(rivit.nth(0)).toContainText('Hakala')
     await expect(rivit.nth(1)).toContainText('Ahonen')
     await expect(page.locator('tbody')).not.toContainText('Optiikka')
 
@@ -122,7 +122,7 @@ test.describe('sijoitukset', () => {
     await avaaKisalla(page, AMPUJAT, { polku: '/#/syota/RA1', syottotapa: 'nappaimisto' })
 
     await kirjaa(page, 0, '7') // Ahonen H50 → 70
-    await kirjaa(page, 1, '9') // Hänninen H → 90
+    await kirjaa(page, 1, '9') // Hakala H → 90
 
     await siirry(page, '/#/tulokset/RA1')
     // Kaikki: Ahonen on toinen.
@@ -144,12 +144,12 @@ test.describe('sijoitukset', () => {
 
     // Ahonen: 10 × kymppi = 100 ilman napoja.
     await kirjaa(page, 0, '10')
-    // Hänninen: 10 × napakymppi = 100 mutta kymmenen napaa.
+    // Hakala: 10 × napakymppi = 100 mutta kymmenen napaa.
     await kirjaa(page, 1, '★')
 
     await siirry(page, '/#/tulokset/RA1')
     const rivit = page.locator('tbody tr')
-    await expect(rivit.nth(0)).toContainText('Hänninen')
+    await expect(rivit.nth(0)).toContainText('Hakala')
     await expect(rivit.nth(0).locator('.napa')).toHaveText('10')
     await expect(rivit.nth(1)).toContainText('Ahonen')
   })
@@ -202,7 +202,7 @@ test.describe('löydettävyys', () => {
    * osoitteella. Muut testit menevät suoraan /#/syota/RA1:een, joten ne eivät paljasta
    * sitä, jos näkymään ei pääse mistään linkistä.
    */
-  const AMPUJA = [{ etunimi: 'Sami', sukunimi: 'Hänninen', yhdistys: 'Nupures' }]
+  const AMPUJA = [{ etunimi: 'Sanna', sukunimi: 'Hakala', yhdistys: 'Nupures' }]
 
   test('tulosten syöttöön pääsee valikosta', async ({ page }) => {
     await avaaKisalla(page, AMPUJA)
@@ -282,7 +282,7 @@ test.describe('perustoiminnot', () => {
   })
 
   test('kisan tiedot voi poistaa kisan päätyttyä', async ({ page }) => {
-    await avaaKisalla(page, [{ etunimi: 'Sami', sukunimi: 'Hänninen', yhdistys: 'Nupures' }], {
+    await avaaKisalla(page, [{ etunimi: 'Sanna', sukunimi: 'Hakala', yhdistys: 'Nupures' }], {
       polku: '/#/kilpailijat',
     })
     await expect(page.getByText('1 kilpailijaa')).toBeVisible()

@@ -27,12 +27,12 @@ describe('kisa-store', () => {
   it('lisää kilpailijan ja siistii välilyönnit', () => {
     const store = useKisaStore()
     const k = store.lisaaKilpailija({
-      etunimi: '  Sami ',
-      sukunimi: ' Hänninen ',
+      etunimi: '  Sanna ',
+      sukunimi: ' Hakala ',
       yhdistys: ' Nupures ',
     })
-    expect(k.etunimi).toBe('Sami')
-    expect(k.sukunimi).toBe('Hänninen')
+    expect(k.etunimi).toBe('Sanna')
+    expect(k.sukunimi).toBe('Hakala')
     expect(k.yhdistys).toBe('Nupures')
     expect(k.ikasarja).toBe('H')
     expect(store.kilpailijoita).toBe(1)

@@ -43,8 +43,8 @@ async function perustaKolmenAsennonKisa(page: Page) {
 
 async function lisaaKilpailija(page: Page) {
   await page.goto('/#/kilpailijat')
-  await page.getByLabel('Etunimi').first().fill('Sami')
-  await page.getByLabel('Sukunimi').first().fill('Hänninen')
+  await page.getByLabel('Etunimi').first().fill('Sanna')
+  await page.getByLabel('Sukunimi').first().fill('Hakala')
   await page.getByLabel('Yhdistys / ryhmä').fill('Nupures')
   await page.getByRole('button', { name: 'Lisää kilpailija' }).click()
   // Rastitus liittää kilpailijan kisan ainoaan lajiin.
