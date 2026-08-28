@@ -15,7 +15,7 @@ import { useLaiteStore } from '@/stores/laite'
 const store = useKisaStore()
 const laite = useLaiteStore()
 
-type Toiminto = 'uusi' | 'kaikki'
+type Toiminto = 'tulokset' | 'uusi' | 'kaikki'
 const vahvistettava = ref<Toiminto | null>(null)
 const ilmoitus = ref('')
 
@@ -41,6 +41,25 @@ function tyhjennaTallennus(avaimet: string[]) {
   } catch {
     // Yksityinen selausikkuna voi estää poiston; tila nollataan silti muistista.
   }
+}
+
+/** Kirjattujen laukausten kokonaismäärä — kertoo mitä tyhjennys maksaisi. */
+const kirjattuja = computed(() => {
+  let n = 0
+  for (const k of store.kisa.kilpailijat) {
+    for (const o of Object.values(k.osallistumiset)) {
+      for (const sarja of o?.kilpasarjat ?? []) {
+        for (const laukaus of sarja.laukaukset) if (laukaus !== null) n++
+      }
+    }
+  }
+  return n
+})
+
+function tyhjennaTulokset() {
+  store.tyhjennaTulokset()
+  vahvistettava.value = null
+  ilmoitus.value = 'Tulokset tyhjennetty. Kilpailijat ja lajivalinnat säilyivät.'
 }
 
 function aloitaUusiKisa() {
@@ -80,6 +99,38 @@ function poistaKaikki() {
       <p v-if="viemattaJaljella" class="vientilinkki">
         <RouterLink to="/vienti" class="nappi nappi--ensisijainen">Vie tulokset ensin</RouterLink>
       </p>
+
+      <!--
+        Tulosten tyhjennys: sama kilpailijalista ammutaan usein uudelleen — harjoituskierros,
+        seuraava erä tai koeajo ennen oikeaa alkua. Ilman tätä ainoa tapa nollata tulokset
+        olisi poistaa kilpailijat ja syöttää heidät takaisin.
+      -->
+      <div class="toiminto">
+        <div class="kuvaus">
+          <strong>Tyhjennä tulokset</strong>
+          <small>
+            Poistaa kirjatut laukaukset, rangaistukset ja hylkäykset. Kilpailijat, lajivalinnat ja
+            kisatiedot säilyvät.
+          </small>
+        </div>
+        <template v-if="vahvistettava !== 'tulokset'">
+          <button type="button" class="nappi" @click="vahvistettava = 'tulokset'">
+            Tyhjennä tulokset
+          </button>
+        </template>
+        <template v-else>
+          <p class="varmistus">
+            Poistetaanko {{ kirjattuja }} kirjattua laukausta? Kilpailijat säilyvät. Tätä ei voi
+            peruuttaa.
+          </p>
+          <div class="napit">
+            <button type="button" class="nappi nappi--vaarallinen" @click="tyhjennaTulokset">
+              Kyllä, tyhjennä tulokset
+            </button>
+            <button type="button" class="nappi" @click="vahvistettava = null">Peruuta</button>
+          </div>
+        </template>
+      </div>
 
       <!-- Uusi kisa: laiteasetukset säilyvät, koska sama laite jatkaa käytössä. -->
       <div class="toiminto">

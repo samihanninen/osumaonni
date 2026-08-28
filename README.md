@@ -49,7 +49,12 @@ käytettävissä puhelimella ampumaradalla. Tämä versio korjaa nämä kolme as
   määrä ovat asetuksia, ei koodia
 - **Yksi kilpailijalista** — nimi ja yhdistys kirjataan kertaalleen, lajit valitaan rastittamalla
 - **Ei kilpailijarajaa** — Excel-version 50 kilpailijan katto poistuu
-- **Mobiilikäyttö** — puhelimella iso näppäimistö, tietokoneella Excelin tapainen taulukko
+- **Iso kosketusnäppäimistö kaikilla laitteilla** — myös tietokoneella, koska numeroiden
+  näppäileminen on hitaampaa kuin painikkeiden napauttaminen eikä kannettavissa yleensä
+  ole numeronäppäimistöä. Excelin tapainen taulukko on valittavissa syöttönäkymästä, ja
+  se on ylivoimainen tulosten jälkikäteiseen korjaamiseen
+- **Tulokset voi tyhjentää erikseen** — kilpailijat ja lajivalinnat säilyvät, joten sama
+  lista voidaan ampua uudelleen ilman uudelleensyöttöä
 - **Monta kirjaajaa** — useampi henkilö voi kirjata tuloksia omalla laitteellaan ja tulokset yhdistetään yhdelle laitteelle
 - **Offline** — asennettavissa kotivalikkoon ja toimii ilman verkkoyhteyttä
 - **Kilpailupäivän ohje sovelluksen sisällä** — kisapäivän muistilista luettavissa myös
@@ -241,17 +246,21 @@ Excel-tiedostoon niin kuin ennenkin.
 
 ### Kisan päättäminen ja tietojen poistaminen
 
-Kun kisa on ohi, tiedot poistetaan **Kisatiedot**-sivun alaosasta. Vaihtoehtoja on kaksi:
+Tiedot poistetaan **Kisatiedot**-sivun alaosasta. Vaihtoehtoja on kolme:
 
+- **Tyhjennä tulokset** — poistaa kirjatut laukaukset, rangaistukset ja hylkäykset, mutta
+  säilyttää kilpailijat ja lajivalinnat. Käytä tätä, kun sama lista ammutaan uudelleen:
+  harjoituskierros, seuraava erä tai koeajo ennen kisan alkua.
 - **Aloita uusi kisa** — poistaa kilpailijat ja tulokset, mutta säilyttää laitteen
   asetukset. Tämä on tavallinen valinta, kun sama laite jatkaa seuraavaan kisaan.
 - **Poista kaikki tiedot tältä laitteelta** — poistaa lisäksi laitteen nimen ja
   tunnisteen. Käytä tätä, kun laite ei jää sinulle, esimerkiksi lainatussa puhelimessa.
 
-Molemmat poistavat myös mahdolliset talteen otetut tallennukset (ks. *Jos tallennettua
-kisaa ei voi avata* yllä), koska niissäkin on kilpailijoiden nimiä.
+Kaksi jälkimmäistä poistavat myös mahdolliset talteen otetut tallennukset (ks. *Jos
+tallennettua kisaa ei voi avata* yllä), koska niissäkin on kilpailijoiden nimiä.
 
-Molemmat vaativat erillisen vahvistuksen, ja sovellus kertoo ennen poistoa, onko
+Kaikki vaativat erillisen vahvistuksen ja kertovat mitä ollaan poistamassa: tulosten
+tyhjennys näyttää kirjattujen laukausten määrän. Sovellus kertoo ennen poistoa, onko
 tuloksia viety tiedostoon. Poistoa ei voi peruuttaa, joten **vie tulokset ensin** — viety
 Excel-tiedosto on tämän jälkeen ainoa kopio. Varmista ennen poistoa myös, että tiedosto
 on siirtynyt laitteen ulkopuolelle (ks. *Varmuuskopiointi laitteen ulkopuolelle* yllä).

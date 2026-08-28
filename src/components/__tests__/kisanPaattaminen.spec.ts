@@ -175,3 +175,76 @@ describe('KisanPaattaminen', () => {
     expect(wrapper.text()).toContain('myös laitteen asetukset')
   })
 })
+
+/*
+ * Tulosten tyhjennys. Sama kilpailijalista ammutaan usein uudelleen, joten tulokset on
+ * voitava nollata ilman että kilpailijat syötetään takaisin käsin.
+ */
+describe('tulosten tyhjennys', () => {
+  let kisa: ReturnType<typeof useKisaStore>
+
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    kisa = useKisaStore()
+    localStorage.clear()
+  })
+
+  function kisaJossaTuloksia() {
+    const k = kisa.lisaaKilpailija({ etunimi: 'Sanna', sukunimi: 'Hakala', yhdistys: 'Nupures' })
+    kisa.lisaaOsallistuminen(k.id, 'RA1', 'avoin')
+    kisa.asetaLaukaus(k.id, 'RA1', 0, 0, 10)
+    kisa.asetaLaukaus(k.id, 'RA1', 0, 1, '*')
+    kisa.asetaRangaistukset(k.id, 'RA1', 2)
+    kisa.asetaHylatty(k.id, 'RA1', true)
+    kisa.asetaHuomio(k.id, 'RA1', 'Vahingonlaukaus')
+    return k
+  }
+
+  it('poistaa laukaukset mutta säilyttää kilpailijan ja lajivalinnan', async () => {
+    const k = kisaJossaTuloksia()
+    const wrapper = mount(KisanPaattaminen, { global: globaalit })
+
+    await nappi(wrapper, 'Tyhjennä tulokset').trigger('click')
+    await nappi(wrapper, 'Kyllä, tyhjennä tulokset').trigger('click')
+
+    const o = kisa.kilpailija(k.id)?.osallistumiset.RA1
+    expect(kisa.kilpailijoita).toBe(1)
+    expect(o).toBeDefined()
+    // Lajivalinta ja aseluokka säilyvät, koska ne eivät ole tuloksia.
+    expect(o?.luokka).toBe('avoin')
+    expect(o?.kilpasarjat[0]?.laukaukset.every((l) => l === null)).toBe(true)
+  })
+
+  /* Edellisen kierroksen hylkäyksen jääminen voimaan olisi pahin mahdollinen jäänne. */
+  it('nollaa myös rangaistukset, hylkäyksen ja huomion', async () => {
+    const k = kisaJossaTuloksia()
+    const wrapper = mount(KisanPaattaminen, { global: globaalit })
+
+    await nappi(wrapper, 'Tyhjennä tulokset').trigger('click')
+    await nappi(wrapper, 'Kyllä, tyhjennä tulokset').trigger('click')
+
+    const o = kisa.kilpailija(k.id)?.osallistumiset.RA1
+    expect(o?.rangaistuksia).toBe(0)
+    expect(o?.hylatty).toBe(false)
+    expect(o?.huom).toBeUndefined()
+  })
+
+  it('kertoo montako laukausta on vaarassa ennen vahvistusta', async () => {
+    kisaJossaTuloksia()
+    const wrapper = mount(KisanPaattaminen, { global: globaalit })
+
+    await nappi(wrapper, 'Tyhjennä tulokset').trigger('click')
+
+    expect(wrapper.text()).toContain('Poistetaanko 2 kirjattua laukausta')
+  })
+
+  it('peruuttaminen ei tyhjennä mitään', async () => {
+    const k = kisaJossaTuloksia()
+    const wrapper = mount(KisanPaattaminen, { global: globaalit })
+
+    await nappi(wrapper, 'Tyhjennä tulokset').trigger('click')
+    await nappi(wrapper, 'Peruuta').trigger('click')
+
+    expect(kisa.kilpailija(k.id)?.osallistumiset.RA1?.kilpasarjat[0]?.laukaukset[0]).toBe(10)
+  })
+})

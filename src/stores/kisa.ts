@@ -526,6 +526,33 @@ export const useKisaStore = defineStore(
       kisa.value = tyhjaKisa()
     }
 
+    /**
+     * Tyhjentää kirjatut tulokset mutta säilyttää kilpailijat ja heidän lajivalintansa.
+     *
+     * Sama kilpailijalista ammutaan usein uudelleen — harjoituskierros, seuraava erä tai
+     * kisan koeajo ennen oikeaa alkua. Ilman tätä ainoa tapa nollata tulokset olisi
+     * poistaa kilpailijat ja syöttää heidät takaisin.
+     *
+     * Nollaa myös rangaistukset, hylkäykset ja huomiot: nekin ovat kisan tuloksia, ja
+     * edellisen kierroksen hylkäyksen jääminen voimaan olisi pahin mahdollinen jäänne.
+     * Kutsujan on varmistettava tämä käyttäjältä.
+     */
+    function tyhjennaTulokset() {
+      for (const k of kisa.value.kilpailijat) {
+        for (const osallistuminen of Object.values(k.osallistumiset)) {
+          if (!osallistuminen) continue
+          for (const sarja of osallistuminen.kilpasarjat) {
+            sarja.laukaukset = sarja.laukaukset.map(() => null)
+            delete sarja.muokattu
+            delete sarja.laiteId
+          }
+          osallistuminen.rangaistuksia = 0
+          osallistuminen.hylatty = false
+          delete osallistuminen.huom
+        }
+      }
+    }
+
     return {
       kisa,
       skeemaTila,
@@ -568,6 +595,7 @@ export const useKisaStore = defineStore(
       palautaOletusRakenteet,
       korvaaKisa,
       aloitaUusi,
+      tyhjennaTulokset,
     }
   },
   {
