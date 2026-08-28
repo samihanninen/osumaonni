@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onScopeDispose, ref, watch } from 'vue'
 import { useRegisterSW } from 'virtual:pwa-register/vue'
+import { TARKISTUSVALI_MS, tarkistaPaivitys } from '@/core/paivitystarkistus'
 
 /**
  * Sovelluksen päivitys.
@@ -9,7 +10,25 @@ import { useRegisterSW } from 'virtual:pwa-register/vue'
  * hämmentävää, joten käyttäjä päättää ajankohdan. Tiedot säilyvät kummassakin
  * tapauksessa, koska ne ovat localStoragessa.
  */
-const { needRefresh, offlineReady, updateServiceWorker } = useRegisterSW()
+
+/*
+ * Ajastimet ja kuuntelijat puretaan kerralla täältä.
+ *
+ * `onScopeDispose` on kutsuttava suoraan setupissa. Aiemmin sitä kutsuttiin
+ * watch-takaisinkutsun sisältä, jolloin aktiivista scopea ei enää ollut: ajastin jäi
+ * siivoamatta ja Vue varoitti kehityksessä. Sama virhe toistuisi nyt helposti
+ * `onRegisteredSW`:ssä, joka on niin ikään asynkroninen.
+ */
+const siivoukset: Array<() => void> = []
+onScopeDispose(() => {
+  while (siivoukset.length) siivoukset.pop()?.()
+})
+
+const { needRefresh, offlineReady, updateServiceWorker } = useRegisterSW({
+  onRegisteredSW: (swOsoite, rekisterointi) => {
+    if (rekisterointi) ajastaTarkistukset(swOsoite, rekisterointi)
+  },
+})
 const piilotettu = ref(false)
 
 /** Offline-ilmoitus on pelkkä tiedote, joten se poistuu itsestään. */
@@ -18,8 +37,28 @@ const OFFLINE_NAKYVISSA_MS = 8000
 watch(offlineReady, (valmis) => {
   if (!valmis) return
   const ajastin = setTimeout(() => (offlineReady.value = false), OFFLINE_NAKYVISSA_MS)
-  onScopeDispose(() => clearTimeout(ajastin))
+  siivoukset.push(() => clearTimeout(ajastin))
 })
+
+/** Etsii uutta versiota niin kauan kuin sovellus on auki. */
+function ajastaTarkistukset(swOsoite: string, rekisterointi: ServiceWorkerRegistration) {
+  const tarkista = () => void tarkistaPaivitys(swOsoite, rekisterointi)
+
+  const ajastin = setInterval(tarkista, TARKISTUSVALI_MS)
+  siivoukset.push(() => clearInterval(ajastin))
+
+  /*
+   * Pelkkä ajastin ei riitä: taustalle jäänyt välilehti jäädytetään, jolloin ajastin ei
+   * laukea lainkaan. Juuri niin asennettu sovellus käyttäytyy puhelimessa — se herää
+   * taustalta samaan istuntoon eikä lataudu uudelleen. Paluu sovellukseen on siis
+   * käytännössä ainoa hetki, jolloin puhelin voi huomata uuden version.
+   */
+  const kunPalataan = () => {
+    if (document.visibilityState === 'visible') tarkista()
+  }
+  document.addEventListener('visibilitychange', kunPalataan)
+  siivoukset.push(() => document.removeEventListener('visibilitychange', kunPalataan))
+}
 
 function paivita() {
   void updateServiceWorker(true)
