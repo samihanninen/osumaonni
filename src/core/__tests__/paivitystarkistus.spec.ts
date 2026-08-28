@@ -1,5 +1,13 @@
 import { describe, it, expect, vi } from 'vitest'
-import { TARKISTUSVALI_MS, tarkistaPaivitys, type Tarkistusymparisto } from '../paivitystarkistus'
+import {
+  TARKISTUSVALI_MS,
+  tarkistaPaivitys,
+  type Paivitettava,
+  type Tarkistusymparisto,
+} from '../paivitystarkistus'
+
+type Paivitys = Paivitettava['update']
+type Haku = Tarkistusymparisto['hae']
 
 function ymparisto(osat: Partial<Tarkistusymparisto> = {}): Tarkistusymparisto {
   return {
@@ -11,7 +19,7 @@ function ymparisto(osat: Partial<Tarkistusymparisto> = {}): Tarkistusymparisto {
 
 describe('päivityksen tarkistus', () => {
   it('kysyy päivitystä kun palvelin vastaa uudella service workerilla', async () => {
-    const rekisterointi = { update: vi.fn().mockResolvedValue(undefined) }
+    const rekisterointi = { update: vi.fn<Paivitys>().mockResolvedValue(undefined) }
 
     const kysyttiin = await tarkistaPaivitys('/sw.js', rekisterointi, ymparisto())
 
@@ -20,8 +28,8 @@ describe('päivityksen tarkistus', () => {
   })
 
   it('ohittaa palvelimen kokonaan ilman verkkoyhteyttä', async () => {
-    const hae = vi.fn()
-    const rekisterointi = { update: vi.fn() }
+    const hae = vi.fn<Haku>()
+    const rekisterointi = { update: vi.fn<Paivitys>() }
 
     const kysyttiin = await tarkistaPaivitys(
       '/sw.js',
@@ -37,7 +45,7 @@ describe('päivityksen tarkistus', () => {
   })
 
   it('ei päivitä kun palvelin vastaa virhesivulla', async () => {
-    const rekisterointi = { update: vi.fn() }
+    const rekisterointi = { update: vi.fn<Paivitys>() }
 
     const kysyttiin = await tarkistaPaivitys(
       '/sw.js',
@@ -52,7 +60,7 @@ describe('päivityksen tarkistus', () => {
   })
 
   it('nielee verkkovirheen eikä häiritse käyttäjää', async () => {
-    const rekisterointi = { update: vi.fn() }
+    const rekisterointi = { update: vi.fn<Paivitys>() }
 
     const kysyttiin = await tarkistaPaivitys(
       '/sw.js',
@@ -65,15 +73,17 @@ describe('päivityksen tarkistus', () => {
   })
 
   it('nielee myös update()-kutsun virheen', async () => {
-    const rekisterointi = { update: vi.fn().mockRejectedValue(new Error('rekisteröinti kaatui')) }
+    const rekisterointi = {
+      update: vi.fn<Paivitys>().mockRejectedValue(new Error('rekisteröinti kaatui')),
+    }
 
     await expect(tarkistaPaivitys('/sw.js', rekisterointi, ymparisto())).resolves.toBe(false)
   })
 
   it('hakee service workerin välimuistin ohi', async () => {
-    const hae = vi.fn().mockResolvedValue({ status: 200 })
+    const hae = vi.fn<Haku>().mockResolvedValue({ status: 200 })
 
-    await tarkistaPaivitys('/sw.js', { update: vi.fn() }, ymparisto({ hae }))
+    await tarkistaPaivitys('/sw.js', { update: vi.fn<Paivitys>() }, ymparisto({ hae }))
 
     // Ilman tätä selain vastaisi omasta välimuististaan eikä uutta versiota
     // huomattaisi koskaan — tarkistus näyttäisi toimivan mutta ei tekisi mitään.
