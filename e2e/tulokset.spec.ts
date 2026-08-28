@@ -326,3 +326,31 @@ test.describe('perustoiminnot', () => {
     await expect(rivit.nth(1)).toContainText('180')
   })
 })
+
+/**
+ * Vajaan joukkueen selite.
+ *
+ * Merkintä "vajaa" oli aiemmin selitetty vain hover-vihjeessä, jota puhelimessa ei voi
+ * avata — juuri sillä laitteella tuloksia radalla luetaan. Selite on siksi näkyvää
+ * tekstiä, ja se näytetään vain kun jollakin yhdistyksellä on vajaa joukkue.
+ */
+test.describe('vajaan joukkueen selite', () => {
+  test('selite näkyy kun joukkue on vajaa', async ({ page }) => {
+    // Kaksi ampujaa samasta yhdistyksestä: joukkueen koko on 3, joten joukkue jää vajaaksi.
+    await avaaKisalla(
+      page,
+      [
+        { etunimi: 'Sanna', sukunimi: 'Hakala', yhdistys: 'Nupures' },
+        { etunimi: 'Lasse', sukunimi: 'Joukahainen', yhdistys: 'Nupures' },
+      ],
+      { polku: '/#/syota/RA1', syottotapa: 'nappaimisto' },
+    )
+
+    await napautaMonta(page, '9', 10)
+    await page.locator('#kilpailijavalinta').selectOption('1')
+    await napautaMonta(page, '8', 10)
+
+    await siirry(page, '/#/yhdistykset')
+    await expect(page.getByText(/vajaa = yhdistyksellä on alle 3 ampujaa/i)).toBeVisible()
+  })
+})

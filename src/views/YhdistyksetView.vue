@@ -28,10 +28,25 @@ const yhteistulos = computed(() =>
   yhdistysYhteistulos(kisa.value.kilpailijat, lajit.value, optiot.value),
 )
 
+/*
+ * Lajikohtaiset yhdistystulokset kerran laskettuna. Taulukko tarvitsee saman listan
+ * kolmesti — tyhjyyden tarkistukseen, riveihin ja selitteeseen — eikä laskentaa ole
+ * syytä toistaa jokaisella kutsulla.
+ */
+const lajienTulokset = computed(
+  () =>
+    new Map(
+      lajit.value.map((l) => [l.id, yhdistysLaji(kisa.value.kilpailijat, l.id, l, optiot.value)]),
+    ),
+)
+
 function lajiTulokset(laji: LajiId) {
-  const rakenne = lajit.value.find((l) => l.id === laji)
-  if (!rakenne) return []
-  return yhdistysLaji(kisa.value.kilpailijat, laji, rakenne, optiot.value)
+  return lajienTulokset.value.get(laji) ?? []
+}
+
+/** Onko lajissa yhtään vajaata joukkuetta? Selite näytetään vain silloin. */
+function onVajaita(laji: LajiId): boolean {
+  return lajiTulokset(laji).some((r) => !r.taysiJoukkue)
 }
 
 /**
@@ -163,6 +178,14 @@ const onTuloksia = computed(() =>
             </tbody>
           </table>
         </div>
+        <!--
+          Selite näkyviin eikä pelkkänä hover-vihjeenä: tuloksia luetaan puhelimella,
+          jossa ei ole osoitinta, eikä pelkkä sana "vajaa" kerro mitä se tarkoittaa.
+        -->
+        <p v-if="onVajaita(l.id)" class="selite">
+          <span class="vajaa">vajaa</span> = yhdistyksellä on alle {{ parhaita }} ampujaa tässä
+          lajissa, joten tulos ei ole vertailukelpoinen täyteen joukkueeseen.
+        </p>
       </section>
 
       <section class="lajiosio">
