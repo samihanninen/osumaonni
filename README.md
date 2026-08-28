@@ -296,6 +296,11 @@ ei yleensä ole yhteyttä eikä aikaa selvittää yllätyksiä. Sovellus toimii 
 päivittämättä, joten *Myöhemmin* ei maksa mitään. Ilmoitus tulee uudelleen seuraavalla
 avauskerralla.
 
+Sovellus etsii uutta versiota kerran tunnissa sekä aina, kun palaat sovellukseen
+taustalta. Ilman verkkoyhteyttä se ei kysele mitään, joten radalla tarkistus ei kuluta
+akkua eikä häiritse. Uuden version huomaaminen voi silti kestää hetken: jos haluat
+päivittää heti, sulje sovellus kokonaan ja avaa se uudelleen.
+
 Jos päivitys osoittautuu virheelliseksi, se perutaan keskitetysti julkaisemalla edellinen
 versio uudelleen — yksittäinen käyttäjä ei voi palata vanhaan versioon itse, koska
 verkkosivusta on aina vain yksi julkaistu versio kerrallaan. Peruminen palauttaa

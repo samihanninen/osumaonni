@@ -1,6 +1,6 @@
 {
   "name": "osumaonni",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "private": true,
   "type": "module",
   "description": "Reserviläisammunnan tuloskortti — selaimessa toimiva tuloslaskenta, tiedot vain omalla laitteella",
