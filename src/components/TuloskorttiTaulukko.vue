@@ -347,10 +347,20 @@ function poistuRuudusta() {
 }
 
 /* Nimi ja järjestysnumero pysyvät näkyvissä vaakavieritettäessä. */
+/*
+ * Kiinnitetyt sarakkeet: rivinumero ja nimi pysyvät näkyvissä kun taulukkoa vieritetään.
+ *
+ * Nimen `left` on rivinumerosarakkeen leveys, joten leveys on lukittava. Ilman lukitusta
+ * sarake kapenee sisällön mukaan — yksinumeroisilla riveillä noin 20 pikseliin — jolloin
+ * kiinnitys työntää nimisaraketta oikealle jo vierittämättä ja se peittää yhdistyksen
+ * alun. Kaksi lukua on siksi pidettävä samana.
+ */
 .kiinni-vasen {
   position: sticky;
   left: 0;
   z-index: 2;
+  width: 2.5rem;
+  min-width: 2.5rem;
   background: var(--vari-tausta-korotettu);
 }
 .kiinni-nimi {

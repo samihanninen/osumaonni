@@ -4,7 +4,6 @@ import { useRoute, RouterLink } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useKisaStore } from '@/stores/kisa'
 import { useLaiteStore } from '@/stores/laite'
-import { useTyopoyta } from '@/composables/useMediaKysely'
 import { kisanLajit, rakenteenLaukaukset } from '@/core/lajit'
 import { laskeLaji } from '@/core/laskenta'
 import type { LajiId, Laukaus, Luokka } from '@/types/kisa'
@@ -16,8 +15,6 @@ const route = useRoute()
 const store = useKisaStore()
 const laite = useLaiteStore()
 const { kisa } = storeToRefs(store)
-
-const tyopoyta = useTyopoyta()
 
 /** Kisan lajit muodosta riippumatta. Välilehdet ja reitin tarkistus nojaavat tähän. */
 const lajit = computed(() => kisanLajit(kisa.value))
@@ -55,12 +52,16 @@ const osallistujat = computed(() =>
     ),
 )
 
-/** Taulukkosyöttö käytössä? `auto` noudattaa laitetta. */
-const taulukossa = computed(() => {
-  if (laite.syottotapa === 'taulukko') return true
-  if (laite.syottotapa === 'nappaimisto') return false
-  return tyopoyta.value
-})
+/**
+ * Taulukkosyöttö käytössä?
+ *
+ * Oletus on kosketusnäppäimistö kaikilla laitteilla, myös työpöydällä. Aiemmin
+ * työpöytä sai automaattisesti taulukon, mutta numeroiden näppäileminen on hitaampaa
+ * kuin isojen painikkeiden napauttaminen — eikä kannettavissa yleensä ole
+ * numeronäppäimistöä lainkaan. Taulukko on edelleen valittavissa, koska se on
+ * ylivoimainen silloin kun tuloksia korjataan jälkikäteen useammalta riviltä.
+ */
+const taulukossa = computed(() => laite.syottotapa === 'taulukko')
 
 // ---------- Näppäimistösyötön tila ----------
 
@@ -244,27 +245,26 @@ function taulukkoHylatty(id: string, hylatty: boolean) {
           <summary class="tapa-otsikko">
             Syöttötapa: {{ taulukossa ? 'taulukko' : 'näppäimistö' }}
           </summary>
-          <div class="tapanapit" role="group" aria-label="Syöttötapa">
+          <!--
+            Kaksi vaihtoehtoa, ei kolmea: "automaattinen" tarkoitti työpöydällä taulukkoa,
+            mutta oletus on nyt näppäimistö kaikkialla, joten valinta ei enää eroaisi
+            näppäimistöstä mitenkään.
+          -->
+          <div class="valintapalkki tapanapit" role="group" aria-label="Syöttötapa">
             <button
               type="button"
-              class="tapanappi"
-              :class="{ 'tapanappi--valittu': laite.syottotapa === 'auto' }"
-              @click="laite.asetaSyottotapa('auto')"
-            >
-              Automaattinen
-            </button>
-            <button
-              type="button"
-              class="tapanappi"
-              :class="{ 'tapanappi--valittu': laite.syottotapa === 'nappaimisto' }"
+              class="valintapalkki-osa"
+              :class="{ 'valintapalkki-osa--valittu': !taulukossa }"
+              :aria-pressed="!taulukossa"
               @click="laite.asetaSyottotapa('nappaimisto')"
             >
               Näppäimistö
             </button>
             <button
               type="button"
-              class="tapanappi"
-              :class="{ 'tapanappi--valittu': laite.syottotapa === 'taulukko' }"
+              class="valintapalkki-osa"
+              :class="{ 'valintapalkki-osa--valittu': taulukossa }"
+              :aria-pressed="taulukossa"
               @click="laite.asetaSyottotapa('taulukko')"
             >
               Taulukko
@@ -449,25 +449,8 @@ function taulukkoHylatty(id: string, hylatty: boolean) {
   color: var(--vari-teksti-himmea);
 }
 .tapanapit {
-  display: flex;
-  gap: 0.25rem;
   margin-top: 0.4rem;
-}
-.tapanappi {
-  min-height: 36px;
-  padding: 0.3rem 0.6rem;
-  font: inherit;
-  font-size: 0.85rem;
-  border: 1px solid var(--vari-reuna);
-  border-radius: var(--reunapyoristys);
-  background: var(--vari-tausta-korotettu);
-  color: var(--vari-teksti-himmea);
-  cursor: pointer;
-}
-.tapanappi--valittu {
-  border-color: var(--vari-korostus);
-  color: var(--vari-korostus);
-  font-weight: 700;
+  max-width: 22rem;
 }
 
 .valitsin {

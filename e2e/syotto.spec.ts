@@ -192,25 +192,14 @@ test.describe('taulukkosyöttö', () => {
   })
 })
 
-test.describe('syöttötavan automaattinen valinta', () => {
-  /** Onko laitteessa hiiri tai ohjauslevy eli käytännössä oikea näppäimistö? */
-  async function tarkkaOsoitin(page: import('@playwright/test').Page) {
-    return page.evaluate(() => window.matchMedia('(min-width: 768px) and (pointer: fine)').matches)
-  }
-
-  // Kaksi erillistä testiä yhden ehtolauseen sijaan: näin ohitetut tapaukset näkyvät
-  // raportissa sen sijaan, että väittämät jäisivät huomaamatta suorittamatta.
-
-  test('tarkalla osoittimella näytetään taulukko', async ({ page }) => {
+test.describe('syöttötavan oletus', () => {
+  /*
+   * Oletus on kosketusnäppäimistö kaikilla laitteilla. Aiemmin työpöytä sai
+   * automaattisesti taulukon, mutta numeroiden näppäileminen on hitaampaa kuin isojen
+   * painikkeiden napauttaminen — eikä kannettavissa yleensä ole numeronäppäimistöä.
+   */
+  test('näppäimistö näytetään laitteesta riippumatta', async ({ page }) => {
     await avaaKisalla(page, AMPUJAT, { polku: '/#/syota/RA1', syottotapa: 'auto' })
-    test.skip(!(await tarkkaOsoitin(page)), 'Koskee vain hiirtä tai ohjauslevyä')
-
-    await expect(page.locator('table.tuloskortti')).toBeVisible()
-  })
-
-  test('kosketuslaitteella näytetään näppäimistö eikä tekstikenttiä', async ({ page }) => {
-    await avaaKisalla(page, AMPUJAT, { polku: '/#/syota/RA1', syottotapa: 'auto' })
-    test.skip(await tarkkaOsoitin(page), 'Koskee vain kosketuslaitteita')
 
     await expect(page.locator('.nappaimisto')).toBeVisible()
     await expect(page.locator('table.tuloskortti')).toHaveCount(0)
@@ -277,5 +266,36 @@ test.describe('mahtuminen kapealle näytölle', () => {
       () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
     )
     expect(vaaka).toBe(false)
+  })
+})
+
+/**
+ * Taulukkosyötön asettelu työpöydällä.
+ *
+ * Nimisarake on kiinnitetty, ja sen `left`-arvo on rivinumerosarakkeen leveys. Kun
+ * rivinumerosarake kapeni sisällön mukaan — yksinumeroisilla riveillä noin puoleen —
+ * kiinnitys työnsi nimisaraketta oikealle jo vierittämättä, ja se peitti yhdistyksen
+ * alun: otsikossa luki "IDISTYS" ja soluissa "upures".
+ */
+test.describe('taulukon kiinnitetyt sarakkeet', () => {
+  test('yhdistyssarake ei jää nimisarakkeen alle', async ({ page }) => {
+    await avaaKisalla(
+      page,
+      [
+        { etunimi: 'Sanna', sukunimi: 'Hakala', yhdistys: 'Nupures' },
+        { etunimi: 'Lasse', sukunimi: 'Joukahainen', yhdistys: 'Nupures' },
+      ],
+      { polku: '/#/syota/RA1', syottotapa: 'taulukko' },
+    )
+
+    const otsikot = page.locator('thead th')
+    const nimi = await otsikot.nth(1).boundingBox()
+    const yhdistys = await otsikot.nth(2).boundingBox()
+
+    expect(nimi).not.toBeNull()
+    expect(yhdistys).not.toBeNull()
+    // Yhdistyssarake alkaa vasta nimisarakkeen jälkeen — ei sen alta.
+    expect(yhdistys!.x).toBeGreaterThanOrEqual(nimi!.x + nimi!.width - 1)
+    await expect(page.locator('tbody').first()).toContainText('Nupures')
   })
 })
