@@ -154,14 +154,29 @@ export const useKisaStore = defineStore(
 
     // ---------- Kilpailijat ----------
 
+    /**
+     * Lisää kilpailijan kisaan.
+     *
+     * `lajit` lisää osallistumiset heti. Kilpailija ilman lajeja ei näy missään
+     * syöttönäkymässä, joten lajivalinta kuuluu samaan työvaiheeseen kuin nimen
+     * kirjaaminen — erillinen "lisää ensin, etsi sitten listasta ja rastita" on sama
+     * tieto kahdessa erässä.
+     *
+     * `id` annetaan rosterista lisättäessä (ks. `core/rosteri`), jotta sama henkilö on
+     * kisassa aina samalla tunnisteella. Jos tunniste on jo käytössä, arvotaan uusi:
+     * kaksi kilpailijaa samalla tunnisteella sekoittaisi tulokset keskenään.
+     */
     function lisaaKilpailija(tiedot: {
       etunimi: string
       sukunimi: string
       yhdistys: string
       ikasarja?: SarjaId
+      id?: string
+      lajit?: readonly LajiId[]
     }): Kilpailija {
+      const toivottuId = tiedot.id?.trim()
       const uusi: Kilpailija = {
-        id: uusiId(),
+        id: toivottuId && !kilpailija(toivottuId) ? toivottuId : uusiId(),
         etunimi: tiedot.etunimi.trim(),
         sukunimi: tiedot.sukunimi.trim(),
         yhdistys: tiedot.yhdistys.trim(),
@@ -175,6 +190,7 @@ export const useKisaStore = defineStore(
         osallistumiset: {},
       }
       kisa.value.kilpailijat.push(uusi)
+      for (const laji of tiedot.lajit ?? []) lisaaOsallistuminen(uusi.id, laji)
       return uusi
     }
 
@@ -330,6 +346,23 @@ export const useKisaStore = defineStore(
       let n = 0
       for (const k of kisa.value.kilpailijat) {
         for (const sarja of k.osallistumiset[id]?.kilpasarjat ?? []) {
+          for (const laukaus of sarja.laukaukset) if (laukaus !== null) n++
+        }
+      }
+      return n
+    }
+
+    /**
+     * Montako laukausta yhdelle kilpailijalle on kirjattu?
+     *
+     * Kilpailijan poisto vie tulokset mukanaan, joten varmistuksen pitää voida kertoa
+     * mitä poisto maksaa — tyhjän rivin poistaminen ei tarvitse samaa varoitusta kuin
+     * kirjatun.
+     */
+    function kilpailijanLaukaukset(id: string): number {
+      let n = 0
+      for (const osallistuminen of Object.values(kilpailija(id)?.osallistumiset ?? {})) {
+        for (const sarja of osallistuminen?.kilpasarjat ?? []) {
           for (const laukaus of sarja.laukaukset) if (laukaus !== null) n++
         }
       }
@@ -579,6 +612,7 @@ export const useKisaStore = defineStore(
       mukautetutLajit,
       mukautettuLaji,
       kirjattujaLaukauksia,
+      kilpailijanLaukaukset,
       menetettavatLaukaukset,
       lisaaMukautettuLaji,
       paivitaMukautettuLaji,

@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useKisaStore, varmuuskopioAvaimet } from '@/stores/kisa'
 import { useLaiteStore } from '@/stores/laite'
+import { ROSTERI_AVAIN, useRosteriStore } from '@/stores/rosteri'
 
 /**
  * Kisan päättäminen ja tietojen poistaminen.
@@ -14,8 +15,9 @@ import { useLaiteStore } from '@/stores/laite'
  */
 const store = useKisaStore()
 const laite = useLaiteStore()
+const rosteri = useRosteriStore()
 
-type Toiminto = 'tulokset' | 'uusi' | 'kaikki'
+type Toiminto = 'tulokset' | 'uusi' | 'kaikki' | 'rosteri'
 const vahvistettava = ref<Toiminto | null>(null)
 const ilmoitus = ref('')
 
@@ -25,10 +27,14 @@ const viety = computed(() => {
   return Number.isNaN(d.getTime()) ? null : d
 })
 
-const onTietoja = computed(() => store.kilpailijoita > 0)
+/*
+ * Poistettavaa on myös silloin, kun kisa on tyhjä mutta rosterissa on nimiä: rosteri
+ * säilyy kisojen yli, ja juuri siksi siitä pitää päästä eroon täältä.
+ */
+const onTietoja = computed(() => store.kilpailijoita > 0 || rosteri.maara > 0)
 
 /** Onko tuloksia, joita ei ole viety tiedostoon? */
-const viemattaJaljella = computed(() => onTietoja.value && viety.value === null)
+const viemattaJaljella = computed(() => store.kilpailijoita > 0 && viety.value === null)
 
 function muotoile(d: Date) {
   return d.toLocaleString('fi-FI', { dateStyle: 'short', timeStyle: 'short' })
@@ -62,19 +68,36 @@ function tyhjennaTulokset() {
   ilmoitus.value = 'Tulokset tyhjennetty. Kilpailijat ja lajivalinnat säilyivät.'
 }
 
+/*
+ * Rosteri jää: se on koko ideansa mukaan lista, joka kestää kisan yli, jottei samaa
+ * porukkaa tarvitse syöttää uudelleen. Vahvistus kertoo tämän, koska rosterissa on
+ * nimiä — muuten sovellus lupaisi poistaneensa kilpailijat ja jättäisi ne silti.
+ */
 function aloitaUusiKisa() {
   store.aloitaUusi()
   laite.nollaaKisakohtaiset()
   // Varmuuskopiot sisältävät kilpailijoiden nimiä, joten ne poistuvat kisan mukana.
   tyhjennaTallennus(['kisa', ...varmuuskopioAvaimet()])
   vahvistettava.value = null
-  ilmoitus.value = 'Kisan tiedot poistettu. Voit aloittaa uuden kisan.'
+  ilmoitus.value = rosteri.maara
+    ? `Kisan tiedot poistettu. Rosterin ${rosteri.maara} henkilöä jäivät laitteelle.`
+    : 'Kisan tiedot poistettu. Voit aloittaa uuden kisan.'
+}
+
+/** Rosterin tyhjennys erikseen: kisa voi jatkua, vaikka nimilista poistetaan. */
+function tyhjennaRosteri() {
+  rosteri.tyhjenna()
+  tyhjennaTallennus([ROSTERI_AVAIN])
+  vahvistettava.value = null
+  ilmoitus.value = 'Rosteri tyhjennetty. Kisan kilpailijat säilyivät.'
 }
 
 function poistaKaikki() {
   store.aloitaUusi()
   laite.nollaaLaite()
-  tyhjennaTallennus(['kisa', 'laite', ...varmuuskopioAvaimet()])
+  // Myös rosteri: "kaikki tiedot" ei saa jättää nimilistaa lainatulle puhelimeen.
+  rosteri.tyhjenna()
+  tyhjennaTallennus(['kisa', 'laite', ROSTERI_AVAIN, ...varmuuskopioAvaimet()])
   vahvistettava.value = null
   ilmoitus.value = 'Kaikki tiedot poistettu tältä laitteelta.'
 }
@@ -89,7 +112,7 @@ function poistaKaikki() {
     <p v-if="!onTietoja" class="vihje">Tällä laitteella ei ole kisatietoja.</p>
 
     <template v-else>
-      <p class="tilanne" :class="{ varoitus: viemattaJaljella }">
+      <p v-if="store.kilpailijoita > 0" class="tilanne" :class="{ varoitus: viemattaJaljella }">
         <template v-if="viety">Tulokset viety tiedostoon {{ muotoile(viety) }}.</template>
         <template v-else>
           <strong>Tuloksia ei ole viety tiedostoon.</strong> Poistaminen hävittää ne lopullisesti.
@@ -137,7 +160,8 @@ function poistaKaikki() {
         <div class="kuvaus">
           <strong>Aloita uusi kisa</strong>
           <small>
-            Poistaa kilpailijat ja tulokset. Laitteen asetukset, kuten syöttötapa, säilyvät.
+            Poistaa kilpailijat ja tulokset. Laitteen asetukset, kuten syöttötapa, säilyvät — samoin
+            rosteri, josta seuraavan kisan väki täpätään.
           </small>
         </div>
         <template v-if="vahvistettava !== 'uusi'">
@@ -148,10 +172,43 @@ function poistaKaikki() {
         <template v-else>
           <p class="varmistus">
             Poistetaanko {{ store.kilpailijoita }} kilpailijan tiedot? Tätä ei voi peruuttaa.
+            <template v-if="rosteri.maara">
+              Rosterin {{ rosteri.maara }} henkilöä jäävät laitteelle.
+            </template>
           </p>
           <div class="napit">
             <button type="button" class="nappi nappi--vaarallinen" @click="aloitaUusiKisa">
               Kyllä, poista kisan tiedot
+            </button>
+            <button type="button" class="nappi" @click="vahvistettava = null">Peruuta</button>
+          </div>
+        </template>
+      </div>
+
+      <!--
+        Rosteri erikseen: se säilyy kisojen yli, joten sen poistaminen on oma päätös eikä
+        seuraus kisan päättämisestä. Nimet ovat henkilötietoja, joten tämä on paikka josta
+        ne saa pois myös silloin, kun kisaa jatketaan.
+      -->
+      <div v-if="rosteri.maara" class="toiminto">
+        <div class="kuvaus">
+          <strong>Tyhjennä rosteri</strong>
+          <small>
+            Poistaa laitteelle jääneen henkilölistan. Kisan kilpailijat ja tulokset säilyvät.
+          </small>
+        </div>
+        <template v-if="vahvistettava !== 'rosteri'">
+          <button type="button" class="nappi" @click="vahvistettava = 'rosteri'">
+            Tyhjennä rosteri
+          </button>
+        </template>
+        <template v-else>
+          <p class="varmistus">
+            Poistetaanko rosterin {{ rosteri.maara }} henkilöä? Kisa säilyy. Tätä ei voi peruuttaa.
+          </p>
+          <div class="napit">
+            <button type="button" class="nappi nappi--vaarallinen" @click="tyhjennaRosteri">
+              Kyllä, tyhjennä rosteri
             </button>
             <button type="button" class="nappi" @click="vahvistettava = null">Peruuta</button>
           </div>
@@ -163,8 +220,8 @@ function poistaKaikki() {
         <div class="kuvaus">
           <strong>Poista kaikki tiedot tältä laitteelta</strong>
           <small>
-            Poistaa myös laitteen nimen ja tunnisteen. Käytä tätä, kun laite ei jää sinulle —
-            esimerkiksi lainattu puhelin.
+            Poistaa myös rosterin, laitteen nimen ja tunnisteen. Käytä tätä, kun laite ei jää
+            sinulle — esimerkiksi lainattu puhelin.
           </small>
         </div>
         <template v-if="vahvistettava !== 'kaikki'">
@@ -174,7 +231,7 @@ function poistaKaikki() {
         </template>
         <template v-else>
           <p class="varmistus">
-            Poistetaanko kaikki tiedot, myös laitteen asetukset? Tätä ei voi peruuttaa.
+            Poistetaanko kaikki tiedot, myös rosteri ja laitteen asetukset? Tätä ei voi peruuttaa.
           </p>
           <div class="napit">
             <button type="button" class="nappi nappi--vaarallinen" @click="poistaKaikki">

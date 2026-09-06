@@ -38,6 +38,69 @@ describe('kisa-store', () => {
     expect(store.kilpailijoita).toBe(1)
   })
 
+  /*
+   * Lajit annetaan lisäyksen yhteydessä: kilpailija ilman lajeja ei näy missään
+   * syöttönäkymässä, joten lajivalinta kuuluu samaan työvaiheeseen kuin nimi.
+   */
+  it('lisää kilpailijan lajeineen', () => {
+    const store = useKisaStore()
+    const k = store.lisaaKilpailija({
+      etunimi: 'Sanna',
+      sukunimi: 'Hakala',
+      yhdistys: 'Nupures',
+      lajit: ['RA1', 'RA3'],
+    })
+
+    expect(Object.keys(k.osallistumiset).sort()).toEqual(['RA1', 'RA3'])
+    expect(k.osallistumiset.RA1?.kilpasarjat).toHaveLength(2)
+    expect(k.osallistumiset.RA1?.luokka).toBe('vakio')
+  })
+
+  it('ohittaa lajin jota kisassa ei ole', () => {
+    const store = useKisaStore()
+    const k = store.lisaaKilpailija({
+      etunimi: 'A',
+      sukunimi: 'B',
+      yhdistys: 'C',
+      lajit: ['RA1', 'EI-OLE'],
+    })
+
+    expect(Object.keys(k.osallistumiset)).toEqual(['RA1'])
+  })
+
+  /*
+   * Rosterista lisätty kilpailija saa rosterin tunnisteen, jotta sama henkilö on kisassa
+   * aina samalla tunnisteella. Käytössä oleva tunniste ei silti kelpaa: kaksi kilpailijaa
+   * samalla tunnisteella sekoittaisi tulokset keskenään.
+   */
+  it('ottaa annetun tunnisteen käyttöön mutta ei kaksi kertaa', () => {
+    const store = useKisaStore()
+    const eka = store.lisaaKilpailija({ etunimi: 'A', sukunimi: 'B', yhdistys: 'C', id: 'r-1' })
+    expect(eka.id).toBe('r-1')
+
+    const toka = store.lisaaKilpailija({ etunimi: 'D', sukunimi: 'E', yhdistys: 'F', id: 'r-1' })
+    expect(toka.id).not.toBe('r-1')
+    expect(store.kilpailijoita).toBe(2)
+  })
+
+  it('kertoo yhden kilpailijan kirjattujen laukausten määrän', () => {
+    const store = useKisaStore()
+    const k = store.lisaaKilpailija({
+      etunimi: 'A',
+      sukunimi: 'B',
+      yhdistys: 'C',
+      lajit: ['RA1'],
+    })
+    expect(store.kilpailijanLaukaukset(k.id)).toBe(0)
+
+    store.asetaLaukaus(k.id, 'RA1', 0, 0, 10)
+    store.asetaLaukaus(k.id, 'RA1', 0, 1, '*')
+    store.asetaLaukaus(k.id, 'RA1', 1, 0, '-')
+    expect(store.kilpailijanLaukaukset(k.id)).toBe(3)
+    // Tuntematon tunniste ei kaada laskentaa.
+    expect(store.kilpailijanLaukaukset('ei-ole')).toBe(0)
+  })
+
   it('osallistuminen luodaan lajin rakenteen mukaisena', () => {
     const store = useKisaStore()
     const k = store.lisaaKilpailija({ etunimi: 'A', sukunimi: 'B', yhdistys: 'C' })

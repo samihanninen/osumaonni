@@ -30,20 +30,42 @@ test.describe('kilpailijat', () => {
     await expect(page.getByText('Ei vielä kilpailijoita')).toBeVisible()
   })
 
-  test('lajivalinta ja aseluokka', async ({ page }) => {
+  /*
+   * Lajit valitaan samalla kertaa nimen kanssa. Ennen kilpailija lisättiin ilman lajeja,
+   * ja lajit rastittiin erikseen listasta — ilman lajia hän ei näy syöttönäkymässä
+   * lainkaan.
+   */
+  test('lajit tulevat mukaan heti lisäyksessä', async ({ page }) => {
+    await avaaTyhjana(page, '/#/kilpailijat')
+
+    await page.locator('#sukunimi').fill('Testaaja')
+    // Lomakkeella kaikki neljä lajia ovat valmiiksi valittuina; RA2 otetaan pois.
+    const lomakkeenLajit = page.locator('form .lajit input[type="checkbox"]')
+    await expect(lomakkeenLajit).toHaveCount(4)
+    await lomakkeenLajit.nth(1).uncheck()
+    await page.getByRole('button', { name: 'Lisää kilpailija' }).click()
+
+    // Kolme lajia, ja jokaiselle oma aseluokkavalitsin.
+    await expect(page.locator('li .laji select')).toHaveCount(3)
+
+    await page.locator('li .laji select').first().selectOption('avoin')
+    await page.reload()
+    await expect(page.locator('li .laji select').first()).toHaveValue('avoin')
+  })
+
+  test('lajivalinnan voi purkaa ja palauttaa listasta', async ({ page }) => {
     await avaaTyhjana(page, '/#/kilpailijat')
 
     await page.locator('#sukunimi').fill('Testaaja')
     await page.getByRole('button', { name: 'Lisää kilpailija' }).click()
 
-    // Aseluokkavalitsin ilmestyy vasta, kun laji on valittu.
-    await expect(page.locator('.laji select')).toHaveCount(0)
-    await page.locator('.laji input[type="checkbox"]').first().check()
-    await expect(page.locator('.laji select')).toHaveCount(1)
+    const rivinLajit = page.locator('li .laji input[type="checkbox"]')
+    await rivinLajit.first().uncheck()
+    // Aseluokkavalitsin katoaa lajin mukana.
+    await expect(page.locator('li .laji select')).toHaveCount(3)
 
-    await page.locator('.laji select').selectOption('avoin')
-    await page.reload()
-    await expect(page.locator('.laji select')).toHaveValue('avoin')
+    await rivinLajit.first().check()
+    await expect(page.locator('li .laji select')).toHaveCount(4)
   })
 
   test('poisto vaatii vahvistuksen', async ({ page }) => {
