@@ -47,8 +47,8 @@ async function lisaaKilpailija(page: Page) {
   await page.getByLabel('Sukunimi').first().fill('Hakala')
   await page.getByLabel('Yhdistys / ryhmä').fill('Nupures')
   await page.getByRole('button', { name: 'Lisää kilpailija' }).click()
-  // Rastitus liittää kilpailijan kisan ainoaan lajiin.
-  await page.getByRole('checkbox').last().check()
+  // Lomake liittää kilpailijan kisan kaikkiin lajeihin, tässä siis siihen ainoaan.
+  await expect(page.locator('li .laji input[type="checkbox"]')).toBeChecked()
 }
 
 /** Kirjaa kaikki kuusi laukausta kosketusnäppäimistöllä. */

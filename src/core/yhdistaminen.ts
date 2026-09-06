@@ -1,6 +1,7 @@
 import type { Kilpailija, Kisa, LajiId, Laukaus, Osallistuminen } from '@/types/kisa'
 import { merkitLaukauksiksi, type SiirtoRivi, type Siirtopaketti } from '@/io/siirto'
 import { LAJIT, LAJI_KOODIT, kisanLajit } from './lajit'
+import { henkiloAvain } from './rosteri'
 import { KISA_SKEEMA_VERSIO } from './skeema'
 import { uusiId } from './tunnus'
 
@@ -72,9 +73,14 @@ export function ristiriidanAvain(kilpailijaId: string, laji: LajiId, kilpasarja:
   return `${kilpailijaId}|${laji}|${kilpasarja}`
 }
 
-/** Kilpailijan tunnistus nimen ja yhdistyksen perusteella, kun tunniste ei täsmää. */
+/**
+ * Kilpailijan tunnistus nimen ja yhdistyksen perusteella, kun tunniste ei täsmää.
+ *
+ * Normalisointi on yhteinen rosterin kanssa (`core/rosteri`): jos se eroaisi, sama
+ * henkilö tunnistettaisiin yhdistämisessä ja rosterissa eri tavalla.
+ */
 function nimiAvain(sukunimi: string, etunimi: string, yhdistys: string): string {
-  return [sukunimi, etunimi, yhdistys].map((osa) => osa.trim().toLocaleLowerCase('fi')).join('|')
+  return henkiloAvain({ etunimi, sukunimi, yhdistys })
 }
 
 /**

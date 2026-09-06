@@ -2,10 +2,15 @@
 import { computed, ref, watch, watchEffect } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useKisaStore } from '@/stores/kisa'
+import { useLaiteStore } from '@/stores/laite'
+import { useRosteriStore } from '@/stores/rosteri'
+import RosteriValinta from '@/components/RosteriValinta.vue'
 import { kisanLajit, kisanSarjat, LUOKAT, LUOKKA_NIMET } from '@/core/lajit'
 import type { Kilpailija, LajiId, Luokka, SarjaId } from '@/types/kisa'
 
 const store = useKisaStore()
+const laite = useLaiteStore()
+const rosteri = useRosteriStore()
 const { kisa, yhdistysEhdotukset } = storeToRefs(store)
 
 /** Kisan sarjat: RESUL-kisassa H ja H50, mukautetussa järjestäjän omat. */
@@ -28,6 +33,42 @@ const poistoVahvistus = ref<string | null>(null)
 
 /** Kisan lajit muodosta riippumatta: RESUL-kisassa RA1–RA4, mukautetussa omat lajit. */
 const lajit = computed(() => kisanLajit(kisa.value))
+
+/**
+ * Lomakkeen lajivalinta: kaikki kisan lajit oletuksena.
+ *
+ * Kilpailija ilman lajeja ei näy missään syöttönäkymässä, joten aiemmin lisäys jäi
+ * puolitiehen: nimi kirjattiin, ja lajit haettiin erikseen listasta rastittamalla.
+ * Useimmiten osallistutaan kaikkeen, joten kaikki lajit ovat valmiiksi valittuina ja
+ * poikkeukset otetaan pois.
+ *
+ * Valinta jää seuraavaa kilpailijaa varten, kuten yhdistys ja sarja: peräkkäiset
+ * kilpailijat ampuvat usein samat lajit.
+ */
+const valitutLajit = ref<LajiId[]>([])
+
+/**
+ * Onko käyttäjä muuttanut lajivalintaa itse? Ennen sitä valinta seuraa kisan lajeja —
+ * mukautetussa kisassa lajit voidaan määritellä vasta kilpailijoiden jälkeen. Sen
+ * jälkeen sitä ei ylikirjoiteta: tyhjäksi jätetty valinta on käyttäjän päätös.
+ */
+const lajivalintaKoskettu = ref(false)
+
+watchEffect(() => {
+  const idt = lajit.value.map((l) => l.id)
+  valitutLajit.value = lajivalintaKoskettu.value
+    ? valitutLajit.value.filter((id) => idt.includes(id))
+    : idt
+})
+
+/**
+ * Tallennetaanko lisätty kilpailija myös rosteriin? Laitekohtainen valinta, joka
+ * muistetaan — ks. `core/rosteri`.
+ */
+const rosteriin = computed({
+  get: () => laite.tallennaRosteriin,
+  set: (arvo: boolean) => laite.asetaTallennaRosteriin(arvo),
+})
 
 /** RESUL-kisassa sarjat ovat ikäsarjoja; mukautetussa ne eivät liity ikään. */
 const sarjaOtsikko = computed(() => (kisa.value.tyyppi === 'resul' ? 'Ikäsarja' : 'Sarja'))
@@ -74,7 +115,8 @@ function lisaa() {
     return
   }
   virhe.value = ''
-  store.lisaaKilpailija({ ...uusi.value, sukunimi })
+  const lisatty = store.lisaaKilpailija({ ...uusi.value, sukunimi, lajit: valitutLajit.value })
+  if (rosteriin.value) rosteri.tallenna(lisatty)
   // Yhdistys ja ikäsarja jäävät, koska peräkkäiset kilpailijat ovat usein samasta seurasta.
   uusi.value.etunimi = ''
   uusi.value.sukunimi = ''
@@ -104,9 +146,11 @@ function poista(id: string) {
   <section class="sivu">
     <h1>Kilpailijat</h1>
     <p>
-      Kirjaa nimi ja yhdistys kertaalleen, ja valitse lajit joihin kilpailija osallistuu. Aseluokka
-      valitaan lajikohtaisesti, koska se seuraa käytettyä asetta.
+      Kirjaa nimi, yhdistys ja lajit samalla kertaa — tai täppää sen päivän väki rosterista.
+      Aseluokka valitaan lajikohtaisesti, koska se seuraa käytettyä asetta.
     </p>
+
+    <RosteriValinta />
 
     <form class="kortti lisays" @submit.prevent="lisaa">
       <div class="kentat-rinnakkain">
@@ -151,11 +195,44 @@ function poista(id: string) {
         </div>
       </div>
 
+      <!--
+        Lajit valitaan samalla kertaa nimen kanssa. Kaikki ovat oletuksena mukana, koska
+        useimmiten osallistutaan kaikkeen — poikkeukset otetaan pois. Aseluokka ei ole
+        tässä: se on lajikohtainen ja vaihtuu harvemmin kuin lajivalinta, ja neljä
+        valitsinta lisää tekisi lomakkeesta hitaamman kuin listaan palaaminen.
+      -->
+      <fieldset v-if="lajit.length" class="lajit">
+        <legend>Lajit</legend>
+        <div class="lajilista">
+          <label v-for="laji in lajit" :key="laji.id" class="valinta">
+            <input
+              v-model="valitutLajit"
+              type="checkbox"
+              :value="laji.id"
+              @change="lajivalintaKoskettu = true"
+            />
+            <span :title="laji.nimi">{{ laji.koodi }}</span>
+          </label>
+        </div>
+      </fieldset>
+
       <p v-if="virhe" id="sukunimi-virhe" class="huomio huomio--virhe" role="alert">
         {{ virhe }}
       </p>
 
-      <button type="submit" class="nappi nappi--ensisijainen">Lisää kilpailija</button>
+      <div class="lisayksen-ala">
+        <button type="submit" class="nappi nappi--ensisijainen">Lisää kilpailija</button>
+
+        <!--
+          Rosteriin tallennus on valinta eikä oletus: nimet ovat henkilötietoja, eikä
+          sovellus jätä niitä laitteelle kisan jälkeen ilman että käyttäjä on niin
+          valinnut. Valinta muistetaan laitteessa.
+        -->
+        <label class="valinta rosteriin">
+          <input v-model="rosteriin" type="checkbox" />
+          <span>Tallenna myös rosteriin</span>
+        </label>
+      </div>
     </form>
 
     <p v-if="kilpailijat.length === 0" class="tulossa">
@@ -295,6 +372,17 @@ function poista(id: string) {
   font-size: 1rem;
   color: var(--vari-teksti-himmea);
   margin: 1.25rem 0 0.5rem;
+}
+.lisayksen-ala {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+}
+.rosteriin {
+  font-size: 0.9rem;
+  color: var(--vari-teksti-himmea);
+  font-weight: 400;
 }
 .lista {
   list-style: none;

@@ -47,7 +47,7 @@ const osiot = computed(() => [
     polku: '/kilpailijat',
     merkki: '👥',
     otsikko: 'Kilpailijat',
-    kuvaus: 'Lisää kilpailijat, yhdistykset ja lajit joihin he osallistuvat.',
+    kuvaus: 'Lisää kilpailijat lajeineen tai täppää porukka rosterista.',
   },
   {
     polku: '/yhdistykset',

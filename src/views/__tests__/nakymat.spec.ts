@@ -91,7 +91,12 @@ describe('näkymien renderöinti', () => {
     expect((wrapper.get('#sukunimi').element as HTMLInputElement).value).toBe('')
   })
 
-  it('lajivalinta luo osallistumisen ja näyttää aseluokan', async () => {
+  /*
+   * Lajit tulevat mukaan heti lisäyksessä. Aiemmin kilpailija lisättiin ilman lajeja ja
+   * ne rastittiin erikseen listasta — sama tieto kahdessa erässä, ja ilman lajia
+   * kilpailija ei näy missään syöttönäkymässä.
+   */
+  it('lisätty kilpailija saa kaikki kisan lajit', async () => {
     const store = useKisaStore()
     const wrapper = mount(KilpailijatView, { global: globaalit })
 
@@ -99,20 +104,48 @@ describe('näkymien renderöinti', () => {
     await wrapper.get('#sukunimi').setValue('Hakala')
     await wrapper.get('form').trigger('submit')
 
+    const kilpailija = store.kisa.kilpailijat[0]!
+    expect(Object.keys(kilpailija.osallistumiset).sort()).toEqual(['RA1', 'RA2', 'RA3', 'RA4'])
+    expect(kilpailija.osallistumiset.RA1?.kilpasarjat).toHaveLength(2)
+  })
+
+  it('lomakkeelta poistettu laji jää pois myös kilpailijalta', async () => {
+    const store = useKisaStore()
+    const wrapper = mount(KilpailijatView, { global: globaalit })
+
+    // Lomakkeen lajiruudut ovat lisäyslomakkeen sisällä, listan ruudut sen ulkopuolella.
+    const lomakkeenRuudut = wrapper.findAll('form .lajit input[type="checkbox"]')
+    expect(lomakkeenRuudut).toHaveLength(4) // RA1–RA4, kaikki valmiiksi valittuina
+    expect(lomakkeenRuudut.every((r) => (r.element as HTMLInputElement).checked)).toBe(true)
+
+    await lomakkeenRuudut[1]!.setValue(false)
+    await wrapper.get('#sukunimi').setValue('Hakala')
+    await wrapper.get('form').trigger('submit')
+
+    const kilpailija = store.kisa.kilpailijat[0]!
+    expect(kilpailija.osallistumiset.RA2).toBeUndefined()
+    expect(kilpailija.osallistumiset.RA1).toBeDefined()
+  })
+
+  it('lajivalinta listassa poistaa ja palauttaa osallistumisen', async () => {
+    const store = useKisaStore()
+    const wrapper = mount(KilpailijatView, { global: globaalit })
+
+    await wrapper.get('#sukunimi').setValue('Hakala')
+    await wrapper.get('form').trigger('submit')
+
     const id = store.kisa.kilpailijat[0]!.id
-    const ruudut = wrapper.findAll('input[type="checkbox"]')
+    const ruudut = wrapper.findAll('li .laji input[type="checkbox"]')
     expect(ruudut).toHaveLength(4) // RA1–RA4
 
-    await ruudut[0]!.setValue(true)
-    expect(store.kilpailija(id)?.osallistumiset.RA1).toBeDefined()
-    expect(store.kilpailija(id)?.osallistumiset.RA1?.kilpasarjat).toHaveLength(2)
-
-    // Aseluokkavalitsin ilmestyy vasta osallistumisen myötä.
-    await wrapper.vm.$nextTick()
-    expect(wrapper.findAll('select').length).toBeGreaterThan(1)
+    // Aseluokkavalitsin näkyy jokaiselle valitulle lajille.
+    expect(wrapper.findAll('.laji select').length).toBe(4)
 
     await ruudut[0]!.setValue(false)
     expect(store.kilpailija(id)?.osallistumiset.RA1).toBeUndefined()
+
+    await ruudut[0]!.setValue(true)
+    expect(store.kilpailija(id)?.osallistumiset.RA1?.kilpasarjat).toHaveLength(2)
   })
 
   it('poisto vaatii vahvistuksen', async () => {

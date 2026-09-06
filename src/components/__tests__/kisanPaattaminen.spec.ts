@@ -172,7 +172,7 @@ describe('KisanPaattaminen', () => {
     await nappi(wrapper, 'Poista kaikki tiedot').trigger('click')
     // Edellinen varmistus sulkeutuu, jottei väärää painiketta paina vahingossa.
     expect(wrapper.text()).not.toContain('Poistetaanko 1 kilpailijan tiedot?')
-    expect(wrapper.text()).toContain('myös laitteen asetukset')
+    expect(wrapper.text()).toContain('myös rosteri ja laitteen asetukset')
   })
 })
 

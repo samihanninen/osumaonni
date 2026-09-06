@@ -17,8 +17,14 @@ yksityiskohdat ovat README-tiedostossa — täällä on vain se mitä radalla ta
    jossa määrittelet lajit, kilpasarjat ja sarjat itse — esimerkiksi kolmen asennon kisan.
    Tee tämä valinta ennen kilpailijoiden lisäämistä: muodon vaihtaminen jälkikäteen
    poistaa kirjatut tulokset.
-4. **Lisää kilpailijat.** Nimi, yhdistys ja lajit joihin hän osallistuu.
-5. **Vie tulokset kertaalleen tiedostoon** jo ennen aloitusta. Näin varmistat että
+4. **Lisää kilpailijat.** Nimi, yhdistys ja lajit joihin hän osallistuu — kaikki samalla
+   kertaa. Lajit ovat lomakkeella valmiiksi valittuina; ota pois ne joihin hän ei osallistu.
+5. **Tai täppää väki rosterista.** Jos porukka on sama kuin viime kerralla, avaa
+   *Kilpailijat*-sivun **Rosteri** ja rastita mukaan tulevat — nimiä ei tarvitse syöttää
+   uudelleen. Uuden porukan saa rosteriin napista *Tallenna kisan kilpailijat rosteriin*.
+   Rosteri jää laitteelle kisan jälkeenkin, ja siinä on henkilötietoja: tyhjennä se
+   Kisatiedot-sivulta, kun sitä ei enää tarvita.
+6. **Vie tulokset kertaalleen tiedostoon** jo ennen aloitusta. Näin varmistat että
    vienti toimii tällä laitteella, etkä opettele sitä kesken kisan.
 
 > **Älä päivitä sovellusta kisapäivänä.** Katso alta kohta *Päivitysilmoitus*.

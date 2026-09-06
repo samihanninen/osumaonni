@@ -47,7 +47,10 @@ käytettävissä puhelimella ampumaradalla. Tämä versio korjaa nämä kolme as
   summa (joukkueen koko sääntöjen mukaan 3 ampujaa)
 - **Sarjarakenne on muokattavissa** — säännöt muuttuvat, joten laukausmäärät ja sarjojen
   määrä ovat asetuksia, ei koodia
-- **Yksi kilpailijalista** — nimi ja yhdistys kirjataan kertaalleen, lajit valitaan rastittamalla
+- **Yksi kilpailijalista** — nimi, yhdistys ja lajit kirjataan samalla kertaa; lajit ovat
+  lomakkeella valmiiksi valittuina ja poikkeukset otetaan pois
+- **Rosteri** — laitteelle jäävä henkilölista, josta sen päivän väki täpätään kisaan
+  ilman uudelleen syöttämistä (ks. [Rosteri](#rosteri))
 - **Ei kilpailijarajaa** — Excel-version 50 kilpailijan katto poistuu
 - **Iso kosketusnäppäimistö kaikilla laitteilla** — myös tietokoneella, koska numeroiden
   näppäileminen on hitaampaa kuin painikkeiden napauttaminen eikä kannettavissa yleensä
@@ -72,7 +75,9 @@ käytettävissä puhelimella ampumaradalla. Tämä versio korjaa nämä kolme as
    paikka, päivämäärä ja vastuuhenkilöt. Mukautetussa kisassa määrittele myös lajit,
    kilpasarjat ja sarjat — ks. [Mukautettu kisa](#mukautettu-kisa).
 2. **Kilpailijat** — lisää kilpailijat: nimi, yhdistys ja lajit joihin hän osallistuu.
-   Yhdistyksen nimi ehdotetaan aiemmin syötetyistä, joten kirjoitusasu pysyy samana.
+   Lajit ovat valmiiksi valittuina, joten yleensä riittää nimen kirjaaminen. Yhdistyksen
+   nimi ehdotetaan aiemmin syötetyistä, joten kirjoitusasu pysyy samana. Saman porukan saa
+   kisaan täppäämällä sivun *Rosteri*-osiosta — ks. [Rosteri](#rosteri).
 3. **Syöttö** — valitse laji ja syötä laukaukset. Sarjan summa, navat ja kilpailutulos
    päivittyvät heti. Merkitse napakymppi `*`:llä ja huti `-`:llä.
 4. **Sijoitukset** — henkilökohtaiset tulokset järjestyksessä, tasatulokset napojen mukaan.
@@ -156,6 +161,37 @@ automaattisesti. Samannimiset lajit erotetaan numerolla.
 
 Tuonti ei etsi välilehteä nimen perusteella vaan tiedostoon kirjatun lajitunnisteen
 mukaan, joten siistitty tai numeroitu nimi ei sekoita tuloksia.
+
+---
+
+## Rosteri
+
+Pienessä yhdistyksessä samat ihmiset ampuvat kisan toisensa jälkeen, mutta kisa on
+kertakäyttöinen: *Aloita uusi kisa* poistaa kilpailijat, ja seuraavalla kerralla samat
+nimet, yhdistykset ja lajit naputellaan uudelleen. **Rosteri on se lista, joka jää.**
+
+Rosteri on *Kilpailijat*-sivun ylälaidassa, ja se toimii näin:
+
+- **Rasti tuo henkilön tähän kisaan** kaikkine kisan lajeineen — useimmiten osallistutaan
+  kaikkeen, ja poikkeukset otetaan pois alempaa kilpailijalistalta. Rastin poistaminen
+  poistaa hänet kisasta; jos tuloksia on jo kirjattu, poisto vahvistetaan erikseen.
+- **Rosteriin tallennetaan** joko napista *Tallenna kisan kilpailijat rosteriin* tai
+  rastittamalla lisäyslomakkeelta *Tallenna myös rosteriin*. Jälkimmäinen valinta
+  muistetaan laitteessa.
+- **Sarja tulee mukana**, jos kisassa on samanniminen sarja. Mukautetun kisan sarjat ovat
+  järjestäjän itse nimeämiä, joten RESUL-kisan H50 ei siirry sinne.
+- **Yksittäisen henkilön voi poistaa** rosterista listalta, ja koko rosterin
+  *Kisatiedot*-sivun alaosasta.
+
+Rosteri on laitekohtainen: sitä **ei viedä Exceliin, ei lähetetä QR-koodissa eikä
+yhdistetä laitteiden välillä.** Se kuvaa tätä laitetta ja sen käyttäjän omaa porukkaa, ei
+kilpailua — ja yhdistäminen tunnistaa kilpailijan muutenkin nimen ja tunnisteen
+perusteella.
+
+⚠️ Rosterissa on nimiä ja yhdistyksiä eli **henkilötietoja, ja se säilyy myös uuden kisan
+yli.** Se on koko toiminnon tarkoitus, mutta samalla tietoinen poikkeus siihen, että kisan
+päättäminen poistaa nimet laitteelta. Tyhjennä rosteri, kun sitä ei enää tarvita — ja
+etenkin ennen kuin luovutat laitteen eteenpäin.
 
 ---
 
@@ -252,12 +288,17 @@ Tiedot poistetaan **Kisatiedot**-sivun alaosasta. Vaihtoehtoja on kolme:
   säilyttää kilpailijat ja lajivalinnat. Käytä tätä, kun sama lista ammutaan uudelleen:
   harjoituskierros, seuraava erä tai koeajo ennen kisan alkua.
 - **Aloita uusi kisa** — poistaa kilpailijat ja tulokset, mutta säilyttää laitteen
-  asetukset. Tämä on tavallinen valinta, kun sama laite jatkaa seuraavaan kisaan.
-- **Poista kaikki tiedot tältä laitteelta** — poistaa lisäksi laitteen nimen ja
+  asetukset ja rosterin. Tämä on tavallinen valinta, kun sama laite jatkaa seuraavaan
+  kisaan.
+- **Tyhjennä rosteri** — poistaa laitteelle jääneen henkilölistan (ks. [Rosteri](#rosteri))
+  kisaa koskematta. Näkyy vain silloin, kun rosterissa on nimiä.
+- **Poista kaikki tiedot tältä laitteelta** — poistaa lisäksi rosterin, laitteen nimen ja
   tunnisteen. Käytä tätä, kun laite ei jää sinulle, esimerkiksi lainatussa puhelimessa.
 
-Kaksi jälkimmäistä poistavat myös mahdolliset talteen otetut tallennukset (ks. *Jos
-tallennettua kisaa ei voi avata* yllä), koska niissäkin on kilpailijoiden nimiä.
+*Aloita uusi kisa* ja *Poista kaikki tiedot* poistavat myös mahdolliset talteen otetut
+tallennukset (ks. *Jos tallennettua kisaa ei voi avata* yllä), koska niissäkin on
+kilpailijoiden nimiä. **Rosteri sen sijaan jää uuden kisan yli** — se on lista, jota ei
+haluta syöttää joka kisaan uudelleen. Vahvistus kertoo montako henkilöä laitteelle jää.
 
 Kaikki vaativat erillisen vahvistuksen ja kertovat mitä ollaan poistamassa: tulosten
 tyhjennys näyttää kirjattujen laukausten määrän. Sovellus kertoo ennen poistoa, onko
@@ -266,7 +307,8 @@ Excel-tiedosto on tämän jälkeen ainoa kopio. Varmista ennen poistoa myös, et
 on siirtynyt laitteen ulkopuolelle (ks. *Varmuuskopiointi laitteen ulkopuolelle* yllä).
 
 Kilpailijoiden nimet ja yhdistykset ovat henkilötietoja, joten niitä ei kannata jättää
-laitteelle kisan jälkeen pidemmäksi aikaa kuin on tarpeen.
+laitteelle kisan jälkeen pidemmäksi aikaa kuin on tarpeen. Sama koskee rosteria, joka
+säilyy kisojen yli — se tyhjennetään samasta paikasta.
 
 ### Asentaminen laitteeseen
 

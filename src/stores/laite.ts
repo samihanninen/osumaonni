@@ -35,6 +35,19 @@ export const useLaiteStore = defineStore(
     }
 
     /**
+     * Tallennetaanko lisätty kilpailija myös rosteriin? Ks. `core/rosteri`.
+     *
+     * Oletuksena ei: nimet ovat henkilötietoja, eikä sovellus jätä niitä laitteelle
+     * kisan jälkeen ilman että käyttäjä on niin valinnut. Valinta muistetaan, koska
+     * rosteria käyttävä yhdistys haluaa sen päälle kertaalleen eikä jokaisella rivillä.
+     */
+    const tallennaRosteriin = ref(false)
+
+    function asetaTallennaRosteriin(paalla: boolean) {
+      tallennaRosteriin.value = paalla
+    }
+
+    /**
      * Viimeksi käytetty laji. Valikon linkit palaavat siihen lajiin, jota kirjaaja oli
      * syöttämässä, eikä aina ensimmäiseen.
      */
@@ -78,6 +91,7 @@ export const useLaiteStore = defineStore(
       laiteId.value = uusiId()
       laiteNimi.value = ''
       syottotapa.value = 'auto'
+      tallennaRosteriin.value = false
       nollaaKisakohtaiset()
     }
 
@@ -87,6 +101,8 @@ export const useLaiteStore = defineStore(
       viimeinenVienti,
       luovutettu,
       syottotapa,
+      tallennaRosteriin,
+      asetaTallennaRosteriin,
       viimeinenLaji,
       asetaViimeinenLaji,
       nimea,
