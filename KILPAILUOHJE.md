@@ -100,6 +100,19 @@ suoraan.
 2. **Tarkista tiedosto** — avaa se ja katso että tulokset ovat siellä.
 3. **Päätä kisa** Kisatiedot-näkymästä vasta kun tiedosto on tallessa.
 
+### Korjaukset Excelissä
+
+Korjaukset tehdään **vain Tuloskortti-välilehdille**. Sijoitukset ja Yhdistykset
+laskeutuvat niistä kaavoilla, ja rivit siirtyvät oikeille paikoilleen itsestään — älä
+muokkaa niitä käsin.
+
+- Laukaus: `1`–`10`, `*` napakymppi, `-` ohilaukaus.
+- Hylkäys: kirjain `x` Hylätty-sarakkeeseen.
+- Unohtunut ampuja: täytä tuloskortin alimmat tyhjät rivit.
+
+Lopullinen tulos syntyy vasta, kun tiedosto tuodaan takaisin sovellukseen: tasatulokset
+ratkeavat siellä täydellä säännöllä.
+
 ---
 
 ## Jos jokin menee pieleen

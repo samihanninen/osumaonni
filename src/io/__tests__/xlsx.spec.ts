@@ -8,11 +8,16 @@ import {
   luoAsettelu,
   puhdistaSivunNimi,
   sarakeKirjain,
+  sijoituksetNimi,
   tuloskorttiNimi,
   uniikkiSivunNimi,
   META_VALILEHTI,
+  OTSIKKO_RIVI,
 } from '../xlsxAsettelu'
-import { LAJIT, resulRakenne } from '@/core/lajit'
+import { kisanLajit, LAJIT, LUOKAT, LUOKKA_NIMET, resulRakenne } from '@/core/lajit'
+import { sijoitukset } from '@/core/sijoitukset'
+import { yhdistysYhteistulos } from '@/core/yhdistykset'
+import { kokonaiskilpailu, RESUL_TASATULOKSEN_RATKAISIJA } from '@/core/kokonaiskilpailu'
 import { laskeLaji } from '@/core/laskenta'
 import { VERSIO } from '@/core/versio'
 import type { Kisa } from '@/types/kisa'
@@ -183,6 +188,237 @@ describe('vienti', () => {
     expect(ws.getCell(rivi, a.laukausAlku(0)).value).toBe('*')
     expect(ws.getCell(rivi, a.laukausAlku(0) + 1).value).toBe(2)
     expect(ws.getCell(rivi, a.laukausAlku(0) + 6).value).toBe('-')
+  })
+})
+
+/**
+ * Sijoitussivu lasketaan Excelissä kaavoilla tuloskortin soluista, joten sen on
+ * kestettävä juuri ne tapaukset, joissa käsin tehty korjaus muuttaa järjestystä.
+ */
+describe('tuloskortin kaavat', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  it('laskee napakympit vain tähdistä, ei ohilaukauksista', async () => {
+    const store = useKisaStore()
+    const k = store.lisaaKilpailija({ etunimi: 'Matti', sukunimi: 'Virtanen', yhdistys: 'X' })
+    store.lisaaOsallistuminen(k.id, 'RA1', 'vakio')
+    // Yksi kasi ja yhdeksän ohilaukausta: 8 pistettä, ei yhtään napakymppiä.
+    store.asetaLaukaus(k.id, 'RA1', 0, 0, 8)
+    for (let i = 1; i < 10; i++) store.asetaLaukaus(k.id, 'RA1', 0, i, '-')
+
+    const { tavut } = await vieKisa(store.kisa)
+    const wb = new ExcelJS.Workbook()
+    await wb.xlsx.load(tavut)
+    const ws = wb.getWorksheet(tuloskorttiNimi('RA1'))!
+    const a = luoAsettelu(resulRakenne('RA1', LAJIT.RA1))
+
+    /*
+     * Tähti on COUNTIFin jokerimerkki. Ilman tildeä kaava laski jokaisen ohilaukauksen
+     * napakympiksi, jolloin rivin tulos oli 98 eikä 8 — ja vika tuli näkyviin vasta kun
+     * tiedosto avattiin Excelissä ja kaavat laskettiin uudelleen.
+     */
+    for (const sarake of [a.sarjaYht(0), a.sarjaNavat(0), a.sarjaIskemat(0)]) {
+      const kaava = (ws.getCell(4, sarake).value as { formula: string }).formula
+      expect(kaava).toContain('"~*"')
+      expect(kaava).not.toMatch(/,\s*"\*"/)
+    }
+
+    expect(ws.getCell(4, a.sarjaYht(0)).result).toBe(8)
+    expect(ws.getCell(4, a.sarjaNavat(0)).result).toBe(0)
+    expect(ws.getCell(4, a.sarjaIskemat(0)).result).toBe(1)
+  })
+
+  it('kirjoittaa vararivit kaavoineen käsin lisättäviä ampujia varten', async () => {
+    const { store } = rakennaKisa()
+    const { tavut } = await vieKisa(store.kisa)
+    const wb = new ExcelJS.Workbook()
+    await wb.xlsx.load(tavut)
+    const ws = wb.getWorksheet(tuloskorttiNimi('RA1'))!
+    const a = luoAsettelu(resulRakenne('RA1', LAJIT.RA1))
+
+    // RA1:ssä on kaksi osallistujaa (rivit 4–5), joten rivi 6 on ensimmäinen vararivi.
+    const vararivi = ws.getCell(6, a.tulos).value as { formula: string }
+    expect(vararivi.formula).toContain('MAX')
+    expect(ws.getCell(6, 2).value).toBeNull()
+  })
+})
+
+describe('sijoitussivu seuraa tuloskorttia', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  async function sijoitusSivu() {
+    const { store } = rakennaKisa()
+    const { tavut } = await vieKisa(store.kisa)
+    const wb = new ExcelJS.Workbook()
+    await wb.xlsx.load(tavut)
+    return { store, ws: wb.getWorksheet(sijoituksetNimi('RA1'))! }
+  }
+
+  it('koostuu kaavoista, jotka viittaavat tuloskorttiin', async () => {
+    const { ws } = await sijoitusSivu()
+
+    const sukunimi = ws.getCell(4, 3).value as { formula: string }
+    expect(sukunimi.formula).toContain('INDEX')
+    expect(sukunimi.formula).toContain(`'${tuloskorttiNimi('RA1')}'!`)
+  })
+
+  it('näyttää samat sijat kuin sovelluksen sijoituslaskenta', async () => {
+    const { store, ws } = await sijoitusSivu()
+
+    const odotus = LUOKAT.flatMap((luokka) =>
+      sijoitukset(store.kisa.kilpailijat, 'RA1', luokka, resulRakenne('RA1', LAJIT.RA1)),
+    )
+
+    odotus.forEach((r, i) => {
+      const rivi = 4 + i
+      expect(ws.getCell(rivi, 1).result).toBe(LUOKKA_NIMET[r.tulos.luokka])
+      // Hylätty ei kilpaile sijoituksista, joten sijaluvun paikalla on viiva.
+      expect(String(ws.getCell(rivi, 2).result)).toBe(r.sija === 0 ? '—' : String(r.sija))
+      expect(ws.getCell(rivi, 3).result).toBe(r.kilpailija.sukunimi)
+    })
+  })
+
+  it('piilottaa järjestyksen laskevat apusarakkeet', async () => {
+    const { ws } = await sijoitusSivu()
+
+    // Näkyvä taulukko: 6 perussaraketta + 2 kilpasarjaa + tulos, iskemät ja napakympit.
+    const apuAlku = 6 + 2 + 3 + 2
+    expect(ws.getColumn(apuAlku).hidden).toBe(true)
+    expect(ws.getCell(OTSIKKO_RIVI, apuAlku).value).toBe('_luokka')
+  })
+})
+
+/**
+ * Yhdistyssivu lasketaan kaavoilla tuloskorteilta, joten sen on kestettävä samat käsin
+ * tehdyt korjaukset kuin sijoitussivunkin.
+ */
+describe('yhdistyssivu seuraa tuloskortteja', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  /**
+   * Solun näkyvä sisältö: kaavasolusta luetaan talletettu tulos.
+   *
+   * ExcelJS ei kirjoita kaavan valmista arvoa, jos se on epätosi (0 tai tyhjä) — sen
+   * `_copyModel` testaa totuusarvon. Nollatulos näkyy siis tässä tyhjänä, vaikka kaava
+   * laskee sen oikein; Excel laskee arvottomat kaavasolut tiedostoa avatessa.
+   */
+  function arvo(solu: ExcelJS.Cell): string {
+    const v = solu.value
+    if (v && typeof v === 'object' && 'formula' in v) {
+      return String((v as { result?: unknown }).result ?? '')
+    }
+    return String(v ?? '')
+  }
+
+  /**
+   * Yhden lohkon datarivit. Lohko alkaa väliotsikosta, jonka jälkeen tulee otsikkorivi;
+   * data loppuu ensimmäiseen riviin, jolla toinen sarake on tyhjä (varapaikat).
+   */
+  function lohko(ws: ExcelJS.Worksheet, otsikko: string, sarakkeita: number): string[][] {
+    let alku = 0
+    for (let r = 1; r <= ws.rowCount; r++) {
+      if (arvo(ws.getCell(r, 1)) === otsikko) {
+        alku = r + 2
+        break
+      }
+    }
+    expect(alku, `lohkoa "${otsikko}" ei löytynyt`).toBeGreaterThan(0)
+
+    const rivit: string[][] = []
+    for (let r = alku; r <= ws.rowCount; r++) {
+      if (arvo(ws.getCell(r, 2)) === '') break
+      rivit.push(Array.from({ length: sarakkeita }, (_, i) => arvo(ws.getCell(r, i + 1))))
+    }
+    return rivit
+  }
+
+  async function vieYhdistykset(kisa: Kisa) {
+    const { tavut } = await vieKisa(kisa)
+    const wb = new ExcelJS.Workbook()
+    await wb.xlsx.load(tavut)
+    return wb.getWorksheet('Yhdistykset')!
+  }
+
+  it('koostuu kaavoista, jotka viittaavat sijoitussivun apusarakkeisiin', async () => {
+    const { store } = rakennaKisa()
+    const ws = await vieYhdistykset(store.kisa)
+
+    const kaavat: string[] = []
+    ws.eachRow((rivi) =>
+      rivi.eachCell((c) => {
+        const v = c.value
+        if (v && typeof v === 'object' && 'formula' in v) kaavat.push(v.formula)
+      }),
+    )
+
+    // Kaikki luvut johdetaan sijoitussivujen apusarakkeista, ei kirjoiteta vakioina.
+    expect(kaavat.some((k) => k.includes("'Sijoitukset RA1'!"))).toBe(true)
+    expect(kaavat.some((k) => k.includes('SUMIFS'))).toBe(true)
+    expect(kaavat.some((k) => k.includes('INDEX'))).toBe(true)
+  })
+
+  it('yhteistulos vastaa sovelluksen yhdistyslaskentaa', async () => {
+    const { store } = rakennaKisa()
+    const ws = await vieYhdistykset(store.kisa)
+    const lajit = kisanLajit(store.kisa)
+    const parhaita = store.kisa.asetukset.laskettavatParhaat
+
+    const odotus = yhdistysYhteistulos(store.kisa.kilpailijat, lajit, { parhaita }).map((r) => [
+      String(r.sija),
+      r.yhdistys,
+      ...lajit.map((l) => String(r.lajipisteet[l.id] || '')),
+      String(r.pisteet),
+    ])
+
+    expect(lohko(ws, 'Yhteistulos', 3 + lajit.length)).toEqual(odotus)
+  })
+
+  it('kokonaiskilpailu vastaa sovelluksen laskentaa', async () => {
+    const { store } = rakennaKisa()
+    const ws = await vieYhdistykset(store.kisa)
+    const lajit = kisanLajit(store.kisa)
+
+    const odotus = kokonaiskilpailu(store.kisa.kilpailijat, lajit, {
+      tasatuloksenRatkaisija: RESUL_TASATULOKSEN_RATKAISIJA,
+    }).map((r) => [
+      String(r.sija),
+      r.kilpailija.sukunimi,
+      r.kilpailija.etunimi,
+      r.kilpailija.yhdistys,
+      // Nolla näkyy tyhjänä, ks. arvo():n selite ExcelJS:n rajoitteesta.
+      ...lajit.map((l) => String(r.lajipisteet[l.id] || '')),
+      String(r.pisteet || ''),
+      String(r.lajeja),
+    ])
+
+    expect(lohko(ws, 'Kokonaiskilpailu — henkilökohtainen', 6 + lajit.length)).toEqual(odotus)
+  })
+
+  it('hylätty ei kerrytä yhdistyspisteitä mutta pysyy kokonaiskilpailussa nollalla', async () => {
+    const { store, aada } = rakennaKisa()
+    const ws = await vieYhdistykset(store.kisa)
+    const lajit = kisanLajit(store.kisa)
+
+    // Aada on hylätty RA1:ssä, joten KaRes ei saa siitä pisteitä.
+    const ra1 = lohko(ws, 'RA1 — Kivääriammunta makuulta', 5)
+    expect(ra1.map((r) => r[1])).not.toContain(aada.yhdistys)
+
+    const kokonais = lohko(ws, 'Kokonaiskilpailu — henkilökohtainen', 6 + lajit.length)
+    const rivi = kokonais.find((r) => r[1] === aada.sukunimi)
+    expect(rivi, 'hylätyn pitää näkyä kokonaiskilpailussa').toBeDefined()
+    // Hylätty laji on silti ammuttu: se lasketaan lajimäärään nollan pisteen arvoisena.
+    expect(rivi?.[5 + lajit.length]).toBe('1')
+  })
+
+  it('ilman joukkuekilpailua yhdistystaulukoita ei kirjoiteta', async () => {
+    const { store } = rakennaKisa()
+    store.kisa.asetukset.joukkuekilpailu = false
+    const ws = await vieYhdistykset(store.kisa)
+
+    const tekstit: string[] = []
+    ws.eachRow((rivi) => rivi.eachCell((c) => tekstit.push(arvo(c))))
+    expect(tekstit).not.toContain('Yhteistulos')
+    expect(tekstit).toContain('Kokonaiskilpailu — henkilökohtainen')
   })
 })
 
@@ -681,6 +917,20 @@ describe('mukautetun kisan yhdistyssivu', () => {
     return wb.getWorksheet('Yhdistykset')!
   }
 
+  /** Solun näkyvä sisältö: kaavasolusta luetaan talletettu tulos. */
+  function teksti(arvo: unknown): string {
+    if (arvo && typeof arvo === 'object' && 'formula' in arvo) {
+      return String((arvo as { result?: unknown }).result ?? '')
+    }
+    return String(arvo ?? '')
+  }
+
+  function kaikkiTekstit(ws: ExcelJS.Worksheet): string[] {
+    const tekstit: string[] = []
+    ws.eachRow((rivi) => rivi.eachCell((c) => tekstit.push(teksti(c.value))))
+    return tekstit
+  }
+
   it('lajisarakkeet tulevat kisan omista lajeista', async () => {
     const ws = await vieMukautettu()
 
@@ -693,8 +943,7 @@ describe('mukautetun kisan yhdistyssivu', () => {
   it('yhdistyksen tulos on mukana eikä taulukko jää tyhjäksi', async () => {
     const ws = await vieMukautettu()
 
-    const tekstit: string[] = []
-    ws.eachRow((rivi) => rivi.eachCell((c) => tekstit.push(String(c.value ?? ''))))
+    const tekstit = kaikkiTekstit(ws)
     expect(tekstit).toContain('Nupures')
     // 4 × 10 summana.
     expect(tekstit).toContain('40')
@@ -703,8 +952,7 @@ describe('mukautetun kisan yhdistyssivu', () => {
   it('kokonaiskilpailu näyttää mukautetun kisan kilpailijan', async () => {
     const ws = await vieMukautettu()
 
-    const tekstit: string[] = []
-    ws.eachRow((rivi) => rivi.eachCell((c) => tekstit.push(String(c.value ?? ''))))
+    const tekstit = kaikkiTekstit(ws)
     expect(tekstit).toContain('Kokonaiskilpailu — henkilökohtainen')
     expect(tekstit).toContain('Hakala')
   })
