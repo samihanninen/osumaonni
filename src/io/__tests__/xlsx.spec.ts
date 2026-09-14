@@ -347,7 +347,7 @@ describe('yhdistyssivu seuraa tuloskortteja', () => {
     ws.eachRow((rivi) =>
       rivi.eachCell((c) => {
         const v = c.value
-        if (v && typeof v === 'object' && 'formula' in v) kaavat.push(v.formula)
+        if (v && typeof v === 'object' && 'formula' in v && v.formula) kaavat.push(v.formula)
       }),
     )
 
