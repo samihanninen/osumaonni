@@ -384,15 +384,31 @@ välilehtirakennetta:
 
 | Välilehti | Sisältö | Muokattavissa |
 |---|---|---|
-| `Tuloskortti <laji>` | Kilpailijat ja laukaukset | ✅ **Kyllä — aidot Excel-kaavat.** Kun korjaat laukauksen, sarjan summa, navat ja kilpailutulos laskeutuvat uudelleen kuten Excel-versiossa |
+| `Tuloskortti <laji>` | Kilpailijat ja laukaukset | ✅ **Kyllä — aidot Excel-kaavat.** Kun korjaat laukauksen, sarjan summa, navat ja kilpailutulos laskeutuvat uudelleen kuten Excel-versiossa. Lopussa on tyhjiä vararivejä käsin lisättäville ampujille |
 | `Kisatiedot` | Kisan perustiedot ja asetukset | ✅ Kyllä |
-| `Sijoitukset <laji>` | Sijoitukset | ℹ️ Tilannekuva — päivittyy kun tiedosto tuodaan takaisin sovellukseen |
-| `Yhdistys …` | Yhdistyskilpailu | ℹ️ Tilannekuva — kuten yllä |
+| `Sijoitukset <laji>` | Sijoitukset | 🔄 **Päivittyy itsestään** tuloskortin muutoksista — ei muokata käsin |
+| `Yhdistykset` | Yhdistys- ja kokonaiskilpailu | 🔄 **Päivittyy itsestään** tuloskorttien muutoksista — ei muokata käsin |
 | `_meta` | Versiotiedot ja lajien rakenne | Ei |
 
 RESUL-kisassa lajin tilalla on `RA1`–`RA4`. Mukautetussa kisassa nimi tulee lajin
 lyhenteestä, ja se siistitään Excelin sivunimirajoitusten mukaiseksi (enintään 31
 merkkiä, ei merkkejä `: \ / ? * [ ]`).
+
+`Sijoitukset`-välilehti laskee järjestyksen kaavoilla oman lajinsa tuloskortista:
+piilotetut apusarakkeet antavat jokaiselle tuloskortin riville järjestysnumeron, ja näkyvät
+rivit poimitaan `MATCH`+`INDEX`-parilla. Laukauksen, luokan tai hylkäysmerkinnän korjaus
+siirtää rivit paikalleen heti Excelissä. Järjestys ratkeaa tuloksen, iskemien ja
+napakymppien perusteella, ja `paras`-lajeissa lisäksi huonomman kilpasarjan tuloksella.
+Syvin tasatulossääntö — kymppien, ysien ja niin edelleen määrä — ratkaistaan vasta
+sovelluksessa, kun tiedosto tuodaan takaisin.
+
+`Yhdistykset`-välilehti toimii samalla periaatteella, mutta siinä myös **rivien joukko**
+on elävä: yhdistysten ja kilpailijoiden lista syntyy tuloskorttien soluista. Piilotettu
+ehdokaslohko numeroi eri arvot juoksevalla laskurilla, ja koostelohko laskee niille
+pisteet ja sijaluvut. Yhdistyksen vaihto, hylkäysmerkintä tai varariville lisätty ampuja
+siirtää rivit oikeille paikoilleen heti Excelissä. Taulukot ovat kiinteän korkuisia, joten
+niissä on varapaikkoja; jos rivejä tulee enemmän kuin mahtuu, taulukon alle ilmestyy
+varoitus — kukaan ei katoa listalta hiljaisesti.
 
 Tuonti lukee **vain** `Tuloskortti`-välilehtien kilpailijat ja laukaukset ja laskee kaiken
 muun uudelleen. Näin järjestäjän käsin tekemät korjaukset siirtyvät sovellukseen

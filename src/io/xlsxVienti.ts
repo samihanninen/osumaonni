@@ -1,10 +1,8 @@
-import type { Cell, Workbook, Worksheet } from 'exceljs'
+import type { Workbook, Worksheet } from 'exceljs'
 import type { Kilpailija, Kisa, Laukaus, Luokka } from '@/types/kisa'
-import { kisanLajit, LAJI_KOODIT, LUOKAT, LUOKKA_NIMET, type LajiRakenne } from '@/core/lajit'
+import { kisanLajit, LAJI_KOODIT, LUOKAT } from '@/core/lajit'
 import { laskeLaji } from '@/core/laskenta'
-import { sijoitukset } from '@/core/sijoitukset'
-import { onJoukkuekilpailu, yhdistysLaji, yhdistysYhteistulos } from '@/core/yhdistykset'
-import { kokonaiskilpailu, RESUL_TASATULOKSEN_RATKAISIJA } from '@/core/kokonaiskilpailu'
+import { onJoukkuekilpailu } from '@/core/yhdistykset'
 import { VERSIO } from '@/core/versio'
 import {
   ENSIMMAINEN_DATARIVI,
@@ -17,35 +15,14 @@ import {
   TIEDOSTO_VERSIO,
   YHDISTYKSET_VALILEHTI,
   alue,
-  luoAsettelu,
   sijoituksetNimi,
   uniikkiSivunNimi,
   solu,
   tuloskorttiNimi,
 } from './xlsxAsettelu'
-
-const OTSIKKO_TAYTTO = 'FFE6F2EB'
-const OTSIKKO_TAYTTO_TUMMA = 'FF1F6F4A'
-
-function tyylitaOtsikko(cell: Cell, tumma = false) {
-  cell.font = {
-    bold: true,
-    size: tumma ? 12 : 10,
-    color: { argb: tumma ? 'FFFFFFFF' : 'FF1C1C1F' },
-  }
-  cell.fill = {
-    type: 'pattern',
-    pattern: 'solid',
-    fgColor: { argb: tumma ? OTSIKKO_TAYTTO_TUMMA : OTSIKKO_TAYTTO },
-  }
-  cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true }
-  cell.border = {
-    top: { style: 'thin' },
-    left: { style: 'thin' },
-    bottom: { style: 'thin' },
-    right: { style: 'thin' },
-  }
-}
+import { kirjoitaSijoitukset, lajiKonteksti, type LajiKonteksti } from './xlsxSijoitussivu'
+import { kirjoitaYhdistykset } from './xlsxYhdistyssivu'
+import { tyylitaOhje, tyylitaOtsikko } from './xlsxTyylit'
 
 function laukausSoluun(arvo: Laukaus): string | number | null {
   if (arvo === null || arvo === undefined) return null
@@ -55,11 +32,10 @@ function laukausSoluun(arvo: Laukaus): string | number | null {
 }
 
 /** Tuloskortti: ainoa muokattava välilehti, jossa on aidot Excel-kaavat. */
-function kirjoitaTuloskortti(wb: Workbook, kisa: Kisa, rakenne: LajiRakenne, sivu: string) {
-  const laji = rakenne.id
-  const maaritys = rakenne
-  const a = luoAsettelu(rakenne)
-  const ws = wb.addWorksheet(sivu, {
+function kirjoitaTuloskortti(wb: Workbook, konteksti: LajiKonteksti) {
+  const { rakenne: maaritys, a, osallistujat, riveja } = konteksti
+  const laji = maaritys.id
+  const ws = wb.addWorksheet(konteksti.tuloskortti, {
     views: [{ state: 'frozen', xSplit: PERUSSARAKKEET.length, ySplit: OTSIKKO_RIVI }],
   })
 
@@ -73,9 +49,9 @@ function kirjoitaTuloskortti(wb: Workbook, kisa: Kisa, rakenne: LajiRakenne, siv
   ohje.value =
     'Syötä laukaukset: 1–10, * = napakymppi, - = ohilaukaus. ' +
     'Summat, napakympit ja kilpailutulos laskeutuvat kaavoilla uudelleen. ' +
-    'Merkitse hylkäys kirjaimella x.'
-  ohje.font = { size: 9, italic: true, color: { argb: 'FF62626C' } }
-  ohje.alignment = { wrapText: true }
+    'Merkitse hylkäys kirjaimella x. ' +
+    'Alimmat tyhjät rivit ovat valmiina uusille ampujille: täytä nimi ja laukaukset.'
+  tyylitaOhje(ohje)
 
   // Otsikkorivi
   PERUSSARAKKEET.forEach((nimi, i) => {
@@ -113,29 +89,29 @@ function kirjoitaTuloskortti(wb: Workbook, kisa: Kisa, rakenne: LajiRakenne, siv
     tyylitaOtsikko(c)
   }
 
-  const osallistujat = kisa.kilpailijat
-    .filter((k) => k.osallistumiset[laji])
-    .sort(
-      (x, y) =>
-        x.sukunimi.localeCompare(y.sukunimi, 'fi') || x.etunimi.localeCompare(y.etunimi, 'fi'),
-    )
-
-  osallistujat.forEach((k, idx) => {
-    const o = k.osallistumiset[laji]
-    if (!o) return
+  /*
+   * Rivimäärä sisältää vararivit, jotka saavat samat kaavat kuin datarivit. Tuonti osaa
+   * jo lukea käsin lisätyn rivin, mutta ilman valmiita kaavoja lisätyn ampujan tulos
+   * jäisi Excelissä tyhjäksi eikä hän näkyisi sijoituksissa lainkaan.
+   */
+  for (let idx = 0; idx < riveja; idx++) {
     const rivi = ENSIMMAINEN_DATARIVI + idx
-    const tulos = laskeLaji(laji, maaritys, o)
+    const k = osallistujat[idx]
+    const o = k?.osallistumiset[laji]
+    const tulos = o ? laskeLaji(laji, maaritys, o) : undefined
 
-    ws.getCell(rivi, 1).value = idx + 1
-    ws.getCell(rivi, 2).value = k.sukunimi
-    ws.getCell(rivi, 3).value = k.etunimi
-    ws.getCell(rivi, 4).value = k.yhdistys
-    ws.getCell(rivi, 5).value = k.ikasarja
-    ws.getCell(rivi, 6).value = o.luokka
+    if (k && o) {
+      ws.getCell(rivi, 1).value = idx + 1
+      ws.getCell(rivi, 2).value = k.sukunimi
+      ws.getCell(rivi, 3).value = k.etunimi
+      ws.getCell(rivi, 4).value = k.yhdistys
+      ws.getCell(rivi, 5).value = k.ikasarja
+      ws.getCell(rivi, 6).value = o.luokka
+    }
 
     const yhtSolut: string[] = []
     for (let s = 0; s < a.kilpasarjoja; s++) {
-      const laukaukset = o.kilpasarjat[s]?.laukaukset ?? []
+      const laukaukset = o?.kilpasarjat[s]?.laukaukset ?? []
       for (let i = 0; i < a.laukauksia(s); i++) {
         const c = ws.getCell(rivi, a.laukausAlku(s) + i)
         c.value = laukausSoluun(laukaukset[i] ?? null)
@@ -144,36 +120,39 @@ function kirjoitaTuloskortti(wb: Workbook, kisa: Kisa, rakenne: LajiRakenne, siv
       }
 
       const alueViite = alue(rivi, a.laukausAlku(s), a.laukausLoppu(s))
-      const laskettu = tulos.sarjat[s]
+      const laskettu = tulos?.sarjat[s]
+      // Aloittamattoman sarjan kaava palauttaa tyhjän; sama arvo talletetaan valmiiksi.
+      const kirjattu = laskettu !== undefined && laskettu.syotetty > 0
 
       ws.getCell(rivi, a.sarjaYht(s)).value = {
         formula: KAAVAT.sarjaYht(alueViite),
-        result: laskettu?.pisteet ?? 0,
+        result: kirjattu ? laskettu.pisteet : '',
       }
       ws.getCell(rivi, a.sarjaNavat(s)).value = {
         formula: KAAVAT.navat(alueViite),
-        result: laskettu?.navat ?? 0,
+        result: kirjattu ? laskettu.navat : '',
       }
       ws.getCell(rivi, a.sarjaIskemat(s)).value = {
         formula: KAAVAT.iskemat(alueViite),
-        result: laskettu?.iskemat ?? 0,
+        result: kirjattu ? laskettu.iskemat : '',
       }
       yhtSolut.push(solu(rivi, a.sarjaYht(s)))
     }
 
-    ws.getCell(rivi, a.rikkeet).value = o.rangaistuksia || 0
-    ws.getCell(rivi, a.hylatty).value = o.hylatty ? 'x' : null
-    ws.getCell(rivi, a.huom).value = o.huom ?? null
-    ws.getCell(rivi, a.tunnus).value = k.id
+    ws.getCell(rivi, a.rikkeet).value = o ? o.rangaistuksia || 0 : null
+    ws.getCell(rivi, a.hylatty).value = o?.hylatty ? 'x' : null
+    ws.getCell(rivi, a.huom).value = o?.huom ?? null
+    ws.getCell(rivi, a.tunnus).value = k?.id ?? null
 
     const rikeSolu = solu(rivi, a.rikkeet)
     const hylattySolu = solu(rivi, a.hylatty)
     const summa = maaritys.tulosSaanto === 'summa'
+    const aloitettu = tulos !== undefined && tulos.aloitettu
 
     const tulosSolu = ws.getCell(rivi, a.tulos)
     tulosSolu.value = {
       formula: KAAVAT.tulos(yhtSolut, rikeSolu, hylattySolu, summa),
-      result: tulos.pisteet,
+      result: aloitettu ? tulos.pisteet : '',
     }
     tulosSolu.font = { bold: true }
 
@@ -188,31 +167,29 @@ function kirjoitaTuloskortti(wb: Workbook, kisa: Kisa, rakenne: LajiRakenne, siv
      */
     const iskSolut = Array.from({ length: a.kilpasarjoja }, (_, s) => solu(rivi, a.sarjaIskemat(s)))
     const napaSolut = Array.from({ length: a.kilpasarjoja }, (_, s) => solu(rivi, a.sarjaNavat(s)))
+    const iskemat = aloitettu ? tulos.peruste.iskemat : ''
+    const navat = aloitettu ? tulos.peruste.navat : ''
 
     if (summa) {
-      ws.getCell(rivi, a.iskemat).value = {
-        formula: `SUM(${iskSolut.join(',')})`,
-        result: tulos.peruste.iskemat,
-      }
-      ws.getCell(rivi, a.navat).value = {
-        formula: `SUM(${napaSolut.join(',')})`,
-        result: tulos.peruste.navat,
-      }
+      ws.getCell(rivi, a.iskemat).value = { formula: KAAVAT.yhteensa(iskSolut), result: iskemat }
+      ws.getCell(rivi, a.navat).value = { formula: KAAVAT.yhteensa(napaSolut), result: navat }
     } else if (a.kilpasarjoja === 2) {
-      const ehto = `${yhtSolut[0]}>=${yhtSolut[1]}`
+      const [yhtA = '', yhtB = ''] = yhtSolut
+      const [iskA = '', iskB = ''] = iskSolut
+      const [napaA = '', napaB = ''] = napaSolut
       ws.getCell(rivi, a.iskemat).value = {
-        formula: `IF(${ehto},${iskSolut[0]},${iskSolut[1]})`,
-        result: tulos.peruste.iskemat,
+        formula: KAAVAT.parempiSarjasta(yhtA, yhtB, iskA, iskB),
+        result: iskemat,
       }
       ws.getCell(rivi, a.navat).value = {
-        formula: `IF(${ehto},${napaSolut[0]},${napaSolut[1]})`,
-        result: tulos.peruste.navat,
+        formula: KAAVAT.parempiSarjasta(yhtA, yhtB, napaA, napaB),
+        result: navat,
       }
     } else {
-      ws.getCell(rivi, a.iskemat).value = tulos.peruste.iskemat
-      ws.getCell(rivi, a.navat).value = tulos.peruste.navat
+      ws.getCell(rivi, a.iskemat).value = iskemat === '' ? null : iskemat
+      ws.getCell(rivi, a.navat).value = navat === '' ? null : navat
     }
-  })
+  }
 
   // Sarakeleveydet
   ws.getColumn(1).width = 4
@@ -238,7 +215,7 @@ function kirjoitaTuloskortti(wb: Workbook, kisa: Kisa, rakenne: LajiRakenne, siv
   ws.getColumn(a.tunnus).hidden = true
 
   // Pudotusvalikot vähentävät kirjoitusvirheitä hand-editoinnissa.
-  const viimeinenRivi = ENSIMMAINEN_DATARIVI + Math.max(osallistujat.length, 1) - 1
+  const viimeinenRivi = ENSIMMAINEN_DATARIVI + riveja - 1
   for (let rivi = ENSIMMAINEN_DATARIVI; rivi <= viimeinenRivi; rivi++) {
     ws.getCell(rivi, 6).dataValidation = {
       type: 'list',
@@ -251,208 +228,6 @@ function kirjoitaTuloskortti(wb: Workbook, kisa: Kisa, rakenne: LajiRakenne, siv
       formulae: ['"x"'],
     }
   }
-}
-
-/** Sijoitukset: tilannekuva, ei kaavoja. */
-function kirjoitaSijoitukset(wb: Workbook, kisa: Kisa, rakenne: LajiRakenne, sivu: string) {
-  const laji = rakenne.id
-  const maaritys = rakenne
-  const ws = wb.addWorksheet(sivu)
-
-  const leveys = 7 + maaritys.kilpasarjat.length
-  ws.mergeCells(1, 1, 1, leveys)
-  const otsikko = ws.getCell(1, 1)
-  otsikko.value = `Sijoitukset — ${maaritys.nimi}`
-  tyylitaOtsikko(otsikko, true)
-
-  ws.mergeCells(2, 1, 2, leveys)
-  const ohje = ws.getCell(2, 1)
-  ohje.value =
-    'Tilannekuva viennin hetkellä. Tämä välilehti ei sisällä kaavoja — korjaa tulokset ' +
-    'Tuloskortti-välilehdellä ja tuo tiedosto takaisin sovellukseen, niin sijoitukset päivittyvät.'
-  ohje.font = { size: 9, italic: true, color: { argb: 'FF8A5A00' } }
-  ohje.alignment = { wrapText: true }
-
-  let rivi = OTSIKKO_RIVI
-  for (const luokka of LUOKAT) {
-    const rivit = sijoitukset(kisa.kilpailijat, laji, luokka, maaritys)
-    if (rivit.length === 0) continue
-
-    const luokkaOtsikko = ws.getCell(rivi, 1)
-    luokkaOtsikko.value = `${LUOKKA_NIMET[luokka]} luokka`
-    luokkaOtsikko.font = { bold: true, size: 11 }
-    rivi++
-
-    const otsikot = [
-      'Sija',
-      'Sukunimi',
-      'Etunimi',
-      'Yhdistys',
-      'Ikäsarja',
-      ...maaritys.kilpasarjat.map((sarja, i) => sarja.nimi?.trim() || `S${i + 1}`),
-      'Tulos',
-      'Iskemät',
-      '★',
-    ]
-    otsikot.forEach((nimi, i) => {
-      const c = ws.getCell(rivi, i + 1)
-      c.value = nimi
-      tyylitaOtsikko(c)
-    })
-    rivi++
-
-    for (const r of rivit) {
-      ws.getCell(rivi, 1).value = r.sija === 0 ? '—' : r.sija
-      ws.getCell(rivi, 2).value = r.kilpailija.sukunimi
-      ws.getCell(rivi, 3).value = r.kilpailija.etunimi
-      ws.getCell(rivi, 4).value = r.kilpailija.yhdistys
-      ws.getCell(rivi, 5).value = r.kilpailija.ikasarja
-      for (let s = 0; s < maaritys.kilpasarjat.length; s++) {
-        ws.getCell(rivi, 6 + s).value = r.tulos.sarjat[s]?.pisteet ?? 0
-      }
-      ws.getCell(rivi, 6 + maaritys.kilpasarjat.length).value = r.tulos.hylatty
-        ? 'hylätty'
-        : r.tulos.pisteet
-      ws.getCell(rivi, 7 + maaritys.kilpasarjat.length).value = r.tulos.peruste.iskemat
-      ws.getCell(rivi, 8 + maaritys.kilpasarjat.length).value = r.tulos.peruste.navat
-      rivi++
-    }
-    rivi++
-  }
-
-  ws.getColumn(1).width = 6
-  ws.getColumn(2).width = 16
-  ws.getColumn(3).width = 14
-  ws.getColumn(4).width = 14
-  ws.getColumn(5).width = 9
-}
-
-function kirjoitaYhdistykset(wb: Workbook, kisa: Kisa) {
-  const ws = wb.addWorksheet(YHDISTYKSET_VALILEHTI)
-  const parhaita = kisa.asetukset.laskettavatParhaat
-  // Jos joukkuekilpailua ei järjestetä, sitä ei myöskään kirjoiteta tiedostoon: tuloste
-  // ei saa esittää kilpailua, jota ei ole ollut.
-  const yhdistykset = onJoukkuekilpailu(kisa.asetukset)
-
-  ws.mergeCells(1, 1, 1, 7)
-  const otsikko = ws.getCell(1, 1)
-  otsikko.value = yhdistykset ? 'Yhdistys- ja kokonaiskilpailu' : 'Kokonaiskilpailu'
-  tyylitaOtsikko(otsikko, true)
-
-  ws.getCell(2, 1).value = yhdistykset
-    ? `Lajitulos = parhaiden ${parhaita} kilpailijan summa. Tilannekuva.`
-    : 'Yhdistyskilpailua ei järjestetty. Tilannekuva.'
-  ws.getCell(2, 1).font = { size: 9, italic: true, color: { argb: 'FF62626C' } }
-
-  // Kisan lajit muodosta riippumatta: mukautetun kisan yhdistyskilpailu laskettiin
-  // aiemmin RESUL-lajeista, jolloin taulukot jäivät tyhjiksi.
-  const lajit = kisanLajit(kisa)
-
-  let rivi = 4
-  if (!yhdistykset) return kirjoitaKokonaiskilpailu(ws, kisa, lajit, rivi)
-
-  ws.getCell(rivi, 1).value = 'Yhteistulos'
-  ws.getCell(rivi, 1).font = { bold: true, size: 11 }
-  rivi++
-
-  const otsikot = ['Sija', 'Yhdistys', ...lajit.map((l) => l.koodi), 'Yhteensä']
-  otsikot.forEach((n, i) => {
-    const c = ws.getCell(rivi, i + 1)
-    c.value = n
-    tyylitaOtsikko(c)
-  })
-  rivi++
-
-  for (const r of yhdistysYhteistulos(kisa.kilpailijat, lajit, { parhaita })) {
-    ws.getCell(rivi, 1).value = r.sija
-    ws.getCell(rivi, 2).value = r.yhdistys
-    lajit.forEach((l, i) => {
-      ws.getCell(rivi, 3 + i).value = r.lajipisteet[l.id] || null
-    })
-    ws.getCell(rivi, 3 + lajit.length).value = r.pisteet
-    rivi++
-  }
-
-  rivi += 1
-  for (const rakenne of lajit) {
-    const rivit = yhdistysLaji(kisa.kilpailijat, rakenne.id, rakenne, { parhaita })
-    if (rivit.length === 0) continue
-
-    ws.getCell(rivi, 1).value = rakenne.nimi
-    ws.getCell(rivi, 1).font = { bold: true, size: 11 }
-    rivi++
-    ;['Sija', 'Yhdistys', 'Tulos', 'Ampujia', 'Huomioidut'].forEach((n, i) => {
-      const c = ws.getCell(rivi, i + 1)
-      c.value = n
-      tyylitaOtsikko(c)
-    })
-    rivi++
-
-    for (const r of rivit) {
-      ws.getCell(rivi, 1).value = r.sija
-      ws.getCell(rivi, 2).value = r.yhdistys
-      ws.getCell(rivi, 3).value = r.pisteet
-      ws.getCell(rivi, 4).value = r.kilpailijoita
-      ws.getCell(rivi, 5).value = r.huomioidut
-        .map((h) => `${h.kilpailija.sukunimi} ${h.pisteet}`)
-        .join(', ')
-      rivi++
-    }
-    rivi++
-  }
-
-  kirjoitaKokonaiskilpailu(ws, kisa, lajit, aloitusRiviKokonais(rivi))
-}
-
-/** Kokonaiskilpailun aloitusrivi; oma funktio vain luettavuuden vuoksi. */
-function aloitusRiviKokonais(rivi: number): number {
-  return rivi
-}
-
-/** Kokonaiskilpailu kirjoitetaan aina, myös ilman yhdistyskilpailua. */
-function kirjoitaKokonaiskilpailu(
-  ws: Worksheet,
-  kisa: Kisa,
-  lajit: LajiRakenne[],
-  aloitusRivi: number,
-) {
-  let rivi = aloitusRivi
-  ws.getCell(rivi, 1).value = 'Kokonaiskilpailu — henkilökohtainen'
-  ws.getCell(rivi, 1).font = { bold: true, size: 11 }
-  rivi++
-  ;[
-    'Sija',
-    'Sukunimi',
-    'Etunimi',
-    'Yhdistys',
-    ...lajit.map((l) => l.koodi),
-    'Yhteensä',
-    'Lajeja',
-  ].forEach((n, i) => {
-    const c = ws.getCell(rivi, i + 1)
-    c.value = n
-    tyylitaOtsikko(c)
-  })
-  rivi++
-  const ratkaisija =
-    kisa.tyyppi === 'resul' ? { tasatuloksenRatkaisija: RESUL_TASATULOKSEN_RATKAISIJA } : {}
-  for (const r of kokonaiskilpailu(kisa.kilpailijat, lajit, ratkaisija)) {
-    ws.getCell(rivi, 1).value = r.sija
-    ws.getCell(rivi, 2).value = r.kilpailija.sukunimi
-    ws.getCell(rivi, 3).value = r.kilpailija.etunimi
-    ws.getCell(rivi, 4).value = r.kilpailija.yhdistys
-    lajit.forEach((l, i) => {
-      ws.getCell(rivi, 5 + i).value = r.lajipisteet[l.id]
-    })
-    ws.getCell(rivi, 5 + lajit.length).value = r.pisteet
-    ws.getCell(rivi, 6 + lajit.length).value = r.lajeja
-    rivi++
-  }
-
-  ws.getColumn(2).width = 18
-  ws.getColumn(3).width = 14
-  ws.getColumn(4).width = 14
-  ws.getColumn(5).width = 30
 }
 
 function kirjoitaKisatiedot(wb: Workbook, kisa: Kisa) {
@@ -588,6 +363,11 @@ export function vientiTiedostonimi(kisa: Kisa, aika: Date): string {
  * Kirjoittaa koko kisan Excel-tiedostoksi.
  *
  * ExcelJS ladataan vasta tässä (~900 kB), jottei sovelluksen käynnistys hidastu.
+ *
+ * Kaavasoluille annetaan myös valmis arvo, jotta tiedosto on luettavissa ilman
+ * uudelleenlaskentaa. ExcelJS jättää arvon kuitenkin kirjoittamatta, jos se on epätosi
+ * (0 tai tyhjä teksti) — sen `_copyModel` testaa totuusarvon. Nollatulos jää siis
+ * tiedostoon ilman valmista arvoa, ja Excel laskee sellaisen solun tiedostoa avatessa.
  */
 export async function vieKisa(kisa: Kisa, nyt: Date = new Date()): Promise<VientiTulos> {
   const { Workbook } = await import('exceljs')
@@ -613,13 +393,16 @@ export async function vieKisa(kisa: Kisa, nyt: Date = new Date()): Promise<Vient
     })
   }
 
-  for (const rakenne of lajit) {
-    kirjoitaTuloskortti(wb, kisa, rakenne, sivut.get(rakenne.id)!.tuloskortti)
-  }
-  for (const rakenne of lajit) {
-    kirjoitaSijoitukset(wb, kisa, rakenne, sivut.get(rakenne.id)!.sijoitukset)
-  }
-  kirjoitaYhdistykset(wb, kisa)
+  /*
+   * Lajikohtainen konteksti lasketaan kerran ja jaetaan kaikille kolmelle välilehdelle.
+   * Sijoitus- ja yhdistyssivu viittaavat samoihin soluihin, joten rivimäärät ja
+   * apusarakkeiden paikat eivät saa päätyä laskettavaksi kahteen kertaan.
+   */
+  const kontekstit = lajit.map((rakenne) => lajiKonteksti(kisa, rakenne, sivut.get(rakenne.id)!))
+
+  for (const konteksti of kontekstit) kirjoitaTuloskortti(wb, konteksti)
+  for (const konteksti of kontekstit) kirjoitaSijoitukset(wb, konteksti)
+  kirjoitaYhdistykset(wb, kisa, kontekstit)
   kirjoitaMeta(wb, kisa, nyt.toISOString(), sivut)
 
   const tavut = await wb.xlsx.writeBuffer()

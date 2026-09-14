@@ -75,6 +75,23 @@ export function alue(rivi: number, alkuSarake: number, loppuSarake: number): str
   return `${solu(rivi, alkuSarake)}:${solu(rivi, loppuSarake)}`
 }
 
+/** Yhden sarakkeen pystyalue kiinteillä viittauksilla, esim. `$B$4:$B$20`. */
+export function sarakeAlue(sarake: number, alkuRivi: number, loppuRivi: number): string {
+  const kirjain = sarakeKirjain(sarake)
+  return `${kirjain}${alkuRivi}:${kirjain}${loppuRivi}`
+}
+
+/**
+ * Välilehtiviittauksen etuliite, esim. `'Tuloskortti RA1'!`.
+ *
+ * Nimi lainausmerkeissä aina: mukautetun kisan lajikoodi voi sisältää välilyöntejä tai
+ * numeron alussa, jolloin lainaamaton nimi rikkoisi kaavan. Heittomerkki nimen sisällä
+ * kahdennetaan Excelin sääntöjen mukaan.
+ */
+export function sivuViite(nimi: string): string {
+  return `'${nimi.replace(/'/g, "''")}'!`
+}
+
 export const OTSIKKO_RIVI = 3
 export const ENSIMMAINEN_DATARIVI = 4
 
@@ -175,30 +192,153 @@ export function luoAsettelu(rakenne: { kilpasarjat: readonly { laukauksia: numbe
 }
 
 /**
+ * Kuinka monta tyhjää varariviä tuloskorttiin kirjoitetaan valmiiksi kaavojen kanssa.
+ *
+ * Tuonti osaa lukea käsin lisätyn rivin (ks. `nimiAvain`), joten järjestäjä voi lisätä
+ * ampujan suoraan Exceliin. Ilman valmiita kaavoja lisätyn rivin tulos jäisi tyhjäksi
+ * eikä hän näkyisi sijoituksissa lainkaan.
+ */
+export const VARARIVIT = 5
+
+/**
+ * COUNTIF-ehto napakympille.
+ *
+ * Tähti on COUNTIFin jokerimerkki, joka tarkoittaa "mitä tahansa tekstiä". Pelkkä `"*"`
+ * laski siis myös ohilaukaukset (`-`) napakympeiksi ja lisäsi jokaisesta kymmenen
+ * pistettä. Tilde pakottaa tulkitsemaan tähden kirjaimellisena merkkinä.
+ */
+const NAPA_EHTO = '"~*"'
+
+/** Sijoitussivun kiinteät sarakkeet ennen kilpasarjoja. */
+export const SIJOITUS_PERUS = [
+  'Luokka',
+  'Sija',
+  'Sukunimi',
+  'Etunimi',
+  'Yhdistys',
+  'Ikäsarja',
+] as const
+
+/**
+ * Sijoitussivun piilotetut apusarakkeet kirjoitusjärjestyksessä.
+ *
+ * Kahdeksan ensimmäistä pitävät sijoituslistan järjestyksessä. Viisi viimeistä ovat
+ * yhdistys- ja kokonaiskilpailua varten: ne poimivat samalta riviltä sen tiedon, jota
+ * koostesivu tarvitsee, jottei koostesivun tarvitse tuntea tuloskortin rakennetta.
+ */
+export const SIJOITUS_APUSARAKKEET = [
+  '_luokka',
+  '_avain',
+  '_avain2',
+  '_rivi',
+  '_tulos',
+  '_jarjestys',
+  '_sija',
+  '_osoite',
+  '_yhdistys',
+  '_yhdSija',
+  '_yhdAvain',
+  '_hloAvain',
+  '_hloPisteet',
+] as const
+
+export type SijoitusApusarake = (typeof SIJOITUS_APUSARAKKEET)[number]
+
+export interface SijoitusAsettelu {
+  luokka: number
+  sija: number
+  sukunimi: number
+  etunimi: number
+  yhdistys: number
+  ikasarja: number
+  /** Kilpasarjan `s` pistesarake. */
+  sarja: (s: number) => number
+  tulos: number
+  iskemat: number
+  navat: number
+  /** Näkyvän taulukon viimeinen sarake. */
+  leveys: number
+  apuAlku: number
+  apu: Record<SijoitusApusarake, number>
+}
+
+/**
+ * Sijoitussivun sarakeasettelu. Omana funktionaan, koska yhdistyssivu viittaa samoihin
+ * apusarakkeisiin eikä saa arvata niiden paikkoja.
+ */
+export function luoSijoitusAsettelu(kilpasarjoja: number): SijoitusAsettelu {
+  const perus = SIJOITUS_PERUS.length
+  const tulos = perus + kilpasarjoja + 1
+  const navat = tulos + 2
+  // Apusarakkeet jäävät näkyvän taulukon oikealle puolelle yhden tyhjän sarakkeen taakse.
+  const apuAlku = navat + 2
+
+  const apu = Object.fromEntries(
+    SIJOITUS_APUSARAKKEET.map((nimi, i) => [nimi, apuAlku + i]),
+  ) as Record<SijoitusApusarake, number>
+
+  return {
+    luokka: 1,
+    sija: 2,
+    sukunimi: 3,
+    etunimi: 4,
+    yhdistys: 5,
+    ikasarja: 6,
+    sarja: (s: number) => perus + 1 + s,
+    tulos,
+    iskemat: tulos + 1,
+    navat,
+    leveys: navat,
+    apuAlku,
+    apu,
+  }
+}
+
+/**
  * Kaavat johdetuille sarakkeille. Käytetään tarkoituksella tavallisia funktioita
  * (SUMIF/COUNTIF) eikä taulukkokaavoja: alkuperäisen Excelin SUMPRODUCT(IF(...))
  * vaatii uudemman Excelin, ja SORTBY/FILTER-tyyliset kaavat eivät ole ExcelJS:llä
  * luotettavasti kirjoitettavissa.
+ *
+ * Jokainen kaava palauttaa tyhjän, jos riville ei ole syötetty mitään. Muuten
+ * tuloskortin varariveille jäisi nollia, eikä sijoitussivu erottaisi aloittamatonta
+ * kilpailijaa nollan ampuneesta.
  */
 export const KAAVAT = {
   /** Sarjan pisteet: numerot ≥ 1 plus napakympit kymppeinä. */
   sarjaYht(alueViite: string): string {
-    return `SUMIF(${alueViite},">=1")+COUNTIF(${alueViite},"*")*10`
+    return `IF(COUNTA(${alueViite})=0,"",SUMIF(${alueViite},">=1")+COUNTIF(${alueViite},${NAPA_EHTO})*10)`
   },
   /** Napakymppien määrä. */
   navat(alueViite: string): string {
-    return `COUNTIF(${alueViite},"*")`
+    return `IF(COUNTA(${alueViite})=0,"",COUNTIF(${alueViite},${NAPA_EHTO}))`
   },
   /** Iskemien määrä: osumat numerorenkaisiin, eli numerot ≥ 1 ja napakympit. */
   iskemat(alueViite: string): string {
-    return `COUNTIF(${alueViite},">=1")+COUNTIF(${alueViite},"*")`
+    return `IF(COUNTA(${alueViite})=0,"",COUNTIF(${alueViite},">=1")+COUNTIF(${alueViite},${NAPA_EHTO}))`
   },
   /**
    * Kilpailutulos. Rangaistus on 2 pistettä kerrallaan, hylätyn tulos on 0, eikä
    * tulos voi mennä negatiiviseksi.
    */
   tulos(yhtSolut: string[], rikeSolu: string, hylattySolu: string, summa: boolean): string {
-    const pohja = summa ? `SUM(${yhtSolut.join(',')})` : `MAX(${yhtSolut.join(',')})`
-    return `IF(${hylattySolu}="x",0,MAX(0,${pohja}-2*N(${rikeSolu})))`
+    const lista = yhtSolut.join(',')
+    const pohja = summa ? `SUM(${lista})` : `MAX(${lista})`
+    return `IF(COUNT(${lista})=0,"",IF(${hylattySolu}="x",0,MAX(0,${pohja}-2*N(${rikeSolu}))))`
+  },
+  /** Iskemien tai napakymppien summa kaikista kilpasarjoista ('summa'-lajit). */
+  yhteensa(solut: string[]): string {
+    const lista = solut.join(',')
+    return `IF(COUNT(${lista})=0,"",SUM(${lista}))`
+  },
+  /**
+   * Iskemät tai napakympit paremmasta kilpasarjasta ('paras'-lajit, kaksi sarjaa).
+   *
+   * N() ympärillä siksi, että kesken jääneen sarjan yhteissumma on tyhjä teksti — ja
+   * Excelissä mikä tahansa teksti on suurempi kuin mikä tahansa luku, joten paljas
+   * vertailu valitsisi tyhjän sarjan.
+   */
+  parempiSarjasta(yhtA: string, yhtB: string, arvoA: string, arvoB: string): string {
+    return `IF(COUNT(${yhtA},${yhtB})=0,"",IF(N(${yhtA})>=N(${yhtB}),${arvoA},${arvoB}))`
   },
 }

@@ -10,9 +10,12 @@ import { vertaaNimia, TARKAN_TULKKAUKSEN_RAJA } from './sijoitukset'
  * asiakirjoittain, mutta sisältö on sama:
  *
  * - RA1 kohta 15.A.4: "Kokonaiskilpailussa parempi **PA2**:n tulos ratkaisee voittajan."
- * - RA2 kohta 15.3:   "Kokonaiskilpailussa parempi **RA2**:n tulos ratkaisee voittajan."
- * - RA3 kohta 15.4:   "Kokonaiskilpailussa parempi **PA2**:n tulos ratkaisee voittajan."
- * - RA4 kohta 15.4:   "Kokonaiskilpailussa parempi **PA2**:n tulos ratkaisee voittajan."
+ * - RA2 kohta 14.3:   "Kokonaiskilpailussa parempi **RA2**:n tulos ratkaisee voittajan."
+ * - RA4 kohta 14.4:   "Kokonaiskilpailussa parempi **PA2**:n tulos ratkaisee voittajan."
+ *
+ * RA1 erottaa sijoituksen (14.) ja tasatuloksen (15.) omiksi kohdikseen, RA2 ja RA4
+ * kokoavat molemmat kohtaan 14. RA3:n sääntö-pdf:n leipätekstiä ei saatu luettua
+ * koneellisesti, joten sen kohdan numeroa ei ole tarkistettu; sisältö on RA4:n kaltainen.
  *
  * PA2 tulkitaan RA2:ksi: RA2 on ainoa laji, jonka omissa säännöissä kohta on kirjoitettu
  * muotoon "RA2". RA2:n luettelossa on kolme kohtaa neljän sijaan, koska siitä puuttuu

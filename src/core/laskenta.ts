@@ -157,9 +157,15 @@ export interface LajiTulos {
   /** Tasatulosperuste huomioitavista sarjoista. */
   peruste: Tasaperuste
   /**
-   * 'paras'-lajeissa huonomman sarjan peruste. Sääntöjen kohta 15.3: jos paremman
-   * kilpasarjan tulokset ovat samat, ratkaistaan huonomman sarjan perusteella.
-   * 'summa'-lajeissa `undefined`, koska niiden säännöissä tätä kohtaa ei ole.
+   * 'paras'-lajeissa huonomman kilpasarjan peruste.
+   *
+   * RA1 kohta 15.A.3 ja RA4 kohta 14.3 (versiot 1.6 / 2025), sanatarkasti: "Mikäli
+   * paremman kilpasarjan tulokset ovat kohtien 1 ja 2 tulkkausten jälkeen samat, tällöin
+   * lasketaan huonomman kilpasarjan tulokset samalla periaatteella ja ratkaistaan
+   * tulosjärjestys."
+   *
+   * 'summa'-lajeissa `undefined`: RA2:n vastaavassa luettelossa on vain kolme kohtaa,
+   * eikä huonomman kilpasarjan vertailua ole — summalajissa kaikki sarjat lasketaan.
    */
   toissijainenPeruste?: Tasaperuste
   /** Onko kaikki lajin laukaukset syötetty? */
