@@ -1,6 +1,6 @@
 import type { Workbook } from 'exceljs'
-import type { Kilpailija, Kisa, LajiId, Luokka } from '@/types/kisa'
-import { LUOKAT, LUOKKA_NIMET, type LajiRakenne } from '@/core/lajit'
+import type { Kilpailija, Kisa, LajiId, LuokkaId } from '@/types/kisa'
+import { kisanLuokat, luokanNimi, type LajiRakenne } from '@/core/lajit'
 import { laskeLaji, type LajiTulos } from '@/core/laskenta'
 import { TARKAN_TULKKAUKSEN_RAJA } from '@/core/sijoitukset'
 import {
@@ -76,6 +76,8 @@ export interface LajiKonteksti {
   /** Sijoitussivun välilehden nimi. */
   sijoitukset: string
   osallistujat: Kilpailija[]
+  /** Kisan aseluokat järjestyksessä. Ratkaisee sijoitusten luokkajaon ja -järjestyksen. */
+  luokat: LuokkaId[]
   /** Datarivien määrä tuloskortissa ja sijoitussivun apulohkossa (sis. vararivit). */
   riveja: number
   a: Asettelu
@@ -106,9 +108,20 @@ function avaimeksi(pisteet: number, iskemat: number, navat: number): number {
 }
 
 /** Luokan järjestysnumero. Tunnistamaton luokka menee listan loppuun. */
-function luokanJarjestys(luokka: Luokka): number {
-  const i = LUOKAT.indexOf(luokka)
-  return i < 0 ? LUOKAT.length + 1 : i + 1
+function luokanJarjestys(luokka: LuokkaId, luokat: readonly LuokkaId[]): number {
+  const i = luokat.indexOf(luokka)
+  return i < 0 ? luokat.length + 1 : i + 1
+}
+
+/**
+ * Merkkijono Excel-kaavan sisään.
+ *
+ * Mukautetun kisan luokan nimeää järjestäjä, joten siinä voi olla lainausmerkki. Kaavassa
+ * lainausmerkki kahdennetaan; ilman tätä kaava katkeaisi ja koko sijoitussivu näyttäisi
+ * virhettä.
+ */
+function kaavaan(teksti: string): string {
+  return teksti.replace(/"/g, '""')
 }
 
 /**
@@ -125,6 +138,7 @@ export function sijoitusApurit(
   osallistujat: Kilpailija[],
   laji: LajiId,
   maaritys: LajiRakenne,
+  luokat: readonly LuokkaId[],
 ): SijoitusApuri[] {
   const tyhja = (): SijoitusApuri => ({
     luokka: '',
@@ -148,7 +162,7 @@ export function sijoitusApurit(
     if (!t.aloitettu) return tyhja()
     const { paras, huonompi } = excelPerusteet(t, maaritys.tulosSaanto === 'summa')
     return {
-      luokka: luokanJarjestys(o.luokka),
+      luokka: luokanJarjestys(o.luokka, luokat),
       avain: t.hylatty ? AVAIN_HYLATTY : avaimeksi(t.pisteet, paras.iskemat, paras.navat),
       // Hylätyllä nolla, jotta hylätyt jäävät keskenään sukunimijärjestykseen.
       avain2:
@@ -274,7 +288,7 @@ export function kirjoitaSijoitukset(wb: Workbook, k: LajiKonteksti) {
     if (apu.jarjestys !== '') nayttoon[apu.jarjestys - 1] = i
   })
 
-  const luokkaNimet = LUOKAT.map((l) => `"${LUOKKA_NIMET[l]}"`).join(',')
+  const luokkaNimet = k.luokat.map((l) => `"${kaavaan(luokanNimi(l))}"`).join(',')
 
   for (let idx = 0; idx < riveja; idx++) {
     const rivi = ekaRivi + idx
@@ -302,9 +316,9 @@ export function kirjoitaSijoitukset(wb: Workbook, k: LajiKonteksti) {
     const sOsoite = solu(rivi, sa.apu._osoite)
 
     // Luokan järjestysnumero, tai tyhjä jos riville ei ole syötetty yhtään laukausta.
-    const luokkaNumero = LUOKAT.reduceRight(
-      (acc, l, i) => `IF(${tkLuokka}="${l}",${i + 1},${acc})`,
-      String(LUOKAT.length + 1),
+    const luokkaNumero = k.luokat.reduceRight(
+      (acc, l, i) => `IF(${tkLuokka}="${kaavaan(l)}",${i + 1},${acc})`,
+      String(k.luokat.length + 1),
     )
     ws.getCell(rivi, sa.apu._luokka).value = {
       formula: `IF(COUNTA(${laukausViitteet.join(',')})=0,"",${luokkaNumero})`,
@@ -419,7 +433,7 @@ export function kirjoitaSijoitukset(wb: Workbook, k: LajiKonteksti) {
 
     ws.getCell(rivi, sa.luokka).value = {
       formula: `IF(${sOsoite}="","",CHOOSE(INDEX(${apuAlue(sa.apu._luokka)},${sOsoite}),${luokkaNimet},""))`,
-      result: no ? LUOKKA_NIMET[no.luokka] : '',
+      result: no ? luokanNimi(no.luokka) : '',
     }
     ws.getCell(rivi, sa.sija).value = {
       formula: poimi(apuAlue(sa.apu._sija)),
@@ -483,14 +497,16 @@ export function lajiKonteksti(
   nimet: { tuloskortti: string; sijoitukset: string },
 ): LajiKonteksti {
   const osallistujat = lajinOsallistujat(kisa, rakenne.id)
+  const luokat = kisanLuokat(kisa)
   return {
     rakenne,
     tuloskortti: nimet.tuloskortti,
     sijoitukset: nimet.sijoitukset,
     osallistujat,
+    luokat,
     riveja: osallistujat.length + VARARIVIT,
     a: luoAsettelu(rakenne),
     sa: luoSijoitusAsettelu(rakenne.kilpasarjat.length),
-    apurit: sijoitusApurit(osallistujat, rakenne.id, rakenne),
+    apurit: sijoitusApurit(osallistujat, rakenne.id, rakenne, luokat),
   }
 }

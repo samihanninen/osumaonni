@@ -4,7 +4,7 @@ import {
   type LajiId,
   type LajiMaaritys,
   type Laukaus,
-  type Luokka,
+  type LuokkaId,
   type Osallistuminen,
 } from '@/types/kisa'
 
@@ -143,7 +143,7 @@ function vertaaKilpasarjoja(a: KilpasarjaTulos, b: KilpasarjaTulos): number {
 /** Kilpailijan tulos yhdessä lajissa. */
 export interface LajiTulos {
   laji: LajiId
-  luokka: Luokka
+  luokka: LuokkaId
   /** Kaikkien kilpasarjojen tulokset syöttöjärjestyksessä. */
   sarjat: KilpasarjaTulos[]
   /** Laskennassa huomioitavan sarjan indeksi ('paras'-lajeissa); 'summa'-lajeissa -1. */

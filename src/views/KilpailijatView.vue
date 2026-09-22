@@ -5,9 +5,9 @@ import { RouterLink } from 'vue-router'
 import { useKisaStore } from '@/stores/kisa'
 import { useLaiteStore } from '@/stores/laite'
 import { useRosteriStore } from '@/stores/rosteri'
-import { kisanLajit, kisanSarjat, LUOKAT, LUOKKA_NIMET } from '@/core/lajit'
+import { kisanLajit, kisanSarjat, luokanNimi } from '@/core/lajit'
 import type { RosteriHenkilo } from '@/core/rosteri'
-import type { Kilpailija, LajiId, Luokka, SarjaId } from '@/types/kisa'
+import type { Kilpailija, LajiId, LuokkaId, SarjaId } from '@/types/kisa'
 
 const store = useKisaStore()
 const laite = useLaiteStore()
@@ -133,7 +133,7 @@ function vaihdaOsallistuminen(id: string, laji: LajiId, mukana: boolean) {
   else store.poistaOsallistuminen(id, laji)
 }
 
-function luokka(id: string, laji: LajiId): Luokka | '' {
+function luokka(id: string, laji: LajiId): LuokkaId {
   return store.kilpailija(id)?.osallistumiset[laji]?.luokka ?? ''
 }
 
@@ -405,14 +405,12 @@ function vaihdaRosteri(k: Kilpailija, mukaan: boolean) {
                   :aria-label="`${laji.koodi}: aseluokka`"
                   :value="luokka(k.id, laji.id)"
                   @change="
-                    store.asetaLuokka(
-                      k.id,
-                      laji.id,
-                      ($event.target as HTMLSelectElement).value as Luokka,
-                    )
+                    store.asetaLuokka(k.id, laji.id, ($event.target as HTMLSelectElement).value)
                   "
                 >
-                  <option v-for="l in LUOKAT" :key="l" :value="l">{{ LUOKKA_NIMET[l] }}</option>
+                  <option v-for="l in store.luokat" :key="l" :value="l">
+                    {{ luokanNimi(l) }}
+                  </option>
                 </select>
               </div>
             </div>

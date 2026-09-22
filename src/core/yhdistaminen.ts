@@ -327,6 +327,7 @@ function rakennaKisaPaketista(paketti: Siirtopaketti): Kisa {
     tyyppi: paketti.kisaTyyppi ?? 'resul',
     ...(paketti.mukautetutLajit ? { lajit: paketti.mukautetutLajit } : {}),
     ...(paketti.mukautetutSarjat ? { sarjat: paketti.mukautetutSarjat } : {}),
+    ...(paketti.mukautetutLuokat?.length ? { luokat: paketti.mukautetutLuokat } : {}),
     kisaId: paketti.kisaId,
     kisatiedot: paketti.kisatiedot ?? {
       nimi: '',
