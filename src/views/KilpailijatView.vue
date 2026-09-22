@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, watch, watchEffect } from 'vue'
 import { storeToRefs } from 'pinia'
+import { RouterLink } from 'vue-router'
 import { useKisaStore } from '@/stores/kisa'
 import { useLaiteStore } from '@/stores/laite'
 import { useRosteriStore } from '@/stores/rosteri'
-import RosteriValinta from '@/components/RosteriValinta.vue'
 import { kisanLajit, kisanSarjat, LUOKAT, LUOKKA_NIMET } from '@/core/lajit'
 import type { RosteriHenkilo } from '@/core/rosteri'
 import type { Kilpailija, LajiId, Luokka, SarjaId } from '@/types/kisa'
@@ -142,6 +142,19 @@ function poista(id: string) {
   poistoVahvistus.value = null
 }
 
+/**
+ * Nostetaanko rosterilinkki ensisijaiseksi?
+ *
+ * Tyhjän kisan alussa rosterista on eniten hyötyä: päivän väki täpätään kisaan ennen
+ * ensimmäistä laukausta. Sama syy, jolla rosteriosio oli ennen valmiiksi auki juuri
+ * silloin. Kun kilpailijoita on jo kirjattu, linkki riittää tavallisena.
+ */
+const korostaRosteri = computed(() => rosteri.maara > 0 && store.kilpailijoita === 0)
+
+const rosteriLinkki = computed(() =>
+  korostaRosteri.value ? 'Täppää väki rosterista' : 'Avaa rosteri',
+)
+
 /** Kilpailijan nimi yhtenä merkkijonona, rosterirastin saavutettavaa nimeä varten. */
 function nimi(k: Kilpailija): string {
   return [k.etunimi, k.sukunimi]
@@ -198,7 +211,23 @@ function vaihdaRosteri(k: Kilpailija, mukaan: boolean) {
       Aseluokka valitaan lajikohtaisesti, koska se seuraa käytettyä asetta.
     </p>
 
-    <RosteriValinta />
+    <!--
+      Rosteri on omalla sivullaan. Samalla sivulla avattuna samat ihmiset näkyivät
+      kahdesti — rosterissa ja alla olevassa kilpailijalistassa — eikä kumpaa listaa
+      milloinkin muokkasi erottunut. Tässä näkyy vain rosterin tila ja tie sinne.
+    -->
+    <div class="kortti rosterikortti">
+      <p class="rosteri-tila">
+        <strong>Rosteri</strong>
+        <span>{{ rosteri.maara ? `${rosteri.maara} henkilöä laitteella` : 'tyhjä' }}</span>
+      </p>
+      <p class="selite">
+        Laitteelle jäävä henkilölista: sama porukka seuraavaan kisaan ilman uudelleen syöttämistä.
+      </p>
+      <RouterLink to="/rosteri" class="nappi" :class="{ 'nappi--ensisijainen': korostaRosteri }">{{
+        rosteriLinkki
+      }}</RouterLink>
+    </div>
 
     <form class="kortti lisays" @submit.prevent="lisaa">
       <div class="kentat-rinnakkain">
@@ -428,6 +457,24 @@ function vaihdaRosteri(k: Kilpailija, mukaan: boolean) {
 </template>
 
 <style scoped>
+.rosterikortti {
+  margin: 1rem 0 1.25rem;
+}
+.rosteri-tila {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0;
+}
+.rosteri-tila span,
+.selite {
+  font-size: 0.9rem;
+  color: var(--vari-teksti-himmea);
+}
+.selite {
+  margin: 0.25rem 0 0.75rem;
+}
 .lisays {
   margin: 1rem 0 1.5rem;
 }

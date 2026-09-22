@@ -57,8 +57,11 @@ test('rosterista saa saman porukan seuraavaan kisaan', async ({ page }) => {
   }
   await expect(page.getByText('2 kilpailijaa')).toBeVisible()
 
+  await page.getByRole('link', { name: 'Avaa rosteri' }).click()
   await page.getByRole('button', { name: /Tallenna kisan kilpailijat rosteriin/ }).click()
   await expect(page.getByText('Rosteriin tallennettiin 2 uutta henkilöä')).toBeVisible()
+  await page.getByRole('button', { name: /Valmis/ }).click()
+  await expect(page.getByRole('heading', { name: 'Kilpailijat', level: 1 })).toBeVisible()
 
   // Kisa nollille: rosteri jää, koska se on lista joka kestää kisan yli.
   await siirry(page, '/#/kisatiedot')
@@ -71,7 +74,9 @@ test('rosterista saa saman porukan seuraavaan kisaan', async ({ page }) => {
   await expect(page.getByText('2 henkilöä')).toBeVisible()
 
   // Täppäys tuo kilpailijan kaikkine lajeineen: 2 × RA1–RA4.
+  await page.getByRole('link', { name: 'Täppää väki rosterista' }).click()
   await page.getByRole('button', { name: /Lisää kaikki kisaan/ }).click()
+  await page.getByRole('button', { name: /Valmis — kisassa 2 kilpailijaa/ }).click()
   await expect(page.getByText('2 kilpailijaa')).toBeVisible()
   await expect(page.locator('li .laji select')).toHaveCount(8)
 
@@ -90,6 +95,7 @@ test('rosterin voi tyhjentää kisatiedoista kisaa koskematta', async ({ page })
   await page.locator('#sukunimi').fill('Hakala')
   await page.locator('#yhdistys').fill('Nupures')
   await page.getByRole('button', { name: 'Lisää kilpailija' }).click()
+  await page.getByRole('link', { name: 'Avaa rosteri' }).click()
   await page.getByRole('button', { name: /Tallenna kisan kilpailijat rosteriin/ }).click()
 
   await siirry(page, '/#/kisatiedot')
@@ -100,8 +106,7 @@ test('rosterin voi tyhjentää kisatiedoista kisaa koskematta', async ({ page })
 
   await siirry(page, '/#/kilpailijat')
   await expect(page.getByText('1 kilpailijaa')).toBeVisible()
-  // Rosteriosio on taitettuna, koska kisassa on jo kilpailijoita. Otsikko kertoo tilan.
-  await page.locator('summary.otsikko').click()
+  await page.getByRole('link', { name: 'Avaa rosteri' }).click()
   await expect(page.getByText('Rosteri on tyhjä')).toBeVisible()
 })
 
@@ -130,6 +135,33 @@ test('listalla olevan kilpailijan voi täpätä rosteriin jälkikäteen', async 
   // Rastin poisto vie rosterista, mutta kilpailija jää kisaan tuloksineen.
   await page.getByRole('checkbox', { name: 'Sanna Hakala rosterissa' }).uncheck()
   await expect(page.getByText('1 kilpailijaa')).toBeVisible()
-  await page.locator('summary.otsikko').click()
+  await page.getByRole('link', { name: 'Avaa rosteri' }).click()
   await expect(page.getByText('Rosteri on tyhjä')).toBeVisible()
+})
+
+/*
+ * Rosteri on oma sivunsa juuri siksi, ettei kahta listaa samoista ihmisistä näy
+ * yhtä aikaa. Silloin sieltä on myös päästävä takaisin — ja paluu on sivupolun
+ * päättäminen, ei uusi askel: laitteen paluupainike ei saa tuoda takaisin rosteriin.
+ */
+test('rosterista palataan kilpailijalistaan eikä paluupainike tuo takaisin', async ({ page }) => {
+  await avaaTyhjana(page, '/#/kilpailijat')
+
+  await page.locator('#sukunimi').fill('Hakala')
+  await page.locator('#yhdistys').fill('Nupures')
+  await page.getByRole('button', { name: 'Lisää kilpailija' }).click()
+
+  await page.getByRole('link', { name: 'Avaa rosteri' }).click()
+  await expect(page.getByRole('heading', { name: 'Rosteri', level: 1 })).toBeVisible()
+  // Kilpailijalista ei näy rosterissa: juuri sen päällekkäisyyden vuoksi sivu on erillinen.
+  await expect(page.getByText('1 kilpailijaa')).toBeHidden()
+
+  await page.getByRole('button', { name: /Tallenna kisan kilpailijat rosteriin/ }).click()
+  await page.getByRole('button', { name: /Valmis — kisassa 1 kilpailija/ }).click()
+
+  await expect(page.getByRole('heading', { name: 'Kilpailijat', level: 1 })).toBeVisible()
+  await expect(page.getByText('1 henkilöä laitteella')).toBeVisible()
+
+  await page.goBack()
+  await expect(page.getByRole('heading', { name: 'Kilpailijat', level: 1 })).toBeVisible()
 })
