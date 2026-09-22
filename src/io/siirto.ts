@@ -408,7 +408,7 @@ export function pura(palat: string[]): Siirtopaketti {
 export function rakennaOsapaketti(
   kisa: Kisa,
   tunnisteet: { laiteId: string; laiteNimi?: string; versio: number; aika: string },
-  rajaus?: { lajit?: Laji[]; kilpailijaIdt?: string[] },
+  rajaus?: { lajit?: LajiId[]; kilpailijaIdt?: string[] },
 ): Siirtopaketti {
   const lajit = rajaus?.lajit
   const idt = rajaus?.kilpailijaIdt ? new Set(rajaus.kilpailijaIdt) : null
