@@ -77,7 +77,7 @@ käytettävissä puhelimella ampumaradalla. Tämä versio korjaa nämä kolme as
 2. **Kilpailijat** — lisää kilpailijat: nimi, yhdistys ja lajit joihin hän osallistuu.
    Lajit ovat valmiiksi valittuina, joten yleensä riittää nimen kirjaaminen. Yhdistyksen
    nimi ehdotetaan aiemmin syötetyistä, joten kirjoitusasu pysyy samana. Saman porukan saa
-   kisaan täppäämällä sivun *Rosteri*-osiosta — ks. [Rosteri](#rosteri).
+   kisaan täppäämällä sivun *Rosteri*-kortin kautta — ks. [Rosteri](#rosteri).
 3. **Syöttö** — valitse laji ja syötä laukaukset. Sarjan summa, navat ja kilpailutulos
    päivittyvät heti. Merkitse napakymppi `*`:llä ja huti `-`:llä.
 4. **Sijoitukset** — henkilökohtaiset tulokset järjestyksessä, tasatulokset napojen mukaan.
@@ -170,10 +170,13 @@ Pienessä yhdistyksessä samat ihmiset ampuvat kisan toisensa jälkeen, mutta ki
 kertakäyttöinen: *Aloita uusi kisa* poistaa kilpailijat, ja seuraavalla kerralla samat
 nimet, yhdistykset ja lajit naputellaan uudelleen. **Rosteri on se lista, joka jää.**
 
-Rosteri on *Kilpailijat*-sivun ylälaidassa, ja se toimii näin:
+Rosterilla on oma sivunsa, jonne pääsee *Kilpailijat*-sivun ylälaidan *Rosteri*-kortista.
+Se on tarkoituksella poissa päävalikosta: rosteri ei ole kisadataa vaan tämän laitteen oma
+nimilista. Sivulla täpätään päivän väki ja palataan *Valmis*-napista takaisin
+kilpailijalistaan. Rosteri toimii näin:
 
 - **Rasti tuo henkilön tähän kisaan** kaikkine kisan lajeineen — useimmiten osallistutaan
-  kaikkeen, ja poikkeukset otetaan pois alempaa kilpailijalistalta. Rastin poistaminen
+  kaikkeen, ja poikkeukset otetaan pois kilpailijalistalta. Rastin poistaminen
   poistaa hänet kisasta; jos tuloksia on jo kirjattu, poisto vahvistetaan erikseen.
 - **Rosteriin tallennetaan** joko napista *Tallenna kisan kilpailijat rosteriin* tai
   rastittamalla lisäyslomakkeelta *Tallenna myös rosteriin*. Jälkimmäinen valinta

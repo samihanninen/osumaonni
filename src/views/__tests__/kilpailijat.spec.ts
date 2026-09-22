@@ -14,7 +14,9 @@ import { useRosteriStore } from '@/stores/rosteri'
  * kirjain pudottaa hänet takaisin. Kohdistus seurasi liikkuvaa riviä tai jäi väärään
  * kenttään, eikä nimeä voinut kirjoittaa loppuun.
  */
-const globaalit = { stubs: { RouterLink: { template: '<a><slot /></a>' } } }
+const globaalit = {
+  stubs: { RouterLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } },
+}
 
 function sukunimikentat(wrapper: ReturnType<typeof mount>) {
   return wrapper.findAll('input[id^="suku-"]')
@@ -126,5 +128,55 @@ describe('rosterirasti kilpailijalistalla', () => {
     const wrapper = mount(KilpailijatView, { global: globaalit })
 
     expect(wrapper.find('.rivi .rosterirasti').exists()).toBe(false)
+  })
+})
+
+/**
+ * Rosteri siirtyi omalle sivulleen.
+ *
+ * Taitettuna osiona se näytti kilpailijasivulla samat ihmiset kahdesti — rosterissa ja
+ * kisan kilpailijalistassa — eikä kumpaa listaa milloinkin muokkasi erottunut. Sivulle
+ * jää vain rosterin tila ja linkki sinne.
+ */
+describe('rosterikortti kilpailijasivulla', () => {
+  let store: ReturnType<typeof useKisaStore>
+  let rosteri: ReturnType<typeof useRosteriStore>
+
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    store = useKisaStore()
+    rosteri = useRosteriStore()
+  })
+
+  it('rosterin nimilistaa ei näytetä kilpailijasivulla', () => {
+    rosteri.tallenna({ etunimi: 'Sanna', sukunimi: 'Hakala', yhdistys: 'Nupures' })
+    const wrapper = mount(KilpailijatView, { global: globaalit })
+
+    expect(wrapper.find('.henkilot').exists()).toBe(false)
+    expect(wrapper.find('a[href="/rosteri"]').exists()).toBe(true)
+  })
+
+  it('kertoo rosterin tilan', () => {
+    const wrapper = mount(KilpailijatView, { global: globaalit })
+    expect(wrapper.text()).toContain('tyhjä')
+
+    rosteri.tallenna({ etunimi: 'Sanna', sukunimi: 'Hakala', yhdistys: 'Nupures' })
+    expect(mount(KilpailijatView, { global: globaalit }).text()).toContain('1 henkilöä laitteella')
+  })
+
+  /*
+   * Tyhjän kisan alussa rosterista on eniten hyötyä, joten linkki nousee ensisijaiseksi
+   * ja kertoo mitä sen takaa löytyy. Sama syy, jolla osio oli ennen valmiiksi auki.
+   */
+  it('nostaa rosterilinkin esiin tyhjässä kisassa', () => {
+    rosteri.tallenna({ etunimi: 'Sanna', sukunimi: 'Hakala', yhdistys: 'Nupures' })
+    const tyhja = mount(KilpailijatView, { global: globaalit })
+    const linkki = tyhja.get('a[href="/rosteri"]')
+    expect(linkki.text()).toBe('Täppää väki rosterista')
+    expect(linkki.classes()).toContain('nappi--ensisijainen')
+
+    store.lisaaKilpailija({ etunimi: 'Pertti', sukunimi: 'Virtanen', yhdistys: 'Nupures' })
+    const taynna = mount(KilpailijatView, { global: globaalit })
+    expect(taynna.get('a[href="/rosteri"]').text()).toBe('Avaa rosteri')
   })
 })
