@@ -24,7 +24,8 @@ yksityiskohdat ovat README-tiedostossa — täällä on vain se mitä radalla ta
 5. **Tai täppää väki rosterista.** Jos porukka on sama kuin viime kerralla, avaa
    *Kilpailijat*-sivulta **Rosteri** ja rastita mukaan tulevat — nimiä ei tarvitse syöttää
    uudelleen. Palaa sivun alalaidan *Valmis*-napista kilpailijalistaan. Uuden porukan saa
-   rosteriin napista *Tallenna kisan kilpailijat rosteriin*.
+   rosteriin napista *Tallenna kisan kilpailijat rosteriin*, ja yksittäisen kilpailijan
+   kilpailijalistan *Rosterissa*-rastista.
    Rosteri jää laitteelle kisan jälkeenkin, ja siinä on henkilötietoja: tyhjennä se
    Kisatiedot-sivulta, kun sitä ei enää tarvita.
 6. **Vie tulokset kertaalleen tiedostoon** jo ennen aloitusta. Näin varmistat että
