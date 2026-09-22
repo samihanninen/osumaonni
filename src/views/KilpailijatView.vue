@@ -6,6 +6,7 @@ import { useLaiteStore } from '@/stores/laite'
 import { useRosteriStore } from '@/stores/rosteri'
 import RosteriValinta from '@/components/RosteriValinta.vue'
 import { kisanLajit, kisanSarjat, LUOKAT, LUOKKA_NIMET } from '@/core/lajit'
+import type { RosteriHenkilo } from '@/core/rosteri'
 import type { Kilpailija, LajiId, Luokka, SarjaId } from '@/types/kisa'
 
 const store = useKisaStore()
@@ -139,6 +140,53 @@ function luokka(id: string, laji: LajiId): Luokka | '' {
 function poista(id: string) {
   store.poistaKilpailija(id)
   poistoVahvistus.value = null
+}
+
+/** Kilpailijan nimi yhtenä merkkijonona, rosterirastin saavutettavaa nimeä varten. */
+function nimi(k: Kilpailija): string {
+  return [k.etunimi, k.sukunimi]
+    .map((osa) => osa.trim())
+    .filter(Boolean)
+    .join(' ')
+}
+
+/**
+ * Kilpailijaa vastaava rosterin rivi, jos hän on rosterissa.
+ *
+ * Tunniste ensin, nimi varatienä — sama järjestys kuin rosterin puolella
+ * (`RosteriValinta`). Rosteriin tallennettu kilpailija pitää tunnisteensa, joten hänet
+ * tunnistetaan senkin jälkeen kun nimeä on kisan puolella korjattu; nimiavain löytää
+ * sen henkilön, joka oli rosterissa jo ennen tätä kisaa.
+ */
+function rosteririvi(k: Kilpailija): RosteriHenkilo | undefined {
+  return rosteri.henkilo(k.id) ?? rosteri.etsiNimella(k)
+}
+
+/**
+ * Lisää kilpailijan rosteriin tai ottaa hänet sieltä pois.
+ *
+ * Lisäyslomakkeen `Tallenna myös rosteriin` koskee vain juuri kirjattavaa kilpailijaa, ja
+ * rosterikortin nappi tallentaa koko kisan kerralla. Väliin ei jäänyt mitään: listalla jo
+ * olevaa yksittäistä kilpailijaa ei saanut rosteriin muuten kuin poistamalla ja
+ * kirjaamalla hänet uudelleen.
+ *
+ * Poistoa ei vahvisteta, toisin kuin rosterikortilla. Siellä rasti veisi listan ainoan
+ * kopion henkilöstä; tässä kaikki hänen tietonsa ovat samalla rivillä, joten rasti tuo
+ * hänet takaisin sellaisenaan.
+ */
+function vaihdaRosteri(k: Kilpailija, mukaan: boolean) {
+  if (mukaan) {
+    rosteri.tallenna({
+      id: k.id,
+      etunimi: k.etunimi,
+      sukunimi: k.sukunimi,
+      yhdistys: k.yhdistys,
+      ikasarja: k.ikasarja,
+    })
+    return
+  }
+  const rivi = rosteririvi(k)
+  if (rivi) rosteri.poista(rivi.id)
 }
 </script>
 
@@ -342,6 +390,21 @@ function poista(id: string) {
           </fieldset>
 
           <div class="rivi-ala">
+            <!--
+              Rosterirasti näkyy vain kun sukunimi on kirjattu: ilman sukunimeä rosteri ei
+              ota henkilöä vastaan, joten rasti kimpoaisi takaisin tyhjänä. Mieluummin ei
+              ruutua kuin ruutu joka ei tottele.
+            -->
+            <label v-if="k.sukunimi.trim()" class="valinta rosterirasti">
+              <input
+                type="checkbox"
+                :checked="Boolean(rosteririvi(k))"
+                :aria-label="`${nimi(k)} rosterissa`"
+                @change="vaihdaRosteri(k, ($event.target as HTMLInputElement).checked)"
+              />
+              <span>Rosterissa</span>
+            </label>
+
             <button
               v-if="poistoVahvistus !== k.id"
               type="button"
@@ -472,6 +535,15 @@ function poista(id: string) {
   gap: 0.5rem;
   border-top: 1px solid var(--vari-reuna);
   padding-top: 0.5rem;
+}
+.rosterirasti {
+  font-size: 0.9rem;
+  color: var(--vari-teksti-himmea);
+  font-weight: 400;
+}
+/* Poisto rivin oikeaan laitaan, erilleen rosterirastista: eri vakavuus, eri suunta. */
+.rivi-ala .poista {
+  margin-inline-start: auto;
 }
 .poista,
 .poista-varma {
