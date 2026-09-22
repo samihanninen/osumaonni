@@ -6,6 +6,7 @@ import { LAJI_KOODIT, laukauksiaYhteensa, suurinTulos } from '@/core/lajit'
 import { onJoukkuekilpailu } from '@/core/yhdistykset'
 import KisanPaattaminen from '@/components/KisanPaattaminen.vue'
 import MukautetutLajit from '@/components/MukautetutLajit.vue'
+import MukautetutLuokat from '@/components/MukautetutLuokat.vue'
 import MukautetutSarjat from '@/components/MukautetutSarjat.vue'
 import type { KisaTyyppi, Laji, TulosSaanto } from '@/types/kisa'
 
@@ -115,6 +116,7 @@ function paivitaSaanto(laji: Laji, arvo: string) {
 
     <template v-if="kisa.tyyppi === 'mukautettu'">
       <MukautetutSarjat />
+      <MukautetutLuokat />
       <MukautetutLajit />
     </template>
 

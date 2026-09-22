@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue'
-import type { Kilpailija, LajiId, Laukaus, Luokka } from '@/types/kisa'
+import type { Kilpailija, LajiId, Laukaus, LuokkaId } from '@/types/kisa'
 import { laskeLaji } from '@/core/laskenta'
 import { jasennaLaukaus, laukausKenttaan, onLopullinenMerkki, onSyottoMerkki } from '@/core/laukaus'
 import {
-  LUOKAT,
-  LUOKKA_NIMET,
+  luokanNimi,
   litteaksiIndeksiksi,
   litteastaIndeksista,
   pisinKilpasarja,
@@ -18,6 +17,8 @@ const props = defineProps<{
   kilpailijat: Kilpailija[]
   laji: LajiId
   rakenne: LajiRakenne
+  /** Kisan aseluokat järjestyksessä. Tulee kutsujalta, koska ne riippuvat kisasta. */
+  luokat: LuokkaId[]
   lukittu?: boolean
 }>()
 
@@ -26,7 +27,7 @@ const pisin = computed(() => pisinKilpasarja(props.rakenne))
 
 const emit = defineEmits<{
   syota: [id: string, sarja: number, laukaus: number, arvo: Laukaus]
-  luokka: [id: string, luokka: Luokka]
+  luokka: [id: string, luokka: LuokkaId]
   rangaistukset: [id: string, maara: number]
   hylatty: [id: string, hylatty: boolean]
 }>()
@@ -247,9 +248,11 @@ function poistuRuudusta() {
                 :aria-label="`${k.sukunimi}: aseluokka`"
                 :disabled="lukittu"
                 :value="k.osallistumiset[laji]?.luokka"
-                @change="emit('luokka', k.id, ($event.target as HTMLSelectElement).value as Luokka)"
+                @change="emit('luokka', k.id, ($event.target as HTMLSelectElement).value)"
               >
-                <option v-for="l in LUOKAT" :key="l" :value="l">{{ LUOKKA_NIMET[l] }}</option>
+                <option v-for="l in props.luokat" :key="l" :value="l">
+                  {{ luokanNimi(l) }}
+                </option>
               </select>
             </td>
 

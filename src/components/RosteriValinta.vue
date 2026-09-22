@@ -15,6 +15,11 @@ import { kisanLajit, kisanSarjat } from '@/core/lajit'
  * ylimääräiset lajit poistetaan kilpailijalistalta rastia napsauttamalla.
  *
  * Rosteri ei ole kisadataa: sitä ei viedä, jaeta eikä yhdistetä. Ks. `core/rosteri`.
+ *
+ * Tämä on rosterisivun (`RosteriView`) sisältö. Ennen se oli taitettu osio
+ * kilpailijalistan yläpuolella, mutta avattuna samat ihmiset näkyivät sivulla kahdesti
+ * — rosterissa ja kisan kilpailijalistassa — eikä kumpaa listaa milloinkin muokkasi
+ * erottunut.
  */
 const store = useKisaStore()
 const rosteri = useRosteriStore()
@@ -130,33 +135,10 @@ function poistaRosterista(id: string) {
 function nimi(h: RosteriHenkilo): string {
   return [h.etunimi, h.sukunimi].filter(Boolean).join(' ')
 }
-
-/**
- * Onko osio auki avattaessa? Tarkoituksella tavallinen vakio eikä laskettu arvo: jos
- * `open` seuraisi kilpailijamäärää, osio sulkeutuisi kesken täppäämisen heti kun
- * ensimmäinen henkilö on lisätty kisaan.
- */
-const aukiAluksi = store.kilpailijoita === 0
 </script>
 
 <template>
-  <!--
-    Taitettu oletuksena silloin kun kisassa on jo kilpailijoita: silloin lista on
-    kirjattu eikä rosteria tarvita. Tyhjän kisan alussa se on auki, koska juuri silloin
-    siitä on hyötyä — päivän väki täpätään kisaan ennen ensimmäistä laukausta.
-  -->
-  <details class="kortti rosterikortti" :open="aukiAluksi">
-    <summary class="otsikko">
-      Rosteri
-      <span class="lkm">{{ rosteri.maara ? `${rosteri.maara} henkilöä` : 'tyhjä' }}</span>
-    </summary>
-
-    <p class="selite">
-      Rosteri on laitteelle jäävä henkilölista. Samat ihmiset ampuvat kisan toisensa jälkeen, joten
-      heitä ei tarvitse syöttää uudelleen: rasti tuo henkilön tähän kisaan kaikkine lajeineen, ja
-      lajeja voi karsia alempaa kilpailijalistalta.
-    </p>
-
+  <div class="kortti rosterikortti">
     <p v-if="ilmoitus" class="huomio ilmoitus">{{ ilmoitus }}</p>
 
     <template v-if="rosteri.maara === 0">
@@ -178,6 +160,8 @@ const aukiAluksi = store.kilpailijoita === 0
     </template>
 
     <template v-else>
+      <h2 class="lkm">{{ rosteri.maara }} henkilöä</h2>
+
       <ul class="henkilot">
         <li v-for="h in rosteri.jarjestetyt" :key="h.id" class="henkilo">
           <label class="valinta">
@@ -251,30 +235,19 @@ const aukiAluksi = store.kilpailijoita === 0
         Koko rosterin voi tyhjentää Kisatiedot-sivun alaosasta.
       </p>
     </template>
-  </details>
+  </div>
 </template>
 
 <style scoped>
 .rosterikortti {
   margin: 1rem 0 1.25rem;
 }
-.otsikko {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-height: 44px;
-  font-weight: 700;
-  cursor: pointer;
-}
+/* Sama muoto kuin kilpailijalistan "N kilpailijaa": sivut lukevat samalla tavalla. */
 .lkm {
+  font-size: 1rem;
   font-weight: 400;
-  font-size: 0.9rem;
   color: var(--vari-teksti-himmea);
-}
-.selite {
-  font-size: 0.9rem;
-  color: var(--vari-teksti-himmea);
-  margin: 0.25rem 0 0.75rem;
+  margin: 0 0 0.5rem;
 }
 .ilmoitus {
   background: var(--vari-korostus-himmea);

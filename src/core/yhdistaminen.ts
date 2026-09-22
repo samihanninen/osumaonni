@@ -1,4 +1,4 @@
-import type { Kilpailija, Kisa, LajiId, Laukaus, Osallistuminen } from '@/types/kisa'
+import type { Kilpailija, Kisa, LajiId, Laukaus, LuokkaId, Osallistuminen } from '@/types/kisa'
 import { merkitLaukauksiksi, type SiirtoRivi, type Siirtopaketti } from '@/io/siirto'
 import { LAJIT, LAJI_KOODIT, kisanLajit } from './lajit'
 import { henkiloAvain } from './rosteri'
@@ -291,6 +291,20 @@ export function yhdista(
  * ja etäisyydet täydennetään vastaanottajan omista oletuksista, ja vain rakenteelliset
  * kentät tulevat mukana.
  */
+/**
+ * Mukautetun kisan aseluokat paketista.
+ *
+ * Luokkalista tulee paketista sellaisenaan. Vanhempi lähettäjä ei sitä tunne, joten
+ * silloin se kootaan tulosriveiltä: rivit kantavat luokan nimen, ja ilman listaa
+ * vastaanottaja putoaisi sääntöjen Vakio/Avoin-pariin — jolloin omannimisessä luokassa
+ * ampuneet katoaisivat kaikista luokkakohtaisista sijoituksista huomaamatta. Sama
+ * varatie kuin Excel-tuonnissa (`io/xlsxTuonti`).
+ */
+function luokatPaketista(paketti: Siirtopaketti): LuokkaId[] {
+  if (paketti.mukautetutLuokat?.length) return paketti.mukautetutLuokat
+  return [...new Set((paketti.rivit ?? []).map((r) => r.luokka).filter(Boolean))]
+}
+
 function rakennaKisaPaketista(paketti: Siirtopaketti): Kisa {
   const lajiMaaritykset = structuredClone(LAJIT)
   for (const laji of LAJI_KOODIT) {
@@ -327,6 +341,7 @@ function rakennaKisaPaketista(paketti: Siirtopaketti): Kisa {
     tyyppi: paketti.kisaTyyppi ?? 'resul',
     ...(paketti.mukautetutLajit ? { lajit: paketti.mukautetutLajit } : {}),
     ...(paketti.mukautetutSarjat ? { sarjat: paketti.mukautetutSarjat } : {}),
+    ...(paketti.kisaTyyppi === 'mukautettu' ? { luokat: luokatPaketista(paketti) } : {}),
     kisaId: paketti.kisaId,
     kisatiedot: paketti.kisatiedot ?? {
       nimi: '',

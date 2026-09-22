@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, ref, watch, watchEffect } from 'vue'
 import { storeToRefs } from 'pinia'
+import { RouterLink } from 'vue-router'
 import { useKisaStore } from '@/stores/kisa'
 import { useLaiteStore } from '@/stores/laite'
 import { useRosteriStore } from '@/stores/rosteri'
-import RosteriValinta from '@/components/RosteriValinta.vue'
-import { kisanLajit, kisanSarjat, LUOKAT, LUOKKA_NIMET } from '@/core/lajit'
-import type { Kilpailija, LajiId, Luokka, SarjaId } from '@/types/kisa'
+import { kisanLajit, kisanSarjat, luokanNimi } from '@/core/lajit'
+import type { RosteriHenkilo } from '@/core/rosteri'
+import type { Kilpailija, LajiId, LuokkaId, SarjaId } from '@/types/kisa'
 
 const store = useKisaStore()
 const laite = useLaiteStore()
@@ -132,13 +133,73 @@ function vaihdaOsallistuminen(id: string, laji: LajiId, mukana: boolean) {
   else store.poistaOsallistuminen(id, laji)
 }
 
-function luokka(id: string, laji: LajiId): Luokka | '' {
+function luokka(id: string, laji: LajiId): LuokkaId {
   return store.kilpailija(id)?.osallistumiset[laji]?.luokka ?? ''
 }
 
 function poista(id: string) {
   store.poistaKilpailija(id)
   poistoVahvistus.value = null
+}
+
+/**
+ * Nostetaanko rosterilinkki ensisijaiseksi?
+ *
+ * Tyhjän kisan alussa rosterista on eniten hyötyä: päivän väki täpätään kisaan ennen
+ * ensimmäistä laukausta. Sama syy, jolla rosteriosio oli ennen valmiiksi auki juuri
+ * silloin. Kun kilpailijoita on jo kirjattu, linkki riittää tavallisena.
+ */
+const korostaRosteri = computed(() => rosteri.maara > 0 && store.kilpailijoita === 0)
+
+const rosteriLinkki = computed(() =>
+  korostaRosteri.value ? 'Täppää väki rosterista' : 'Avaa rosteri',
+)
+
+/** Kilpailijan nimi yhtenä merkkijonona, rosterirastin saavutettavaa nimeä varten. */
+function nimi(k: Kilpailija): string {
+  return [k.etunimi, k.sukunimi]
+    .map((osa) => osa.trim())
+    .filter(Boolean)
+    .join(' ')
+}
+
+/**
+ * Kilpailijaa vastaava rosterin rivi, jos hän on rosterissa.
+ *
+ * Tunniste ensin, nimi varatienä — sama järjestys kuin rosterin puolella
+ * (`RosteriValinta`). Rosteriin tallennettu kilpailija pitää tunnisteensa, joten hänet
+ * tunnistetaan senkin jälkeen kun nimeä on kisan puolella korjattu; nimiavain löytää
+ * sen henkilön, joka oli rosterissa jo ennen tätä kisaa.
+ */
+function rosteririvi(k: Kilpailija): RosteriHenkilo | undefined {
+  return rosteri.henkilo(k.id) ?? rosteri.etsiNimella(k)
+}
+
+/**
+ * Lisää kilpailijan rosteriin tai ottaa hänet sieltä pois.
+ *
+ * Lisäyslomakkeen `Tallenna myös rosteriin` koskee vain juuri kirjattavaa kilpailijaa, ja
+ * rosterikortin nappi tallentaa koko kisan kerralla. Väliin ei jäänyt mitään: listalla jo
+ * olevaa yksittäistä kilpailijaa ei saanut rosteriin muuten kuin poistamalla ja
+ * kirjaamalla hänet uudelleen.
+ *
+ * Poistoa ei vahvisteta, toisin kuin rosterikortilla. Siellä rasti veisi listan ainoan
+ * kopion henkilöstä; tässä kaikki hänen tietonsa ovat samalla rivillä, joten rasti tuo
+ * hänet takaisin sellaisenaan.
+ */
+function vaihdaRosteri(k: Kilpailija, mukaan: boolean) {
+  if (mukaan) {
+    rosteri.tallenna({
+      id: k.id,
+      etunimi: k.etunimi,
+      sukunimi: k.sukunimi,
+      yhdistys: k.yhdistys,
+      ikasarja: k.ikasarja,
+    })
+    return
+  }
+  const rivi = rosteririvi(k)
+  if (rivi) rosteri.poista(rivi.id)
 }
 </script>
 
@@ -150,7 +211,23 @@ function poista(id: string) {
       Aseluokka valitaan lajikohtaisesti, koska se seuraa käytettyä asetta.
     </p>
 
-    <RosteriValinta />
+    <!--
+      Rosteri on omalla sivullaan. Samalla sivulla avattuna samat ihmiset näkyivät
+      kahdesti — rosterissa ja alla olevassa kilpailijalistassa — eikä kumpaa listaa
+      milloinkin muokkasi erottunut. Tässä näkyy vain rosterin tila ja tie sinne.
+    -->
+    <div class="kortti rosterikortti">
+      <p class="rosteri-tila">
+        <strong>Rosteri</strong>
+        <span>{{ rosteri.maara ? `${rosteri.maara} henkilöä laitteella` : 'tyhjä' }}</span>
+      </p>
+      <p class="selite">
+        Laitteelle jäävä henkilölista: sama porukka seuraavaan kisaan ilman uudelleen syöttämistä.
+      </p>
+      <RouterLink to="/rosteri" class="nappi" :class="{ 'nappi--ensisijainen': korostaRosteri }">{{
+        rosteriLinkki
+      }}</RouterLink>
+    </div>
 
     <form class="kortti lisays" @submit.prevent="lisaa">
       <div class="kentat-rinnakkain">
@@ -328,20 +405,33 @@ function poista(id: string) {
                   :aria-label="`${laji.koodi}: aseluokka`"
                   :value="luokka(k.id, laji.id)"
                   @change="
-                    store.asetaLuokka(
-                      k.id,
-                      laji.id,
-                      ($event.target as HTMLSelectElement).value as Luokka,
-                    )
+                    store.asetaLuokka(k.id, laji.id, ($event.target as HTMLSelectElement).value)
                   "
                 >
-                  <option v-for="l in LUOKAT" :key="l" :value="l">{{ LUOKKA_NIMET[l] }}</option>
+                  <option v-for="l in store.luokat" :key="l" :value="l">
+                    {{ luokanNimi(l) }}
+                  </option>
                 </select>
               </div>
             </div>
           </fieldset>
 
           <div class="rivi-ala">
+            <!--
+              Rosterirasti näkyy vain kun sukunimi on kirjattu: ilman sukunimeä rosteri ei
+              ota henkilöä vastaan, joten rasti kimpoaisi takaisin tyhjänä. Mieluummin ei
+              ruutua kuin ruutu joka ei tottele.
+            -->
+            <label v-if="k.sukunimi.trim()" class="valinta rosterirasti">
+              <input
+                type="checkbox"
+                :checked="Boolean(rosteririvi(k))"
+                :aria-label="`${nimi(k)} rosterissa`"
+                @change="vaihdaRosteri(k, ($event.target as HTMLInputElement).checked)"
+              />
+              <span>Rosterissa</span>
+            </label>
+
             <button
               v-if="poistoVahvistus !== k.id"
               type="button"
@@ -365,6 +455,24 @@ function poista(id: string) {
 </template>
 
 <style scoped>
+.rosterikortti {
+  margin: 1rem 0 1.25rem;
+}
+.rosteri-tila {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0;
+}
+.rosteri-tila span,
+.selite {
+  font-size: 0.9rem;
+  color: var(--vari-teksti-himmea);
+}
+.selite {
+  margin: 0.25rem 0 0.75rem;
+}
 .lisays {
   margin: 1rem 0 1.5rem;
 }
@@ -472,6 +580,15 @@ function poista(id: string) {
   gap: 0.5rem;
   border-top: 1px solid var(--vari-reuna);
   padding-top: 0.5rem;
+}
+.rosterirasti {
+  font-size: 0.9rem;
+  color: var(--vari-teksti-himmea);
+  font-weight: 400;
+}
+/* Poisto rivin oikeaan laitaan, erilleen rosterirastista: eri vakavuus, eri suunta. */
+.rivi-ala .poista {
+  margin-inline-start: auto;
 }
 .poista,
 .poista-varma {

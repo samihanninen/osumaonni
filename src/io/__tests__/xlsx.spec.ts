@@ -12,9 +12,10 @@ import {
   tuloskorttiNimi,
   uniikkiSivunNimi,
   META_VALILEHTI,
+  ENSIMMAINEN_DATARIVI,
   OTSIKKO_RIVI,
 } from '../xlsxAsettelu'
-import { kisanLajit, LAJIT, LUOKAT, LUOKKA_NIMET, resulRakenne } from '@/core/lajit'
+import { kisanLajit, LAJIT, LUOKAT, luokanNimi, resulRakenne } from '@/core/lajit'
 import { sijoitukset } from '@/core/sijoitukset'
 import { yhdistysYhteistulos } from '@/core/yhdistykset'
 import { kokonaiskilpailu, RESUL_TASATULOKSEN_RATKAISIJA } from '@/core/kokonaiskilpailu'
@@ -271,7 +272,7 @@ describe('sijoitussivu seuraa tuloskorttia', () => {
 
     odotus.forEach((r, i) => {
       const rivi = 4 + i
-      expect(ws.getCell(rivi, 1).result).toBe(LUOKKA_NIMET[r.tulos.luokka])
+      expect(ws.getCell(rivi, 1).result).toBe(luokanNimi(r.tulos.luokka))
       // Hylätty ei kilpaile sijoituksista, joten sijaluvun paikalla on viiva.
       expect(String(ws.getCell(rivi, 2).result)).toBe(r.sija === 0 ? '—' : String(r.sija))
       expect(ws.getCell(rivi, 3).result).toBe(r.kilpailija.sukunimi)
@@ -955,5 +956,103 @@ describe('mukautetun kisan yhdistyssivu', () => {
     const tekstit = kaikkiTekstit(ws)
     expect(tekstit).toContain('Kokonaiskilpailu — henkilökohtainen')
     expect(tekstit).toContain('Hakala')
+  })
+})
+
+/**
+ * Mukautetun kisan omat aseluokat Excelissä.
+ *
+ * Luokka on sijoitussivun ensimmäinen lajitteluperuste, ja sivu rakentuu kaavoista jotka
+ * sisältävät luokkien nimet merkkijonoina. Nimet tulevat järjestäjältä, joten tässä
+ * varmistetaan sekä kierroksen säilyvyys että se, ettei outo nimi riko kaavaa.
+ */
+describe('mukautetun kisan aseluokat Excelissä', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  /** Kolmen oman luokan mukautettu kisa, jossa jokaisessa luokassa on osallistuja. */
+  function rakennaLuokkakisa(nimet = ['Kivääri', 'Pistooli', 'Optiikka']) {
+    const store = useKisaStore()
+    store.kisa.kisatiedot.nimi = 'Luokkakisa'
+    store.asetaKisaTyyppi('mukautettu')
+    // Omat luokat sääntöjen luokkien tilalle.
+    for (const nimi of nimet) store.lisaaLuokka(nimi)
+    for (const oletus of ['Vakio', 'Avoin']) store.poistaLuokka(oletus)
+
+    const laji = store.lisaaMukautettuLaji({ koodi: 'PK', nimi: 'Pikakivääri' })
+    nimet.forEach((luokka, i) => {
+      const k = store.lisaaKilpailija({
+        etunimi: 'Ampuja',
+        sukunimi: `Sukunimi${i}`,
+        yhdistys: 'Nupures',
+      })
+      store.lisaaOsallistuminen(k.id, laji.id, luokka)
+      // Tulos nousee luokkajärjestystä vastaan: listan ensimmäinen luokka on heikoin.
+      for (let j = 0; j < 10; j++) store.asetaLaukaus(k.id, laji.id, 0, j, 8 + i)
+    })
+    return { store, laji }
+  }
+
+  it('säilyttää omat luokat kierroksen yli', async () => {
+    const { store } = rakennaLuokkakisa()
+
+    const { kisa } = await kierrata(store.kisa)
+
+    expect(kisa.luokat).toEqual(['Kivääri', 'Pistooli', 'Optiikka'])
+    const luokat = kisa.kilpailijat.map((k) => Object.values(k.osallistumiset)[0]!.luokka)
+    expect(luokat.sort()).toEqual(['Kivääri', 'Optiikka', 'Pistooli'])
+  })
+
+  /*
+   * Ilman kisan omaa luokkalistaa tuonti ei tietäisi, mihin luokkaan solun teksti kuuluu.
+   * Aiemmin tuntematon arvo pakotettiin 'vakio'ksi, jolloin koko luokittelu olisi kadonnut.
+   */
+  it('lukee luokan, jonka nimi on eri kirjainkoossa kuin listassa', async () => {
+    const { store } = rakennaLuokkakisa()
+    const { tavut } = await vieKisa(store.kisa, new Date('2026-06-15T10:00:00Z'))
+    const wb = new ExcelJS.Workbook()
+    await wb.xlsx.load(tavut)
+    const ws = wb.worksheets.find((w) => w.name.startsWith('Tuloskortti'))!
+    ws.getCell(ENSIMMAINEN_DATARIVI, 6).value = 'KIVÄÄRI'
+
+    const { kisa } = await tuoKisa((await wb.xlsx.writeBuffer()) as ArrayBuffer)
+
+    const rivi = kisa.kilpailijat.find((k) => k.sukunimi === 'Sukunimi0')!
+    expect(Object.values(rivi.osallistumiset)[0]!.luokka).toBe('Kivääri')
+  })
+
+  it('sijoitussivu järjestää kisan oman luokkajärjestyksen mukaan', async () => {
+    const { store } = rakennaLuokkakisa()
+    const { tavut } = await vieKisa(store.kisa, new Date('2026-06-15T10:00:00Z'))
+    const wb = new ExcelJS.Workbook()
+    await wb.xlsx.load(tavut)
+    const ws = wb.worksheets.find((w) => w.name.startsWith('Sijoitukset'))!
+
+    // Luokkasarake noudattaa listan järjestystä, ei tulosta eikä aakkosia.
+    const luokat = [0, 1, 2].map((i) => ws.getCell(ENSIMMAINEN_DATARIVI + i, 1).result)
+    expect(luokat).toEqual(['Kivääri', 'Pistooli', 'Optiikka'])
+  })
+
+  /*
+   * Lainausmerkki nimessä katkaisisi kaavan merkkijonon ja rikkoisi koko sijoitussivun;
+   * pilkku taas katkaisisi pudotusvalikon listan väärästä kohdasta. Kumpikaan ei saa
+   * päätyä tiedostoon sellaisenaan.
+   */
+  it('kestää lainausmerkin ja pilkun luokan nimessä', async () => {
+    const { store } = rakennaLuokkakisa(['Ase "vakio"', 'Pistooli, iso'])
+
+    const { tavut } = await vieKisa(store.kisa, new Date('2026-06-15T10:00:00Z'))
+    const wb = new ExcelJS.Workbook()
+    await wb.xlsx.load(tavut)
+    const ws = wb.worksheets.find((w) => w.name.startsWith('Sijoitukset'))!
+    const kaava = ws.getCell(ENSIMMAINEN_DATARIVI, 1).formula ?? ''
+    // Lainausmerkki kahdennetaan kaavan sisällä.
+    expect(kaava).toContain('Ase ""vakio""')
+
+    // Pilkullinen nimi jättää pudotusvalikon pois, jottei se tarjoaisi puolikkaita arvoja.
+    const tk = wb.worksheets.find((w) => w.name.startsWith('Tuloskortti'))!
+    expect(tk.getCell(ENSIMMAINEN_DATARIVI, 6).dataValidation).toBeUndefined()
+
+    const { kisa } = await kierrata(store.kisa)
+    expect(kisa.luokat).toEqual(['Ase "vakio"', 'Pistooli, iso'])
   })
 })

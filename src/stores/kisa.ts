@@ -9,12 +9,20 @@ import type {
   LajiId,
   LajiMaaritys,
   Laukaus,
-  Luokka,
+  LuokkaId,
   MukautettuLaji,
   Osallistuminen,
   SarjaId,
 } from '@/types/kisa'
-import { LAJIT, LAJI_KOODIT, kisanLajit, kisanSarjat } from '@/core/lajit'
+import {
+  LAJIT,
+  LAJI_KOODIT,
+  LUOKAT,
+  kisanLajit,
+  kisanLuokat,
+  kisanSarjat,
+  luokanNimi,
+} from '@/core/lajit'
 import { laskeLaji } from '@/core/laskenta'
 import { lyhytTunnus, uusiId } from '@/core/tunnus'
 import { KISA_SKEEMA_VERSIO, lueTallennettu, type LuentaTulos } from '@/core/skeema'
@@ -214,13 +222,15 @@ export const useKisaStore = defineStore(
      * RESUL-lajille että mukautetulle lajille — myös silloin kun sarjat ovat eri
      * mittaisia.
      */
-    function lisaaOsallistuminen(id: string, laji: LajiId, luokka: Luokka = 'vakio') {
+    function lisaaOsallistuminen(id: string, laji: LajiId, luokka?: LuokkaId) {
       const k = kilpailija(id)
       if (!k || k.osallistumiset[laji]) return
       const rakenne = kisanLajit(kisa.value).find((r) => r.id === laji)
       if (!rakenne) return
       const osallistuminen: Osallistuminen = {
-        luokka,
+        // Kisan ensimmäinen luokka oletuksena: mukautetussa kisassa `vakio` ei välttämättä
+        // ole olemassa, ja tuntematon luokka jättäisi kilpailijan pois sijoituksista.
+        luokka: luokka ?? kisanLuokat(kisa.value)[0] ?? LUOKAT[0]!,
         kilpasarjat: rakenne.kilpasarjat.map((s) => ({
           laukaukset: Array.from({ length: s.laukauksia }, () => null),
         })),
@@ -237,7 +247,7 @@ export const useKisaStore = defineStore(
       delete k.osallistumiset[laji]
     }
 
-    function asetaLuokka(id: string, laji: LajiId, luokka: Luokka) {
+    function asetaLuokka(id: string, laji: LajiId, luokka: LuokkaId) {
       const o = kilpailija(id)?.osallistumiset[laji]
       if (o) o.luokka = luokka
     }
@@ -516,9 +526,95 @@ export const useKisaStore = defineStore(
       return true
     }
 
+    // ---------- Mukautetun kisan aseluokat ----------
+
+    /** Kisan aseluokat: RESUL-kisassa Vakio ja Avoin, mukautetussa järjestäjän omat. */
+    const luokat = computed(() => kisanLuokat(kisa.value))
+
+    /** Montako osallistumista on kyseisessä luokassa? Käytetään poiston varmistuksessa. */
+    function luokassa(luokka: LuokkaId): number {
+      let n = 0
+      for (const k of kisa.value.kilpailijat) {
+        for (const o of Object.values(k.osallistumiset)) {
+          if (o?.luokka === luokka) n++
+        }
+      }
+      return n
+    }
+
     /**
-     * Vaihtaa kisan muodon. Muoto ratkaisee mistä lajit ja sarjat tulevat, joten vaihto
-     * tekee kirjatuista tuloksista tulkitsemattomia — kutsuja vastaa varmistuksesta.
+     * Varmistaa, että mukautetulla kisalla on oma luokkalista, ja palauttaa sen.
+     *
+     * Mukautettu kisa voi olla tallennettu ennen `luokat`-kenttää, jolloin se käyttää
+     * sääntöjen mukaisia luokkia tunnisteilla `vakio` ja `avoin`. Lista kirjoitetaan
+     * silloin näkyvillä nimillä ("Vakio", "Avoin"), jotta mukautetussa kisassa pätee sama
+     * sääntö kuin sarjoissa: nimi on tunniste. Kirjatut osallistumiset siirretään mukana,
+     * jottei kukaan jää luokkaan jota ei ole.
+     */
+    function varmistaLuokat(): LuokkaId[] {
+      if (kisa.value.luokat?.length) return kisa.value.luokat
+      const uudet = LUOKAT.map((l) => luokanNimi(l))
+      kisa.value.luokat = uudet
+      for (const k of kisa.value.kilpailijat) {
+        for (const o of Object.values(k.osallistumiset)) {
+          if (o) o.luokka = luokanNimi(o.luokka)
+        }
+      }
+      return uudet
+    }
+
+    /** Lisää aseluokan mukautettuun kisaan. Sama nimi ei voi esiintyä kahdesti. */
+    function lisaaLuokka(nimi: string): boolean {
+      const siisti = nimi.trim()
+      if (!siisti) return false
+      const lista = varmistaLuokat()
+      if (lista.includes(siisti)) return false
+      lista.push(siisti)
+      return true
+    }
+
+    /**
+     * Poistaa aseluokan ja siirtää sen osallistumiset ensimmäiseen jäljelle jäävään.
+     *
+     * Osallistumista ei jätetä luokkaan jota ei ole: se katoaisi kaikista
+     * luokkakohtaisista sijoituksista huomaamatta. Viimeistä luokkaa ei voi poistaa.
+     */
+    function poistaLuokka(luokka: LuokkaId) {
+      const lista = varmistaLuokat()
+      if (lista.length <= 1) return
+      const i = lista.indexOf(luokka)
+      if (i < 0) return
+      lista.splice(i, 1)
+      const korvaava = lista[0]
+      if (!korvaava) return
+      for (const k of kisa.value.kilpailijat) {
+        for (const o of Object.values(k.osallistumiset)) {
+          if (o?.luokka === luokka) o.luokka = korvaava
+        }
+      }
+    }
+
+    /** Nimeää aseluokan uudelleen ja siirtää sen osallistumiset mukana. */
+    function nimeaLuokka(vanha: LuokkaId, uusi: string): boolean {
+      const siisti = uusi.trim()
+      if (!siisti || siisti === vanha) return false
+      const lista = varmistaLuokat()
+      if (lista.includes(siisti)) return false
+      const i = lista.indexOf(vanha)
+      if (i < 0) return false
+      lista[i] = siisti
+      for (const k of kisa.value.kilpailijat) {
+        for (const o of Object.values(k.osallistumiset)) {
+          if (o?.luokka === vanha) o.luokka = siisti
+        }
+      }
+      return true
+    }
+
+    /**
+     * Vaihtaa kisan muodon. Muoto ratkaisee mistä lajit, sarjat ja luokat tulevat, joten
+     * vaihto tekee kirjatuista tuloksista tulkitsemattomia — kutsuja vastaa
+     * varmistuksesta.
      */
     function asetaKisaTyyppi(tyyppi: KisaTyyppi) {
       if (kisa.value.tyyppi === tyyppi) return
@@ -529,8 +625,13 @@ export const useKisaStore = defineStore(
       if (tyyppi === 'mukautettu') {
         // Aloitussarja, jottei kisa jää tilaan jossa kilpailijaa ei voi lisätä.
         kisa.value.sarjat = kisa.value.sarjat?.length ? kisa.value.sarjat : ['Yleinen']
+        // Aloitusluokat sääntöjen mukaisilla nimillä; järjestäjä nimeää ne halutessaan.
+        kisa.value.luokat = kisa.value.luokat?.length
+          ? kisa.value.luokat
+          : LUOKAT.map((l) => luokanNimi(l))
       } else {
         kisa.value.sarjat = undefined
+        kisa.value.luokat = undefined
       }
       // Sarjat vaihtuivat, joten kilpailijoiden sarja on siirrettävä kelvolliseksi.
       const kelvolliset = kisanSarjat(kisa.value)
@@ -602,6 +703,11 @@ export const useKisaStore = defineStore(
       lisaaOsallistuminen,
       poistaOsallistuminen,
       asetaLuokka,
+      luokat,
+      luokassa,
+      lisaaLuokka,
+      poistaLuokka,
+      nimeaLuokka,
       asetaRangaistukset,
       asetaHylatty,
       asetaHuomio,

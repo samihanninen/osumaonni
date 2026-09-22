@@ -1,18 +1,32 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watchEffect } from 'vue'
 import { RouterLink } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useKisaStore } from '@/stores/kisa'
-import { kisanLajit, LUOKAT, LUOKKA_NIMET } from '@/core/lajit'
+import { kisanLajit, kisanLuokat, luokanNimi } from '@/core/lajit'
 import { onJoukkuekilpailu, yhdistysLaji, yhdistysYhteistulos } from '@/core/yhdistykset'
 import { kokonaiskilpailu, RESUL_TASATULOKSEN_RATKAISIJA } from '@/core/kokonaiskilpailu'
-import type { LajiId, Luokka } from '@/types/kisa'
+import type { LajiId, LuokkaId } from '@/types/kisa'
 
 const store = useKisaStore()
 const { kisa } = storeToRefs(store)
 
-/** Aseluokkarajaus. Oletuksena kaikki luokat lasketaan yhteen, kuten Excel-versiossa. */
-const luokka = ref<Luokka | 'kaikki'>('kaikki')
+/** Kisan aseluokat: RESUL-kisassa Vakio ja Avoin, mukautetussa järjestäjän omat. */
+const luokat = computed(() => kisanLuokat(kisa.value))
+
+/**
+ * Aseluokkarajaus. Oletuksena kaikki luokat lasketaan yhteen, kuten Excel-versiossa.
+ *
+ * Rajaamattomuus on `null` eikä merkkijono "kaikki": mukautetun kisan luokan nimeää
+ * järjestäjä, ja luokka nimeltä "kaikki" olisi merkkijonoa käytettäessä sama asia kuin
+ * rajauksen poisto.
+ */
+const luokka = ref<LuokkaId | null>(null)
+
+/* Poistettu tai uudelleen nimetty luokka ei saa jäädä rajaukseksi. */
+watchEffect(() => {
+  if (luokka.value !== null && !luokat.value.includes(luokka.value)) luokka.value = null
+})
 
 const parhaita = computed(() => kisa.value.asetukset.laskettavatParhaat)
 
@@ -21,7 +35,7 @@ const lajit = computed(() => kisanLajit(kisa.value))
 
 const optiot = computed(() => ({
   parhaita: parhaita.value,
-  ...(luokka.value === 'kaikki' ? {} : { luokka: luokka.value }),
+  ...(luokka.value === null ? {} : { luokka: luokka.value }),
 }))
 
 const yhteistulos = computed(() =>
@@ -93,20 +107,20 @@ const onTuloksia = computed(() =>
         <button
           type="button"
           class="pikkunappi"
-          :class="{ 'pikkunappi--valittu': luokka === 'kaikki' }"
-          @click="luokka = 'kaikki'"
+          :class="{ 'pikkunappi--valittu': luokka === null }"
+          @click="luokka = null"
         >
           Kaikki yhdessä
         </button>
         <button
-          v-for="l in LUOKAT"
+          v-for="l in luokat"
           :key="l"
           type="button"
           class="pikkunappi"
           :class="{ 'pikkunappi--valittu': luokka === l }"
           @click="luokka = l"
         >
-          {{ LUOKKA_NIMET[l] }}
+          {{ luokanNimi(l) }}
         </button>
       </div>
     </div>

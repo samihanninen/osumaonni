@@ -77,7 +77,7 @@ käytettävissä puhelimella ampumaradalla. Tämä versio korjaa nämä kolme as
 2. **Kilpailijat** — lisää kilpailijat: nimi, yhdistys ja lajit joihin hän osallistuu.
    Lajit ovat valmiiksi valittuina, joten yleensä riittää nimen kirjaaminen. Yhdistyksen
    nimi ehdotetaan aiemmin syötetyistä, joten kirjoitusasu pysyy samana. Saman porukan saa
-   kisaan täppäämällä sivun *Rosteri*-osiosta — ks. [Rosteri](#rosteri).
+   kisaan täppäämällä sivun *Rosteri*-kortin kautta — ks. [Rosteri](#rosteri).
 3. **Syöttö** — valitse laji ja syötä laukaukset. Sarjan summa, navat ja kilpailutulos
    päivittyvät heti. Merkitse napakymppi `*`:llä ja huti `-`:llä.
 4. **Sijoitukset** — henkilökohtaiset tulokset järjestyksessä, tasatulokset napojen mukaan.
@@ -93,7 +93,7 @@ Se on luettavissa myös sovelluksen *Ohje*-välilehdeltä ilman verkkoyhteyttä.
 
 Kaikki kisat eivät ole RESUL-kisoja. Kolmen asennon ammunta, kahden kierroksen harjoitus
 tai yhdistyksen oma kilpailu eivät mahdu RA1–RA4:n rakenteeseen, joten ne ammutaan
-**mukautettuna kisana**: lajit, kilpasarjat ja sarjat määritellään itse.
+**mukautettuna kisana**: lajit, kilpasarjat, sarjat ja aseluokat määritellään itse.
 
 Muoto valitaan *Kisatiedot*-sivulta. **Kisa on aina yhtä muotoa** — RESUL tai mukautettu,
 ei molempia. Sekamuotoinen kisa tekisi kokonaiskilpailusta tulkinnanvaraisen, eikä
@@ -105,6 +105,7 @@ virallisen kisan tulos saa riippua siitä, mitä muuta samaan kisaan on lisätty
 | Kilpasarjat | sääntöjen mukaan | määrä, pituus ja nimi vapaasti |
 | Tulossääntö | sääntöjen mukaan lajeittain | kilpasarjojen summa tai paras kilpasarja |
 | Sarjat | H ja H50 sääntöjen mukaan | nimeät itse, ei tarvitse liittyä ikään |
+| Aseluokat | Vakio ja Avoin sääntöjen mukaan | nimeät itse, ei tarvitse liittyä aseeseen |
 | Tasatulos lajissa | virallinen tasatulossääntö | sama sääntö |
 | Tasatulos kokonaiskilpailussa | parempi RA2:n tulos | jaettu sija, järjestys sukunimen mukaan |
 
@@ -133,6 +134,26 @@ Sijoitukset voidaan laskea sarjan sisällä, joten **sarjajako ratkaisee kenet p
 
 Sarjan poistaminen siirtää sen kilpailijat toiseen sarjaan eikä jätä ketään sarjattomaksi:
 sarjaton kilpailija ei näkyisi missään sarjakohtaisessa tuloslistassa.
+
+### Aseluokat
+
+RESUL-kisassa aseluokat ovat *Vakio* ja *Avoin* — avoimessa optiikka on sallittu, joten ne
+kilpailevat erikseen. Mukautetussa kisassa nimeät ne itse *Kisatiedot*-sivulta, eikä niiden
+tarvitse liittyä aseeseen lainkaan: luokka voi olla *Kivääri* ja *Pistooli*, *Aloittelijat*
+ja *Konkarit*, tai mitä kisa vaatii.
+
+**Aseluokka on lajikohtainen valinta**, koska se seuraa käytettyä asetta: sama kilpailija
+voi olla yhdessä lajissa vakioluokassa ja toisessa avoimessa. Siksi luokan poisto laskee
+siirtyvät *osallistumiset* eikä kilpailijoita.
+
+Sijoitukset lasketaan luokan sisällä, joten **luokkajako ratkaisee kenet palkitaan** — aivan
+kuten sarjajako. Luokan poistaminen siirtää sen osallistumiset toiseen luokkaan, eikä
+tuloksia katoa.
+
+⚠️ Excelin tuloskortissa aseluokka on pudotusvalikko. Valikko jätetään pois, jos luokan
+nimessä on pilkku tai lainausmerkki tai jos lista ei mahdu Excelin 255 merkkiin — silloin
+solu on vapaata tekstiä. Tuonti lukee sen silti oikein, koska kisan luokkalista kulkee
+tiedostossa mukana.
 
 ### Mikä ei muutu
 
@@ -170,14 +191,20 @@ Pienessä yhdistyksessä samat ihmiset ampuvat kisan toisensa jälkeen, mutta ki
 kertakäyttöinen: *Aloita uusi kisa* poistaa kilpailijat, ja seuraavalla kerralla samat
 nimet, yhdistykset ja lajit naputellaan uudelleen. **Rosteri on se lista, joka jää.**
 
-Rosteri on *Kilpailijat*-sivun ylälaidassa, ja se toimii näin:
+Rosterilla on oma sivunsa, jonne pääsee *Kilpailijat*-sivun ylälaidan *Rosteri*-kortista.
+Se on tarkoituksella poissa päävalikosta: rosteri ei ole kisadataa vaan tämän laitteen oma
+nimilista. Sivulla täpätään päivän väki ja palataan *Valmis*-napista takaisin
+kilpailijalistaan. Rosteri toimii näin:
 
 - **Rasti tuo henkilön tähän kisaan** kaikkine kisan lajeineen — useimmiten osallistutaan
-  kaikkeen, ja poikkeukset otetaan pois alempaa kilpailijalistalta. Rastin poistaminen
+  kaikkeen, ja poikkeukset otetaan pois kilpailijalistalta. Rastin poistaminen
   poistaa hänet kisasta; jos tuloksia on jo kirjattu, poisto vahvistetaan erikseen.
 - **Rosteriin tallennetaan** joko napista *Tallenna kisan kilpailijat rosteriin* tai
   rastittamalla lisäyslomakkeelta *Tallenna myös rosteriin*. Jälkimmäinen valinta
   muistetaan laitteessa.
+- **Yksittäisen kilpailijan saa rosteriin jälkikäteen** kilpailijalistan *Rosterissa*-
+  rastista. Rastin poistaminen vie hänet rosterista mutta jättää kisaan — kaikki tiedot
+  ovat samalla rivillä, joten rasti tuo hänet takaisin sellaisenaan.
 - **Sarja tulee mukana**, jos kisassa on samanniminen sarja. Mukautetun kisan sarjat ovat
   järjestäjän itse nimeämiä, joten RESUL-kisan H50 ei siirry sinne.
 - **Yksittäisen henkilön voi poistaa** rosterista listalta, ja koko rosterin
