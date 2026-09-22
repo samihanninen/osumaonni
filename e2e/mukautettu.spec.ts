@@ -170,6 +170,25 @@ test.describe('mukautettu kisa', () => {
     await expect(luokkavalitsin.locator('option')).toHaveText(['Vakio', 'Optiikka', 'Kivääri'])
     await luokkavalitsin.selectOption('Kivääri')
 
+    /*
+     * Sama valitsin on myös syöttötaulukossa, mutta se saa luokat eri reittiä
+     * (SyottoView välittää ne propsina). Ilman tätä tarkistusta taulukko voisi jäädä
+     * tarjoamaan sääntöjen luokkia ilman että mikään testi punastuu.
+     */
+    await page.getByRole('link', { name: 'Syötä tulokset' }).click()
+    // Taulukko ei ole oletustapa, joten se valitaan erikseen.
+    await page.locator('summary.tapa-otsikko').click()
+    await page.getByRole('button', { name: 'Taulukko', exact: true }).click()
+    await expect(page.getByLabel('Hakala: aseluokka').locator('option')).toHaveText([
+      'Vakio',
+      'Optiikka',
+      'Kivääri',
+    ])
+    await expect(page.getByLabel('Hakala: aseluokka')).toHaveValue('Kivääri')
+
+    // Taitetaan tapavalinta takaisin kiinni, koska kirjaaLaukaukset avaa sen itse.
+    await page.locator('summary.tapa-otsikko').click()
+
     await kirjaaLaukaukset(page)
 
     await page.getByRole('link', { name: 'Sijoitukset' }).first().click()

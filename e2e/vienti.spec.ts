@@ -210,3 +210,27 @@ test('kelvoton tiedosto antaa selkeän virheen eikä hukkaa tuloksia', async ({ 
   await siirry(page, '/#/kilpailijat')
   await expect(page.getByText('2 kilpailijaa')).toBeVisible()
 })
+
+/*
+ * RESUL-kisan puoli lajilistoista.
+ *
+ * Vienti-sivun yhteenveto ja Yhdistä-sivun lajirajaus lukevat lajit kisan omasta
+ * listasta. RESUL-kisassa sen on tuotettava täsmälleen RA1–RA4 — mukautetulle kisalle on
+ * oma testinsä, mutta ilman tätä paria muutos noihin listoihin voisi rikkoa RESUL-kisan
+ * ilman että yksikään testi punastuu.
+ */
+test('vienti- ja yhdistämissivu listaavat RESUL-kisan lajit RA1–RA4', async ({ page }) => {
+  await avaaKisalla(page, AMPUJAT, { polku: '/#/vienti' })
+
+  const yhteenveto = page.locator('dl.tiedot').first()
+  await expect(yhteenveto).toContainText('Kilpailijoita')
+  for (const laji of ['RA1', 'RA2', 'RA3', 'RA4']) {
+    await expect(yhteenveto).toContainText(laji)
+  }
+
+  await siirry(page, '/#/yhdista')
+  const rajaus = page.locator('fieldset.lajit')
+  for (const laji of ['RA1', 'RA2', 'RA3', 'RA4']) {
+    await expect(rajaus).toContainText(laji)
+  }
+})
