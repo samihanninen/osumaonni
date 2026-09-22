@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watchEffect } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useKisaStore } from '@/stores/kisa'
-import { kisanLajit, kisanSarjat, LUOKAT, LUOKKA_NIMET, sarjanNimi } from '@/core/lajit'
+import { kisanLajit, kisanLuokat, kisanSarjat, luokanNimi, sarjanNimi } from '@/core/lajit'
 import { sijoitukset } from '@/core/sijoitukset'
-import type { LajiId, Luokka, SarjaId } from '@/types/kisa'
+import type { LajiId, LuokkaId, SarjaId } from '@/types/kisa'
 
 const route = useRoute()
 const store = useKisaStore()
@@ -26,7 +26,19 @@ const rakenne = computed(() => lajit.value.find((l) => l.id === laji.value))
 /** RESUL-kisassa sarjat ovat ikäsarjoja; mukautetussa ne eivät liity ikään. */
 const sarjaOtsikko = computed(() => (kisa.value.tyyppi === 'resul' ? 'Ikäsarja' : 'Sarja'))
 
-const luokka = ref<Luokka>('vakio')
+/** Kisan aseluokat: RESUL-kisassa Vakio ja Avoin, mukautetussa järjestäjän omat. */
+const luokat = computed(() => kisanLuokat(kisa.value))
+
+const luokka = ref<LuokkaId>('')
+
+/*
+ * Luokkavalinta pidetään kelvollisena. Mukautetun kisan luokkia voi nimetä uudelleen ja
+ * poistaa kesken kaiken, ja valinta jäisi muuten osoittamaan luokkaan jota ei ole — lista
+ * näyttäisi tyhjää ilman että käyttäjä ymmärtäisi miksi.
+ */
+watchEffect(() => {
+  if (!luokat.value.includes(luokka.value)) luokka.value = luokat.value[0] ?? ''
+})
 const ikasarjaSuodatin = ref<SarjaId | 'kaikki'>('kaikki')
 
 /** Kisan sarjat: RESUL-kisassa H ja H50, mukautetussa järjestäjän omat. */
@@ -48,13 +60,13 @@ const rivit = computed(() =>
 )
 
 const otsikko = computed(() => {
-  const osat = [rakenne.value?.koodi ?? laji.value, LUOKKA_NIMET[luokka.value]]
+  const osat = [rakenne.value?.koodi ?? laji.value, luokanNimi(luokka.value)]
   if (ikasarjaSuodatin.value !== 'kaikki') osat.push(ikasarjaSuodatin.value)
   return osat.join(' · ')
 })
 
 /** Montako osallistujaa lajissa on kussakin luokassa — näkyy välilehdissä. */
-function luokassa(l: Luokka): number {
+function luokassa(l: LuokkaId): number {
   return kisa.value.kilpailijat.filter((k) => k.osallistumiset[laji.value]?.luokka === l).length
 }
 
@@ -85,14 +97,14 @@ function sijaTeksti(sija: number): string {
         <span class="suodatin-otsikko">Aseluokka</span>
         <div class="napit" role="group" aria-label="Aseluokka">
           <button
-            v-for="l in LUOKAT"
+            v-for="l in luokat"
             :key="l"
             type="button"
             class="pikkunappi"
             :class="{ 'pikkunappi--valittu': luokka === l }"
             @click="luokka = l"
           >
-            {{ LUOKKA_NIMET[l] }} <small>{{ luokassa(l) }}</small>
+            {{ luokanNimi(l) }} <small>{{ luokassa(l) }}</small>
           </button>
         </div>
       </div>

@@ -6,12 +6,12 @@ import type {
   LajiId,
   MukautettuLaji,
   Laukaus,
-  Luokka,
+  LuokkaId,
   Osallistuminen,
   SarjaId,
   TulosSaanto,
 } from '@/types/kisa'
-import { LAJIT, LAJI_KOODIT, resulRakenne } from '@/core/lajit'
+import { LAJIT, LAJI_KOODIT, LUOKAT, resulRakenne } from '@/core/lajit'
 import { KISA_SKEEMA_VERSIO } from '@/core/skeema'
 import { jasennaLaukaus } from '@/core/laukaus'
 import { lyhytTunnus, uusiId } from '@/core/tunnus'
@@ -137,8 +137,22 @@ function lueKisatiedot(wb: Workbook): Kisa['kisatiedot'] {
   return tyhja
 }
 
-function onLuokka(arvo: string): arvo is Luokka {
-  return arvo === 'vakio' || arvo === 'avoin'
+/**
+ * Luokka luetaan sellaisenaan, samasta syystä kuin sarja.
+ *
+ * RESUL-kisan tuloskortissa arvo on tunniste `vakio`/`avoin`, mutta käsin kirjoitettuna
+ * se voi olla isolla. Mukautetussa kisassa luokan nimeää järjestäjä, ja nimi voi olla
+ * juuri "Vakio" — silloin sitä ei saa pienentää. Siksi kisan oma luokkalista ratkaisee:
+ * täsmällinen osuma kelpaa sellaisenaan, kirjainkoosta piittaamaton osuma korjataan
+ * listan mukaiseksi, ja tuntematon arvo säilyy ennallaan. Pakottaminen ensimmäiseen
+ * luokkaan hukkaisi luokittelun huomaamatta.
+ */
+function lueLuokka(arvo: string, luokat: readonly LuokkaId[]): LuokkaId {
+  const siisti = arvo.trim()
+  if (!siisti) return luokat[0] ?? 'vakio'
+  if (luokat.includes(siisti)) return siisti
+  const pieni = siisti.toLowerCase()
+  return luokat.find((l) => l.toLowerCase() === pieni) ?? siisti
 }
 
 /**
@@ -182,9 +196,9 @@ function lueMukautetutLajit(parit: Map<string, string>): TiedostonLaji[] {
   }
 }
 
-/** Lukee mukautetun kisan sarjat `_meta`:n JSON-kentästä. */
-function lueMukautetutSarjat(parit: Map<string, string>): SarjaId[] {
-  const json = parit.get('sarjatJson')
+/** Lukee mukautetun kisan sarjat tai luokat `_meta`:n JSON-kentästä. */
+function lueNimilista(parit: Map<string, string>, avain: string): string[] {
+  const json = parit.get(avain)
   if (!json) return []
   try {
     const luettu: unknown = JSON.parse(json)
@@ -216,6 +230,7 @@ function lueTuloskortti(
   laji: LajiId,
   rakenne: { kilpasarjat: readonly { laukauksia: number }[] },
   kerays: Kerays,
+  luokat: readonly LuokkaId[],
 ) {
   const a = luoAsettelu(rakenne)
 
@@ -227,7 +242,7 @@ function lueTuloskortti(
 
     const yhdistys = teksti(r.getCell(4)).trim()
     const ikasarjaTeksti = teksti(r.getCell(5)).trim()
-    const luokkaTeksti = teksti(r.getCell(6)).trim().toLowerCase()
+    const luokkaTeksti = teksti(r.getCell(6))
     const tunnus = teksti(r.getCell(a.tunnus)).trim()
 
     const avain = nimiAvain(sukunimi, etunimi, yhdistys)
@@ -259,7 +274,7 @@ function lueTuloskortti(
     }
 
     const osallistuminen: Osallistuminen = {
-      luokka: onLuokka(luokkaTeksti) ? luokkaTeksti : 'vakio',
+      luokka: lueLuokka(luokkaTeksti, luokat),
       kilpasarjat,
       rangaistuksia: Math.max(0, Math.trunc(luku(r.getCell(a.rikkeet), 0))),
       hylatty: teksti(r.getCell(a.hylatty)).trim().toLowerCase() === 'x',
@@ -310,7 +325,10 @@ export async function tuoKisa(tavut: ArrayBuffer): Promise<TuontiYhteenveto> {
 
   const mukautettu = parit.get('kisaTyyppi') === 'mukautettu'
   const mukautetutLajit = mukautettu ? lueMukautetutLajit(parit) : []
-  const mukautetutSarjat = mukautettu ? lueMukautetutSarjat(parit) : []
+  const mukautetutSarjat = mukautettu ? lueNimilista(parit, 'sarjatJson') : []
+  const mukautetutLuokat = mukautettu ? lueNimilista(parit, 'luokatJson') : []
+  // Luokkalista tiedostosta; puuttuessa sääntöjen luokat, kuten tallennuksessakin.
+  const luettavatLuokat = mukautetutLuokat.length ? mukautetutLuokat : [...LUOKAT]
 
   /*
    * Luettavat lajit ja niiden välilehdet.
@@ -337,7 +355,7 @@ export async function tuoKisa(tavut: ArrayBuffer): Promise<TuontiYhteenveto> {
     if (!ws) continue
     loytyiTuloskortti = true
     osallistumiset[laji] = 0
-    lueTuloskortti(ws, laji, rakenne, kerays)
+    lueTuloskortti(ws, laji, rakenne, kerays, luettavatLuokat)
   }
 
   if (!loytyiTuloskortti) {
@@ -367,6 +385,15 @@ export async function tuoKisa(tavut: ArrayBuffer): Promise<TuontiYhteenveto> {
           sarjat: mukautetutSarjat.length
             ? mukautetutSarjat
             : [...new Set(kilpailijat.map((k) => k.ikasarja))],
+          // Sama varatie luokille: vanhemmalla versiolla viedyssä tiedostossa ei ole
+          // luokkalistaa, joten se kootaan kirjatuista osallistumisista.
+          luokat: mukautetutLuokat.length
+            ? mukautetutLuokat
+            : [
+                ...new Set(
+                  kilpailijat.flatMap((k) => Object.values(k.osallistumiset).map((o) => o!.luokka)),
+                ),
+              ],
         }
       : {}),
     kisaId: parit.get('kisaId') || lyhytTunnus(),

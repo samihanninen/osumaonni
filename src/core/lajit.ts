@@ -5,6 +5,7 @@ import type {
   LajiId,
   LajiMaaritys,
   Luokka,
+  LuokkaId,
   MukautettuLaji,
   SarjaId,
   TulosSaanto,
@@ -83,12 +84,22 @@ export const LAJIT: Record<Laji, LajiMaaritys> = {
 
 export const LAJI_KOODIT: readonly Laji[] = ['RA1', 'RA2', 'RA3', 'RA4'] as const
 
-/** Kaikissa lajeissa on kaksi aseluokkaa. */
+/** RESUL-kisassa on kaikissa lajeissa kaksi aseluokkaa. */
 export const LUOKAT: readonly Luokka[] = ['vakio', 'avoin'] as const
 
 export const LUOKKA_NIMET: Record<Luokka, string> = {
   vakio: 'Vakio',
   avoin: 'Avoin',
+}
+
+/**
+ * Aseluokan näkyvä nimi.
+ *
+ * RESUL-kisassa tunniste on `vakio`/`avoin` ja nimi kirjoitetaan isolla. Mukautetussa
+ * kisassa tunniste on itse nimi, kuten sarjoissa, joten se kelpaa sellaisenaan.
+ */
+export function luokanNimi(luokka: LuokkaId): string {
+  return LUOKKA_NIMET[luokka as Luokka] ?? luokka
 }
 
 /** Onko annettu merkkijono kelvollinen lajikoodi? Käytetään reitin parametrin tarkistuksessa. */
@@ -223,6 +234,18 @@ export function sarjanNimi(r: LajiRakenne, sarja: number): string {
 export function kisanSarjat(kisa: Pick<Kisa, 'tyyppi' | 'sarjat'>): SarjaId[] {
   if (kisa.tyyppi === 'mukautettu') return kisa.sarjat ?? []
   return [...RESUL_SARJAT]
+}
+
+/**
+ * Kisan aseluokat järjestyksessä, muodosta riippumatta.
+ *
+ * Mukautettu kisa, jolle luokkia ei ole erikseen määritelty, saa sääntöjen mukaiset
+ * luokat: ennen `luokat`-kenttää tallennetut kisat käyttivät niitä, eikä tyhjä
+ * luokkalista olisi mielekäs — kilpailijaa ei voisi asettaa mihinkään luokkaan.
+ */
+export function kisanLuokat(kisa: Pick<Kisa, 'tyyppi' | 'luokat'>): LuokkaId[] {
+  if (kisa.tyyppi === 'mukautettu' && kisa.luokat?.length) return [...kisa.luokat]
+  return [...LUOKAT]
 }
 
 /** Onko tunniste kisassa oleva laji? Käytetään reitin parametrin tarkistuksessa. */

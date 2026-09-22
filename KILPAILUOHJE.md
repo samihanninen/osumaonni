@@ -19,6 +19,8 @@ yksityiskohdat ovat README-tiedostossa — täällä on vain se mitä radalla ta
    poistaa kirjatut tulokset.
 4. **Lisää kilpailijat.** Nimi, yhdistys ja lajit joihin hän osallistuu — kaikki samalla
    kertaa. Lajit ovat lomakkeella valmiiksi valittuina; ota pois ne joihin hän ei osallistu.
+   Aseluokka valitaan lajikohtaisesti kilpailijalistalta, koska se seuraa käytettyä asetta.
+   Mukautetussa kisassa luokat nimetään itse Kisatiedot-sivulta.
 5. **Tai täppää väki rosterista.** Jos porukka on sama kuin viime kerralla, avaa
    *Kilpailijat*-sivulta **Rosteri** ja rastita mukaan tulevat — nimiä ei tarvitse syöttää
    uudelleen. Palaa sivun alalaidan *Valmis*-napista kilpailijalistaan. Uuden porukan saa

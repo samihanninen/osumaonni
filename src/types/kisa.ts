@@ -34,8 +34,22 @@ export type LajiId = string
  */
 export type KisaTyyppi = 'resul' | 'mukautettu'
 
-/** Aseluokka. Avoimessa luokassa optiikka on sallittu, joten luokat kilpailevat erikseen. */
+/**
+ * RESUL-kisan aseluokka. Avoimessa optiikka on sallittu, joten luokat kilpailevat
+ * erikseen. Suljettu joukko, koska nämä tulevat säännöistä — mukautetun kisan omat
+ * luokat eivät kuulu tähän tyyppiin.
+ */
 export type Luokka = 'vakio' | 'avoin'
+
+/**
+ * Aseluokka tallennuksessa.
+ *
+ * RESUL-kisassa `vakio` tai `avoin` sääntöjen mukaan. Mukautetussa kisassa järjestäjän
+ * itse nimeämä luokka, jonka ei tarvitse liittyä aseeseen lainkaan. Nimi on samalla
+ * tunniste, kuten sarjoissa (`SarjaId`): luokkia ei ole tarpeen nimetä uudelleen kesken
+ * kisan eikä niihin liity muuta tietoa.
+ */
+export type LuokkaId = string
 
 /** Ikäsarja. */
 export type IkaSarja = 'H' | 'H50'
@@ -143,7 +157,7 @@ export interface KilpasarjaTiedot {
 /** Kilpailijan osallistuminen yhteen lajiin. */
 export interface Osallistuminen {
   /** Aseluokka tässä lajissa. Voi vaihdella lajeittain, koska se seuraa käytettyä asetta. */
-  luokka: Luokka
+  luokka: LuokkaId
   kilpasarjat: KilpasarjaTiedot[]
   /** Sääntörikkeiden määrä. Jokainen vähentää 2 pistettä lopputuloksesta. */
   rangaistuksia: number
@@ -203,6 +217,15 @@ export interface Kisa {
    * RESUL-kisassa puuttuu: sarjat tulevat silloin säännöistä (H, H50).
    */
   sarjat?: SarjaId[]
+  /**
+   * Mukautetun kisan aseluokat järjestyksessä, esim. "Vakio" ja "Avoin".
+   *
+   * Puuttuva arvo tarkoittaa sääntöjen mukaisia luokkia myös mukautetussa kisassa: ennen
+   * tätä kenttää tallennetut mukautetut kisat käyttivät niitä, ja ne ovat edelleen
+   * järkevä oletus. Siksi tämä on valinnainen kenttä eikä vaadi skeemaversion nostoa
+   * (ks. `core/skeema`).
+   */
+  luokat?: LuokkaId[]
   /**
    * Mukautetun kisan lajit järjestyksessä. RESUL-kisassa tyhjä tai puuttuva: lajit
    * tulevat silloin säännöistä eikä niitä tallenneta erikseen.

@@ -3,7 +3,7 @@ import { computed, nextTick, watch } from 'vue'
 import type { Kilpailija, LajiId } from '@/types/kisa'
 import { laskeLaji } from '@/core/laskenta'
 import { naytaLaukaus } from '@/core/laukaus'
-import { LUOKKA_NIMET, sarjanNimi as rakenteenSarjanNimi, type LajiRakenne } from '@/core/lajit'
+import { luokanNimi, sarjanNimi as rakenteenSarjanNimi, type LajiRakenne } from '@/core/lajit'
 
 const props = defineProps<{
   kilpailija: Kilpailija
@@ -66,7 +66,7 @@ watch(
       <p class="tiedot">
         <span>{{ kilpailija.yhdistys || '—' }}</span>
         <span class="erotin" aria-hidden="true">·</span>
-        <span>{{ LUOKKA_NIMET[osallistuminen.luokka] }}</span>
+        <span>{{ luokanNimi(osallistuminen.luokka) }}</span>
         <span class="erotin" aria-hidden="true">·</span>
         <span>{{ kilpailija.ikasarja }}</span>
       </p>
