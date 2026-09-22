@@ -104,3 +104,32 @@ test('rosterin voi tyhjentää kisatiedoista kisaa koskematta', async ({ page })
   await page.locator('summary.otsikko').click()
   await expect(page.getByText('Rosteri on tyhjä')).toBeVisible()
 })
+
+/*
+ * Rosteriin pääsi ennen vain lisäyshetkellä tai koko kisa kerralla. Listalla jo oleva
+ * yksittäinen kilpailija jäi väliin: hänet olisi pitänyt poistaa ja kirjata uudelleen.
+ */
+test('listalla olevan kilpailijan voi täpätä rosteriin jälkikäteen', async ({ page }) => {
+  await avaaTyhjana(page, '/#/kilpailijat')
+
+  await page.locator('#etunimi').fill('Sanna')
+  await page.locator('#sukunimi').fill('Hakala')
+  await page.locator('#yhdistys').fill('Nupures')
+  await page.getByRole('button', { name: 'Lisää kilpailija' }).click()
+  await expect(page.getByText('1 kilpailijaa')).toBeVisible()
+
+  const rasti = page.getByRole('checkbox', { name: 'Sanna Hakala rosterissa' })
+  await expect(rasti).not.toBeChecked()
+  await rasti.check()
+
+  // Rosteri on laitteen muistissa, joten se säilyy myös uudelleenlatauksen yli.
+  await page.reload()
+  await expect(page.getByText('1 henkilöä')).toBeVisible()
+  await expect(page.getByRole('checkbox', { name: 'Sanna Hakala rosterissa' })).toBeChecked()
+
+  // Rastin poisto vie rosterista, mutta kilpailija jää kisaan tuloksineen.
+  await page.getByRole('checkbox', { name: 'Sanna Hakala rosterissa' }).uncheck()
+  await expect(page.getByText('1 kilpailijaa')).toBeVisible()
+  await page.locator('summary.otsikko').click()
+  await expect(page.getByText('Rosteri on tyhjä')).toBeVisible()
+})

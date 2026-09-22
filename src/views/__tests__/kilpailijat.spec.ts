@@ -3,6 +3,7 @@ import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import KilpailijatView from '../KilpailijatView.vue'
 import { useKisaStore } from '@/stores/kisa'
+import { useRosteriStore } from '@/stores/rosteri'
 
 /**
  * Kilpailijalistan järjestys kesken kirjoittamisen.
@@ -60,5 +61,70 @@ describe('kilpailijalistan järjestys', () => {
       .findAll('input[id^="etu-"]')
       .map((i) => (i.element as HTMLInputElement).value)
     expect(nimet).toEqual(['Pertti', 'Sanna'])
+  })
+})
+
+/**
+ * Rosterirasti kilpailijalistalla.
+ *
+ * Rosteriin pääsi ennen vain kahta kautta: lisäyslomakkeen `Tallenna myös rosteriin`
+ * juuri kirjattavalle kilpailijalle, tai rosterikortin nappi koko kisalle kerralla. Jo
+ * listalla olevaa yksittäistä kilpailijaa ei saanut rosteriin lainkaan — hänet piti
+ * poistaa ja kirjata uudelleen rasti päällä.
+ */
+describe('rosterirasti kilpailijalistalla', () => {
+  let store: ReturnType<typeof useKisaStore>
+  let rosteri: ReturnType<typeof useRosteriStore>
+
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    store = useKisaStore()
+    rosteri = useRosteriStore()
+  })
+
+  function rosterirasti(wrapper: ReturnType<typeof mount>) {
+    return wrapper.get('.rivi .rosterirasti input[type="checkbox"]')
+  }
+
+  it('rasti tallentaa listalla olevan kilpailijan rosteriin', async () => {
+    const k = store.lisaaKilpailija({ etunimi: 'Pertti', sukunimi: 'Hakala', yhdistys: 'Nupures' })
+    const wrapper = mount(KilpailijatView, { global: globaalit })
+
+    await rosterirasti(wrapper).setValue(true)
+
+    expect(rosteri.maara).toBe(1)
+    // Sama tunniste kuin kisassa: se sitoo rosterin henkilön tähän kilpailijaan.
+    expect(rosteri.henkilo(k.id)).toMatchObject({ sukunimi: 'Hakala', yhdistys: 'Nupures' })
+  })
+
+  it('rasti näkyy valittuna, kun kilpailija on jo rosterissa', () => {
+    store.lisaaKilpailija({ etunimi: 'Pertti', sukunimi: 'Hakala', yhdistys: 'Nupures' })
+    // Rosteriin kirjattu erikseen, eri tunnisteella: tunnistus osuu nimen kautta.
+    rosteri.tallenna({ etunimi: 'Pertti', sukunimi: 'Hakala', yhdistys: 'Nupures' })
+    const wrapper = mount(KilpailijatView, { global: globaalit })
+
+    expect((rosterirasti(wrapper).element as HTMLInputElement).checked).toBe(true)
+  })
+
+  it('rastin poisto vie rosterista mutta jättää kilpailijan kisaan', async () => {
+    const k = store.lisaaKilpailija({ etunimi: 'Pertti', sukunimi: 'Hakala', yhdistys: 'Nupures' })
+    rosteri.tallenna({ id: k.id, etunimi: 'Pertti', sukunimi: 'Hakala', yhdistys: 'Nupures' })
+    const wrapper = mount(KilpailijatView, { global: globaalit })
+
+    await rosterirasti(wrapper).setValue(false)
+
+    expect(rosteri.maara).toBe(0)
+    expect(store.kilpailijoita).toBe(1)
+  })
+
+  /*
+   * Ilman sukunimeä rosteri ei ota henkilöä vastaan, joten rasti kimpoaisi takaisin
+   * tyhjänä. Silloin ruutua ei näytetä lainkaan.
+   */
+  it('rasti puuttuu kilpailijalta jolla ei ole sukunimeä', () => {
+    store.lisaaKilpailija({ etunimi: 'Sanna', sukunimi: '', yhdistys: 'Nupures' })
+    const wrapper = mount(KilpailijatView, { global: globaalit })
+
+    expect(wrapper.find('.rivi .rosterirasti').exists()).toBe(false)
   })
 })

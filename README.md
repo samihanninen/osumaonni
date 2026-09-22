@@ -178,6 +178,9 @@ Rosteri on *Kilpailijat*-sivun ylälaidassa, ja se toimii näin:
 - **Rosteriin tallennetaan** joko napista *Tallenna kisan kilpailijat rosteriin* tai
   rastittamalla lisäyslomakkeelta *Tallenna myös rosteriin*. Jälkimmäinen valinta
   muistetaan laitteessa.
+- **Yksittäisen kilpailijan saa rosteriin jälkikäteen** kilpailijalistan *Rosterissa*-
+  rastista. Rastin poistaminen vie hänet rosterista mutta jättää kisaan — kaikki tiedot
+  ovat samalla rivillä, joten rasti tuo hänet takaisin sellaisenaan.
 - **Sarja tulee mukana**, jos kisassa on samanniminen sarja. Mukautetun kisan sarjat ovat
   järjestäjän itse nimeämiä, joten RESUL-kisan H50 ei siirry sinne.
 - **Yksittäisen henkilön voi poistaa** rosterista listalta, ja koko rosterin
