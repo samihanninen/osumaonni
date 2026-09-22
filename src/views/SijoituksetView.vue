@@ -39,7 +39,12 @@ const luokka = ref<LuokkaId>('')
 watchEffect(() => {
   if (!luokat.value.includes(luokka.value)) luokka.value = luokat.value[0] ?? ''
 })
-const ikasarjaSuodatin = ref<SarjaId | 'kaikki'>('kaikki')
+/**
+ * Sarjarajaus. Rajaamattomuus on `null` eikä merkkijono "kaikki": mukautetun kisan sarjan
+ * nimeää järjestäjä, ja sarja nimeltä "kaikki" olisi merkkijonoa käytettäessä sama asia
+ * kuin rajauksen poisto — hänen kilpailijansa katoaisivat omasta listastaan.
+ */
+const ikasarjaSuodatin = ref<SarjaId | null>(null)
 
 /** Kisan sarjat: RESUL-kisassa H ja H50, mukautetussa järjestäjän omat. */
 const sarjat = computed(() => kisanSarjat(kisa.value))
@@ -50,7 +55,7 @@ const sarjat = computed(() => kisanSarjat(kisa.value))
  * kelpaa palkintojen jakoon. Otsikko kertoo aina rajauksen, joten tulkinta on selvä.
  */
 const suodatetut = computed(() =>
-  ikasarjaSuodatin.value === 'kaikki'
+  ikasarjaSuodatin.value === null
     ? kisa.value.kilpailijat
     : kisa.value.kilpailijat.filter((k) => k.ikasarja === ikasarjaSuodatin.value),
 )
@@ -61,7 +66,7 @@ const rivit = computed(() =>
 
 const otsikko = computed(() => {
   const osat = [rakenne.value?.koodi ?? laji.value, luokanNimi(luokka.value)]
-  if (ikasarjaSuodatin.value !== 'kaikki') osat.push(ikasarjaSuodatin.value)
+  if (ikasarjaSuodatin.value !== null) osat.push(ikasarjaSuodatin.value)
   return osat.join(' · ')
 })
 
@@ -115,8 +120,8 @@ function sijaTeksti(sija: number): string {
           <button
             type="button"
             class="pikkunappi"
-            :class="{ 'pikkunappi--valittu': ikasarjaSuodatin === 'kaikki' }"
-            @click="ikasarjaSuodatin = 'kaikki'"
+            :class="{ 'pikkunappi--valittu': ikasarjaSuodatin === null }"
+            @click="ikasarjaSuodatin = null"
           >
             Kaikki
           </button>
@@ -141,7 +146,7 @@ function sijaTeksti(sija: number): string {
         Tarvittaessa myös huonompi kilpasarja.
       </template>
       Sijalta 9 alkaen tasatulokset jaetaan sukunimen mukaisessa aakkosjärjestyksessä.
-      <template v-if="ikasarjaSuodatin !== 'kaikki'">
+      <template v-if="ikasarjaSuodatin !== null">
         <strong>Sijoitukset on laskettu ikäsarjan {{ ikasarjaSuodatin }} sisällä.</strong>
       </template>
     </p>

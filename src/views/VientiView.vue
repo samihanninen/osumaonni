@@ -5,12 +5,15 @@ import { useKisaStore } from '@/stores/kisa'
 import { useLaiteStore } from '@/stores/laite'
 import { lataaTiedosto, lueTiedosto } from '@/io/lataa'
 import { jaaTiedosto, jakoKaytettavissa, luoTiedosto, luonnosTeksti, mailtoOsoite } from '@/io/jaa'
-import { LAJI_KOODIT } from '@/core/lajit'
+import { kisanLajit } from '@/core/lajit'
 import type { TuontiYhteenveto } from '@/io/xlsxTuonti'
 
 const store = useKisaStore()
 const laite = useLaiteStore()
 const { kisa } = storeToRefs(store)
+
+/** Kisan lajit muodosta riippumatta: RESUL-kisassa RA1–RA4, mukautetussa kisan omat. */
+const lajit = computed(() => kisanLajit(kisa.value))
 
 const vienninTila = ref<'valmis' | 'kesken'>('valmis')
 const virhe = ref('')
@@ -223,9 +226,13 @@ const eriKisa = computed(
           <dt>Kilpailijoita</dt>
           <dd>{{ store.kilpailijoita }}</dd>
         </div>
-        <div v-for="laji in LAJI_KOODIT" :key="laji">
-          <dt>{{ laji }}</dt>
-          <dd>{{ store.osallistujia(laji) }}</dd>
+        <!--
+          Kisan omat lajit, ei RESUL-koodeja: mukautetussa kisassa lista näytti neljä
+          nollariviä RA1–RA4 eikä kisan todellisia lajeja lainkaan.
+        -->
+        <div v-for="laji in lajit" :key="laji.id">
+          <dt>{{ laji.koodi }}</dt>
+          <dd>{{ store.osallistujia(laji.id) }}</dd>
         </div>
       </dl>
 
@@ -309,9 +316,10 @@ const eriKisa = computed(
             <dt>Kilpailijoita</dt>
             <dd>{{ esikatselu.kilpailijoita }}</dd>
           </div>
-          <div v-for="laji in LAJI_KOODIT" :key="laji">
-            <dt>{{ laji }}</dt>
-            <dd>{{ esikatselu.osallistumiset[laji] }}</dd>
+          <!-- Lajit tiedoston omasta kisasta: se voi olla eri muotoa kuin tämä kisa. -->
+          <div v-for="laji in kisanLajit(esikatselu.kisa)" :key="laji.id">
+            <dt>{{ laji.koodi }}</dt>
+            <dd>{{ esikatselu.osallistumiset[laji.id] ?? 0 }}</dd>
           </div>
         </dl>
 

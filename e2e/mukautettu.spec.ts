@@ -205,4 +205,27 @@ test.describe('mukautettu kisa', () => {
     // Ainoa jäljellä oleva luokka on nyt valittuna.
     await expect(page.getByLabel('3-as: aseluokka')).toHaveValue('Vakio')
   })
+
+  /*
+   * Vienti- ja Yhdistä-sivut listasivat lajit kiinteästä RA1–RA4:stä kisan omien lajien
+   * sijaan. Mukautetussa kisassa se tarkoitti neljää nollariviä lajeista joita kisassa ei
+   * ole — ja kisan todellinen laji puuttui listalta kokonaan.
+   */
+  test('vienti- ja yhdistämissivu listaavat kisan omat lajit', async ({ page }) => {
+    await perustaKolmenAsennonKisa(page)
+    await lisaaKilpailija(page)
+
+    await page.goto('/#/vienti')
+    const yhteenveto = page.locator('dl.tiedot').first()
+    await expect(yhteenveto).toContainText('3-as')
+    await expect(yhteenveto).toContainText('Kilpailijoita')
+    for (const resulLaji of ['RA1', 'RA2', 'RA3', 'RA4']) {
+      await expect(yhteenveto).not.toContainText(resulLaji)
+    }
+
+    await page.goto('/#/yhdista')
+    const rajaus = page.locator('fieldset.lajit')
+    await expect(rajaus).toContainText('3-as')
+    await expect(rajaus).not.toContainText('RA1')
+  })
 })

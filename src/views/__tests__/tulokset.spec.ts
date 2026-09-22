@@ -208,3 +208,65 @@ describe('YhdistyksetView', () => {
     expect(wrapper.text()).toContain('100')
   })
 })
+
+/**
+ * Suodattimien "ei rajausta" -tila.
+ *
+ * Rajaamattomuutta merkittiin ennen merkkijonolla "kaikki". Mukautetussa kisassa sarjan ja
+ * aseluokan nimeää järjestäjä, joten juuri sen niminen sarja olisi ollut sama asia kuin
+ * rajauksen poisto: hänen kilpailijansa olisivat kadonneet omasta listastaan, ja lista
+ * olisi näyttänyt koko kisan ilman että mikään kertoi rajauksen pudonneen.
+ */
+describe('suodatin sarjalla nimeltä "kaikki"', () => {
+  let store: ReturnType<typeof useKisaStore>
+
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    store = useKisaStore()
+    store.asetaKisaTyyppi('mukautettu')
+    store.lisaaSarja('kaikki')
+  })
+
+  /** Mukautettu laji ja kaksi ampujaa eri sarjoissa, jotta rajauksen näkee. */
+  function perusta() {
+    const laji = store.lisaaMukautettuLaji({ koodi: 'PK', nimi: 'Pikakivääri' })
+    const tee = (sukunimi: string, sarja: string, arvo: number) => {
+      const k = store.lisaaKilpailija({ etunimi: 'A', sukunimi, yhdistys: 'N', ikasarja: sarja })
+      store.lisaaOsallistuminen(k.id, laji.id)
+      for (let i = 0; i < 10; i++) store.asetaLaukaus(k.id, laji.id, 0, i, arvo)
+      return k
+    }
+    tee('Kaikkilainen', 'kaikki', 9)
+    tee('Yleinen', 'Yleinen', 8)
+    return laji
+  }
+
+  async function asenna(lajiId: string) {
+    const router = luoRouter()
+    await router.push('/tulokset/' + lajiId)
+    await router.isReady()
+    return mount(SijoituksetView, { global: { plugins: [router] } })
+  }
+
+  it('rajaus sarjaan "kaikki" näyttää vain sen sarjan', async () => {
+    const laji = perusta()
+    const wrapper = await asenna(laji.id)
+
+    // Sarjanappi, ei rajauksen poistava "Kaikki"-nappi (eri kirjainkoko, eri merkitys).
+    const nappi = wrapper.findAll('button').find((b) => b.text() === 'kaikki')!
+    await nappi.trigger('click')
+
+    const rivit = wrapper.findAll('tbody tr')
+    expect(rivit).toHaveLength(1)
+    expect(rivit[0]!.text()).toContain('Kaikkilainen')
+    // Otsikko kertoo rajauksen, joten tulkinta ei jää arvailun varaan.
+    expect(wrapper.find('.tulososio').text()).toContain('kaikki')
+  })
+
+  it('ilman rajausta näkyvät kaikki sarjat', async () => {
+    const laji = perusta()
+    const wrapper = await asenna(laji.id)
+
+    expect(wrapper.findAll('tbody tr')).toHaveLength(2)
+  })
+})
