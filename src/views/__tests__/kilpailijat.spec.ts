@@ -180,3 +180,71 @@ describe('rosterikortti kilpailijasivulla', () => {
     expect(taynna.get('a[href="/rosteri"]').text()).toBe('Avaa rosteri')
   })
 })
+
+/**
+ * Lajiton mukautettu kisa.
+ *
+ * Mukautettu kisa alkaa ilman lajeja, ja järjestäjä voi nimetä sarjat ja aseluokat ensin.
+ * Osallistuminen ja aseluokka ovat kumpikin lajikohtaisia, joten siinä välitilassa
+ * kilpailijariville ei jää mitään valittavaa. Aiemmin tilalla oli tyhjä "Lajit ja
+ * aseluokat" -laatikko, joka ei kertonut syytä eikä ratkaisua — ja aseluokkien
+ * määrittely näytti siltä kuin se olisi jäänyt toimimatta.
+ */
+describe('kilpailijasivu ilman lajeja', () => {
+  let store: ReturnType<typeof useKisaStore>
+
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    store = useKisaStore()
+    store.asetaKisaTyyppi('mukautettu')
+  })
+
+  it('kertoo miksi aseluokkaa ei voi valita ja mistä lajit määritellään', () => {
+    store.lisaaKilpailija({ etunimi: 'Sanna', sukunimi: 'Hakala', yhdistys: 'N' })
+    const wrapper = mount(KilpailijatView, { global: globaalit })
+
+    const huomio = wrapper.find('.huomio--varoitus')
+    expect(huomio.exists()).toBe(true)
+    expect(huomio.text()).toContain('ei ole vielä lajeja')
+    expect(wrapper.find('a[href="/kisatiedot"]').exists()).toBe(true)
+  })
+
+  it('ei näytä tyhjää lajilaatikkoa kilpailijarivillä', () => {
+    store.lisaaKilpailija({ etunimi: 'Sanna', sukunimi: 'Hakala', yhdistys: 'N' })
+    const wrapper = mount(KilpailijatView, { global: globaalit })
+
+    expect(wrapper.find('.rivi fieldset.lajit').exists()).toBe(false)
+  })
+
+  /* Kun lajit on määritelty, selite katoaa ja aseluokka on valittavissa. */
+  it('lajin lisääminen tuo aseluokkavalitsimen ja poistaa selitteen', async () => {
+    const laji = store.lisaaMukautettuLaji({ koodi: 'PK', nimi: 'Pikakivääri' })
+    store.nimeaLuokka('Vakio', 'Kivääri')
+    store.lisaaLuokka('Optiikka')
+    const k = store.lisaaKilpailija({ etunimi: 'Sanna', sukunimi: 'Hakala', yhdistys: 'N' })
+    store.lisaaOsallistuminen(k.id, laji.id)
+
+    const wrapper = mount(KilpailijatView, { global: globaalit })
+
+    expect(wrapper.find('.huomio--varoitus').exists()).toBe(false)
+    const valitsin = wrapper.find('.rivi .laji select')
+    expect(valitsin.exists()).toBe(true)
+    expect(valitsin.findAll('option').map((o) => o.text())).toEqual([
+      'Kivääri',
+      'Avoin',
+      'Optiikka',
+    ])
+    // Oletusluokka tulee kisan omasta listasta, ei sääntöjen vakiosta.
+    expect((valitsin.element as HTMLSelectElement).value).toBe('Kivääri')
+  })
+
+  /* RESUL-kisassa lajit tulevat säännöistä, joten selitettä ei koskaan näytetä. */
+  it('RESUL-kisassa selitettä ei näytetä', () => {
+    store.asetaKisaTyyppi('resul')
+    store.lisaaKilpailija({ etunimi: 'Sanna', sukunimi: 'Hakala', yhdistys: 'N' })
+    const wrapper = mount(KilpailijatView, { global: globaalit })
+
+    expect(wrapper.find('.huomio--varoitus').exists()).toBe(false)
+    expect(wrapper.find('.rivi fieldset.lajit').exists()).toBe(true)
+  })
+})
