@@ -6,7 +6,7 @@ import { useKisaStore } from '@/stores/kisa'
 import { useLaiteStore } from '@/stores/laite'
 import { kisanLajit, rakenteenLaukaukset } from '@/core/lajit'
 import { laskeLaji } from '@/core/laskenta'
-import type { LajiId, Laukaus, Luokka } from '@/types/kisa'
+import type { LajiId, Laukaus, LuokkaId } from '@/types/kisa'
 import LaukausNappaimisto from '@/components/LaukausNappaimisto.vue'
 import KilpailijaKortti from '@/components/KilpailijaKortti.vue'
 import TuloskorttiTaulukko from '@/components/TuloskorttiTaulukko.vue'
@@ -176,7 +176,7 @@ function tila(k: (typeof osallistujat.value)[number]): string {
 function taulukkoSyota(id: string, sarja: number, laukaus: number, arvo: Laukaus) {
   store.asetaLaukaus(id, laji.value, sarja, laukaus, arvo)
 }
-function taulukkoLuokka(id: string, luokka: Luokka) {
+function taulukkoLuokka(id: string, luokka: LuokkaId) {
   store.asetaLuokka(id, laji.value, luokka)
 }
 function taulukkoRangaistukset(id: string, maara: number) {
@@ -280,6 +280,7 @@ function taulukkoHylatty(id: string, hylatty: boolean) {
           :rakenne="rakenne"
           :lukittu="laite.luovutettu"
           @syota="taulukkoSyota"
+          :luokat="store.luokat"
           @luokka="taulukkoLuokka"
           @rangaistukset="taulukkoRangaistukset"
           @hylatty="taulukkoHylatty"

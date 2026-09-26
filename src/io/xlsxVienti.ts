@@ -1,6 +1,6 @@
 import type { Workbook, Worksheet } from 'exceljs'
-import type { Kilpailija, Kisa, Laukaus, Luokka } from '@/types/kisa'
-import { kisanLajit, LAJI_KOODIT, LUOKAT } from '@/core/lajit'
+import type { Kilpailija, Kisa, Laukaus, LuokkaId } from '@/types/kisa'
+import { kisanLajit, LAJI_KOODIT } from '@/core/lajit'
 import { laskeLaji } from '@/core/laskenta'
 import { onJoukkuekilpailu } from '@/core/yhdistykset'
 import { VERSIO } from '@/core/versio'
@@ -214,13 +214,29 @@ function kirjoitaTuloskortti(wb: Workbook, konteksti: LajiKonteksti) {
   ws.getColumn(a.tunnus).width = 14
   ws.getColumn(a.tunnus).hidden = true
 
-  // Pudotusvalikot vähentävät kirjoitusvirheitä hand-editoinnissa.
+  /*
+   * Pudotusvalikot vähentävät kirjoitusvirheitä hand-editoinnissa.
+   *
+   * Luokkavalikko jätetään pois, jos mukautetun kisan luokkanimissä on pilkku tai
+   * lainausmerkki tai jos lista ei mahdu Excelin 255 merkkiin: valikko on pilkuilla
+   * eroteltu merkkijono, joten sellainen nimi katkaisisi listan väärästä kohdasta ja
+   * tarjoaisi arvoja joita kisassa ei ole. Ilman valikkoa solu on vapaata tekstiä, ja
+   * tuonti lukee sen sellaisenaan.
+   */
+  const luokkaLista = konteksti.luokat.join(',')
+  const luokkaValikko =
+    konteksti.luokat.every((l) => !/["|,]/.test(l)) && luokkaLista.length <= 255
+      ? luokkaLista
+      : null
+
   const viimeinenRivi = ENSIMMAINEN_DATARIVI + riveja - 1
   for (let rivi = ENSIMMAINEN_DATARIVI; rivi <= viimeinenRivi; rivi++) {
-    ws.getCell(rivi, 6).dataValidation = {
-      type: 'list',
-      allowBlank: false,
-      formulae: [`"${LUOKAT.join(',')}"`],
+    if (luokkaValikko) {
+      ws.getCell(rivi, 6).dataValidation = {
+        type: 'list',
+        allowBlank: false,
+        formulae: [`"${luokkaValikko}"`],
+      }
     }
     ws.getCell(rivi, a.hylatty).dataValidation = {
       type: 'list',
@@ -306,6 +322,7 @@ function kirjoitaMeta(
     }))
     parit.push(['lajitJson', JSON.stringify(lajit)])
     parit.push(['sarjatJson', JSON.stringify(kisa.sarjat ?? [])])
+    parit.push(['luokatJson', JSON.stringify(kisa.luokat ?? [])])
   }
   parit.forEach(([avain, arvo], i) => {
     ws.getCell(i + 1, 1).value = avain
@@ -414,4 +431,4 @@ export async function vieKisa(kisa: Kisa, nyt: Date = new Date()): Promise<Vient
 
 /** Vain testejä varten: paljastaa apurit ilman erillistä tiedostoa. */
 export const _sisaiset = { laukausSoluun, tyylitaOtsikko }
-export type { Kilpailija, Luokka, Worksheet }
+export type { Kilpailija, LuokkaId, Worksheet }

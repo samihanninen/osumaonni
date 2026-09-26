@@ -1,4 +1,4 @@
-import type { Kilpailija, LajiId, LajiMaaritys, Luokka } from '@/types/kisa'
+import type { Kilpailija, LajiId, LajiMaaritys, LuokkaId } from '@/types/kisa'
 import { laskeLaji, vertaaPerusteita, type LajiTulos } from './laskenta'
 
 /**
@@ -144,7 +144,7 @@ export interface SijoitusOptiot {
 export function sijoitukset(
   kilpailijat: Kilpailija[],
   laji: LajiId,
-  luokka: Luokka,
+  luokka: LuokkaId,
   /**
    * Lajin rakenne. Vain `tulosSaanto` luetaan, joten mukautetun lajin rakenne kelpaa
    * sellaisenaan. Pakollinen: oletus sääntöjen rakenteisiin peitti aiemmin sen, että

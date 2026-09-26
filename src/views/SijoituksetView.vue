@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watchEffect } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useKisaStore } from '@/stores/kisa'
-import { kisanLajit, kisanSarjat, LUOKAT, LUOKKA_NIMET, sarjanNimi } from '@/core/lajit'
+import { kisanLajit, kisanLuokat, kisanSarjat, luokanNimi, sarjanNimi } from '@/core/lajit'
 import { sijoitukset } from '@/core/sijoitukset'
-import type { LajiId, Luokka, SarjaId } from '@/types/kisa'
+import type { LajiId, LuokkaId, SarjaId } from '@/types/kisa'
 
 const route = useRoute()
 const store = useKisaStore()
@@ -26,8 +26,25 @@ const rakenne = computed(() => lajit.value.find((l) => l.id === laji.value))
 /** RESUL-kisassa sarjat ovat ikäsarjoja; mukautetussa ne eivät liity ikään. */
 const sarjaOtsikko = computed(() => (kisa.value.tyyppi === 'resul' ? 'Ikäsarja' : 'Sarja'))
 
-const luokka = ref<Luokka>('vakio')
-const ikasarjaSuodatin = ref<SarjaId | 'kaikki'>('kaikki')
+/** Kisan aseluokat: RESUL-kisassa Vakio ja Avoin, mukautetussa järjestäjän omat. */
+const luokat = computed(() => kisanLuokat(kisa.value))
+
+const luokka = ref<LuokkaId>('')
+
+/*
+ * Luokkavalinta pidetään kelvollisena. Mukautetun kisan luokkia voi nimetä uudelleen ja
+ * poistaa kesken kaiken, ja valinta jäisi muuten osoittamaan luokkaan jota ei ole — lista
+ * näyttäisi tyhjää ilman että käyttäjä ymmärtäisi miksi.
+ */
+watchEffect(() => {
+  if (!luokat.value.includes(luokka.value)) luokka.value = luokat.value[0] ?? ''
+})
+/**
+ * Sarjarajaus. Rajaamattomuus on `null` eikä merkkijono "kaikki": mukautetun kisan sarjan
+ * nimeää järjestäjä, ja sarja nimeltä "kaikki" olisi merkkijonoa käytettäessä sama asia
+ * kuin rajauksen poisto — hänen kilpailijansa katoaisivat omasta listastaan.
+ */
+const ikasarjaSuodatin = ref<SarjaId | null>(null)
 
 /** Kisan sarjat: RESUL-kisassa H ja H50, mukautetussa järjestäjän omat. */
 const sarjat = computed(() => kisanSarjat(kisa.value))
@@ -38,7 +55,7 @@ const sarjat = computed(() => kisanSarjat(kisa.value))
  * kelpaa palkintojen jakoon. Otsikko kertoo aina rajauksen, joten tulkinta on selvä.
  */
 const suodatetut = computed(() =>
-  ikasarjaSuodatin.value === 'kaikki'
+  ikasarjaSuodatin.value === null
     ? kisa.value.kilpailijat
     : kisa.value.kilpailijat.filter((k) => k.ikasarja === ikasarjaSuodatin.value),
 )
@@ -48,13 +65,13 @@ const rivit = computed(() =>
 )
 
 const otsikko = computed(() => {
-  const osat = [rakenne.value?.koodi ?? laji.value, LUOKKA_NIMET[luokka.value]]
-  if (ikasarjaSuodatin.value !== 'kaikki') osat.push(ikasarjaSuodatin.value)
+  const osat = [rakenne.value?.koodi ?? laji.value, luokanNimi(luokka.value)]
+  if (ikasarjaSuodatin.value !== null) osat.push(ikasarjaSuodatin.value)
   return osat.join(' · ')
 })
 
 /** Montako osallistujaa lajissa on kussakin luokassa — näkyy välilehdissä. */
-function luokassa(l: Luokka): number {
+function luokassa(l: LuokkaId): number {
   return kisa.value.kilpailijat.filter((k) => k.osallistumiset[laji.value]?.luokka === l).length
 }
 
@@ -85,14 +102,14 @@ function sijaTeksti(sija: number): string {
         <span class="suodatin-otsikko">Aseluokka</span>
         <div class="napit" role="group" aria-label="Aseluokka">
           <button
-            v-for="l in LUOKAT"
+            v-for="l in luokat"
             :key="l"
             type="button"
             class="pikkunappi"
             :class="{ 'pikkunappi--valittu': luokka === l }"
             @click="luokka = l"
           >
-            {{ LUOKKA_NIMET[l] }} <small>{{ luokassa(l) }}</small>
+            {{ luokanNimi(l) }} <small>{{ luokassa(l) }}</small>
           </button>
         </div>
       </div>
@@ -103,8 +120,8 @@ function sijaTeksti(sija: number): string {
           <button
             type="button"
             class="pikkunappi"
-            :class="{ 'pikkunappi--valittu': ikasarjaSuodatin === 'kaikki' }"
-            @click="ikasarjaSuodatin = 'kaikki'"
+            :class="{ 'pikkunappi--valittu': ikasarjaSuodatin === null }"
+            @click="ikasarjaSuodatin = null"
           >
             Kaikki
           </button>
@@ -129,7 +146,7 @@ function sijaTeksti(sija: number): string {
         Tarvittaessa myös huonompi kilpasarja.
       </template>
       Sijalta 9 alkaen tasatulokset jaetaan sukunimen mukaisessa aakkosjärjestyksessä.
-      <template v-if="ikasarjaSuodatin !== 'kaikki'">
+      <template v-if="ikasarjaSuodatin !== null">
         <strong>Sijoitukset on laskettu ikäsarjan {{ ikasarjaSuodatin }} sisällä.</strong>
       </template>
     </p>

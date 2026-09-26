@@ -140,4 +140,111 @@ test.describe('mukautettu kisa', () => {
     await expect(page.getByRole('button', { name: 'Veteraanit', exact: true })).toBeVisible()
     await expect(page.getByText('Ikäsarja')).toHaveCount(0)
   })
+
+  /*
+   * Aseluokka oli pitkään kiinteä Vakio/Avoin, vaikka lajit ja sarjat olivat jo
+   * mukautettavissa. Mukautetussa kisassa luokan ei tarvitse liittyä aseeseen lainkaan.
+   *
+   * Testi kulkee koko ketjun: luokka nimetään kisatiedoissa, valitaan kilpailijalistalla
+   * ja näkyy sijoituksissa — jokainen kohta lukee luokat eri paikasta, joten ne voivat
+   * eriytyä toisistaan huomaamatta.
+   */
+  test('omat aseluokat kulkevat kisatiedoista kilpailijalistalle ja sijoituksiin', async ({
+    page,
+  }) => {
+    await perustaKolmenAsennonKisa(page)
+
+    // Sääntöjen luokat pois ja omat tilalle.
+    await page.getByLabel('Uuden luokan nimi').fill('Kivääri')
+    await page.getByRole('button', { name: 'Lisää luokka' }).click()
+    const avoin = page.getByLabel('Luokan nimi: Avoin')
+    await avoin.fill('Optiikka')
+    // change-tapahtuma syntyy vasta kohdistuksen poistuessa, kuten selaimessa aina.
+    await avoin.blur()
+    await expect(page.getByLabel('Luokan nimi: Optiikka')).toBeVisible()
+
+    await lisaaKilpailija(page)
+
+    // Kilpailijalistan lajikohtainen valitsin tarjoaa kisan omat luokat.
+    const luokkavalitsin = page.getByLabel('3-as: aseluokka')
+    await expect(luokkavalitsin.locator('option')).toHaveText(['Vakio', 'Optiikka', 'Kivääri'])
+    await luokkavalitsin.selectOption('Kivääri')
+
+    /*
+     * Sama valitsin on myös syöttötaulukossa, mutta se saa luokat eri reittiä
+     * (SyottoView välittää ne propsina). Ilman tätä tarkistusta taulukko voisi jäädä
+     * tarjoamaan sääntöjen luokkia ilman että mikään testi punastuu.
+     */
+    await page.getByRole('link', { name: 'Syötä tulokset' }).click()
+    // Taulukko ei ole oletustapa, joten se valitaan erikseen.
+    await page.locator('summary.tapa-otsikko').click()
+    await page.getByRole('button', { name: 'Taulukko', exact: true }).click()
+    await expect(page.getByLabel('Hakala: aseluokka').locator('option')).toHaveText([
+      'Vakio',
+      'Optiikka',
+      'Kivääri',
+    ])
+    await expect(page.getByLabel('Hakala: aseluokka')).toHaveValue('Kivääri')
+
+    // Taitetaan tapavalinta takaisin kiinni, koska kirjaaLaukaukset avaa sen itse.
+    await page.locator('summary.tapa-otsikko').click()
+
+    await kirjaaLaukaukset(page)
+
+    await page.getByRole('link', { name: 'Sijoitukset' }).first().click()
+    // Luokkanapit seuraavat kisan listaa, ja ampuja löytyy valitsemastaan luokasta.
+    await page.getByRole('button', { name: /^Kivääri/ }).click()
+    await expect(page.locator('tbody tr').first()).toContainText('Hakala')
+
+    await page.getByRole('button', { name: /^Vakio/ }).click()
+    await expect(page.getByText('Hakala')).toBeHidden()
+  })
+
+  /*
+   * Poistettu luokka ei saa jättää ketään luokkaan jota ei ole: sellainen osallistuminen
+   * katoaisi kaikista luokkakohtaisista sijoituksista huomaamatta.
+   */
+  test('luokan poisto siirtää osallistumiset jäljelle jäävään luokkaan', async ({ page }) => {
+    await perustaKolmenAsennonKisa(page)
+    await lisaaKilpailija(page)
+
+    await page.goto('/#/kilpailijat')
+    await page.getByLabel('3-as: aseluokka').selectOption('Avoin')
+
+    await page.goto('/#/kisatiedot')
+    // Poistetaan Avoin, jossa kilpailija on — varmistus kertoo siirtyvien määrän.
+    const avoimenRivi = page
+      .locator('li.luokka')
+      .filter({ has: page.getByLabel('Luokan nimi: Avoin') })
+    await avoimenRivi.getByRole('button', { name: 'Poista' }).click()
+    await expect(page.getByText(/1 osallistumista siirtyvät/)).toBeVisible()
+    await page.getByRole('button', { name: 'Kyllä, poista' }).click()
+
+    await page.goto('/#/kilpailijat')
+    // Ainoa jäljellä oleva luokka on nyt valittuna.
+    await expect(page.getByLabel('3-as: aseluokka')).toHaveValue('Vakio')
+  })
+
+  /*
+   * Vienti- ja Yhdistä-sivut listasivat lajit kiinteästä RA1–RA4:stä kisan omien lajien
+   * sijaan. Mukautetussa kisassa se tarkoitti neljää nollariviä lajeista joita kisassa ei
+   * ole — ja kisan todellinen laji puuttui listalta kokonaan.
+   */
+  test('vienti- ja yhdistämissivu listaavat kisan omat lajit', async ({ page }) => {
+    await perustaKolmenAsennonKisa(page)
+    await lisaaKilpailija(page)
+
+    await page.goto('/#/vienti')
+    const yhteenveto = page.locator('dl.tiedot').first()
+    await expect(yhteenveto).toContainText('3-as')
+    await expect(yhteenveto).toContainText('Kilpailijoita')
+    for (const resulLaji of ['RA1', 'RA2', 'RA3', 'RA4']) {
+      await expect(yhteenveto).not.toContainText(resulLaji)
+    }
+
+    await page.goto('/#/yhdista')
+    const rajaus = page.locator('fieldset.lajit')
+    await expect(rajaus).toContainText('3-as')
+    await expect(rajaus).not.toContainText('RA1')
+  })
 })

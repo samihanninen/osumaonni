@@ -1,4 +1,4 @@
-import type { Asetukset, Kilpailija, LajiId, LajiMaaritys, Luokka } from '@/types/kisa'
+import type { Asetukset, Kilpailija, LajiId, LajiMaaritys, LuokkaId } from '@/types/kisa'
 import { type LajiRakenne } from './lajit'
 import { laskeLaji } from './laskenta'
 
@@ -67,7 +67,7 @@ export interface YhdistysOptiot {
   /** Laskettavien parhaiden määrä. Oletus 3 (joukkueen koko). */
   parhaita?: number
   /** Rajaa laskenta yhteen aseluokkaan. Ilman rajausta kaikki luokat lasketaan yhteen. */
-  luokka?: Luokka
+  luokka?: LuokkaId
   /**
    * Kisan lajikohtaiset rakenteet. Ilman näitä käytetään sääntöjen oletuksia, jolloin
    * järjestäjän muokkaama tulossääntö ei vaikuttaisi laskentaan. Kutsujan on annettava

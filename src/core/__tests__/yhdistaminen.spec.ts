@@ -527,3 +527,89 @@ describe('mukautetun kisan yhdistäminen', () => {
     expect(tulos.paivitetytSarjat).toBe(0)
   })
 })
+
+/**
+ * Aseluokat vuorottelussa.
+ *
+ * Mukautetun kisan luokat nimeää järjestäjä, joten vastaanottaja ei voi päätellä niitä
+ * säännöistä. Ilman luokkalistaa hän tulkitsisi tulokset väärällä luokkajaolla: rivit
+ * kantavat luokan nimen, mutta sivun luokkanapit tulisivat sääntöjen Vakio/Avoin-parista
+ * eikä kukaan näkyisi omassa luokassaan.
+ */
+describe('vuorottelu — mukautetun kisan aseluokat', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  /** Mukautettu kisa omilla luokilla ja yhdellä kirjatulla tuloksella. */
+  function lahettajanKisa() {
+    const store = useKisaStore()
+    store.asetaKisaTyyppi('mukautettu')
+    store.lisaaLuokka('Kivääri')
+    store.lisaaLuokka('Pistooli')
+    store.poistaLuokka('Vakio')
+    store.poistaLuokka('Avoin')
+
+    const laji = store.lisaaMukautettuLaji({ koodi: 'PK', nimi: 'Pikakivääri' })
+    const k = store.lisaaKilpailija({ etunimi: 'Sanna', sukunimi: 'Hakala', yhdistys: 'Nupures' })
+    store.lisaaOsallistuminen(k.id, laji.id, 'Pistooli')
+    for (let i = 0; i < 10; i++) store.asetaLaukaus(k.id, laji.id, 0, i, 9)
+    return { kisa: kloonaa(store.kisa), laji: laji.id }
+  }
+
+  it('täysi paketti kantaa kisan omat luokat', () => {
+    const { kisa } = lahettajanKisa()
+
+    const paketti = rakennaTayspaketti(kisa, TUNNISTEET)
+
+    expect(paketti.mukautetutLuokat).toEqual(['Kivääri', 'Pistooli'])
+  })
+
+  /*
+   * RESUL-kisassa luokat tulevat säännöistä, joten niitä ei lähetetä. QR-koodissa
+   * jokainen merkki maksaa, ja tavallisin paketti on juuri RESUL-paketti.
+   */
+  it('RESUL-paketti ei kanna luokkalistaa lainkaan', () => {
+    const store = useKisaStore()
+    const k = store.lisaaKilpailija({ etunimi: 'Sanna', sukunimi: 'Hakala', yhdistys: 'Nupures' })
+    store.lisaaOsallistuminen(k.id, 'RA1')
+
+    const paketti = rakennaTayspaketti(kloonaa(store.kisa), TUNNISTEET)
+
+    expect(paketti.mukautetutLuokat).toBeUndefined()
+  })
+
+  it('vastaanottaja saa luokat ja tuloksen oikeaan luokkaan', () => {
+    const { kisa: lahettaja, laji } = lahettajanKisa()
+    const paketti = rakennaTayspaketti(lahettaja, TUNNISTEET)
+
+    // Vastaanottajalla on sama kisa mutta ei vielä tuloksia eikä omia luokkia.
+    const vastaanottaja = kloonaa(lahettaja)
+    vastaanottaja.luokat = undefined
+    vastaanottaja.kilpailijat = []
+
+    const tulos = yhdista(vastaanottaja, paketti)
+
+    expect(tulos.kisa.luokat).toEqual(['Kivääri', 'Pistooli'])
+    const o = tulos.kisa.kilpailijat[0]?.osallistumiset[laji]
+    expect(o?.luokka).toBe('Pistooli')
+  })
+
+  /*
+   * Vanhempi lähettäjä ei tunne luokkalistaa. Täysi paketti korvaa koko kisan, joten
+   * lista ei voi jäädä vastaanottajan omasta tilasta — mutta tyhjäksi sitä ei saa
+   * jättää: rivit kantavat luokan nimen, ja ilman listaa vastaanottaja putoaisi
+   * sääntöjen Vakio/Avoin-pariin, jolloin omannimisessä luokassa ampuneet katoaisivat
+   * kaikista luokkakohtaisista sijoituksista. Lista kootaan silloin riveiltä.
+   */
+  it('luokaton paketti kokoaa luokat tulosriveiltä', () => {
+    const { kisa: lahettaja, laji } = lahettajanKisa()
+    const paketti = rakennaTayspaketti(lahettaja, TUNNISTEET)
+    delete paketti.mukautetutLuokat
+
+    const tulos = yhdista(kloonaa(lahettaja), paketti)
+
+    expect(tulos.kisa.luokat).toEqual(['Pistooli'])
+    // Olennaisin: kirjattu tulos on luokassa, joka on myös listalla.
+    const o = tulos.kisa.kilpailijat[0]?.osallistumiset[laji]
+    expect(tulos.kisa.luokat).toContain(o?.luokka)
+  })
+})

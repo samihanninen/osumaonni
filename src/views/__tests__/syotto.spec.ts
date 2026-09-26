@@ -6,7 +6,7 @@ import SyottoView from '../SyottoView.vue'
 import TuloskorttiTaulukko from '@/components/TuloskorttiTaulukko.vue'
 import { useKisaStore } from '@/stores/kisa'
 import { useLaiteStore } from '@/stores/laite'
-import { LAJIT, resulRakenne } from '@/core/lajit'
+import { LAJIT, LUOKAT, resulRakenne } from '@/core/lajit'
 import type { Kilpailija } from '@/types/kisa'
 
 /**
@@ -227,6 +227,7 @@ describe('TuloskorttiTaulukko — näppäimistösyöttö', () => {
         kilpailijat: [store.kisa.kilpailijat[0]!],
         laji: 'RA1',
         rakenne: resulRakenne('RA1', LAJIT.RA1),
+        luokat: [...LUOKAT],
       },
     })
   }
@@ -345,6 +346,7 @@ describe('TuloskorttiTaulukko — näppäimistösyöttö', () => {
         kilpailijat: [store.kisa.kilpailijat[0]!],
         laji: 'RA1',
         rakenne: resulRakenne('RA1', LAJIT.RA1),
+        luokat: [...LUOKAT],
         lukittu: true,
       },
     })

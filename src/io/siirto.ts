@@ -7,7 +7,7 @@ import {
   type Laji,
   type LajiId,
   type Laukaus,
-  type Luokka,
+  type LuokkaId,
   type MukautettuLaji,
   type SarjaId,
 } from '@/types/kisa'
@@ -136,7 +136,7 @@ export interface SiirtoRivi {
   id: string
   /** Lajin tunniste: RESUL-kisassa lajikoodi, mukautetussa lajin `id`. */
   laji: LajiId
-  luokka: Luokka
+  luokka: LuokkaId
   /** Kilpasarjat tiiviinä merkkijonoina. */
   sarjat: string[]
   rangaistuksia: number
@@ -201,6 +201,11 @@ export interface Siirtopaketti {
   mukautetutLajit?: MukautettuLaji[]
   /** Mukautetun kisan sarjat. Ilman näitä vastaanottaja ei tiedä kisan luokittelua. */
   mukautetutSarjat?: SarjaId[]
+  /**
+   * Mukautetun kisan aseluokat. Puuttuva arvo tarkoittaa sääntöjen mukaisia luokkia,
+   * kuten tallennuksessakin — vanhemmilta versioilta tuleva paketti ei kanna tätä.
+   */
+  mukautetutLuokat?: LuokkaId[]
   kisatiedot?: Kisa['kisatiedot']
   laskettavatParhaat?: number
   rakenteet?: Partial<Record<Laji, TiivisRakenne>>
@@ -403,7 +408,7 @@ export function pura(palat: string[]): Siirtopaketti {
 export function rakennaOsapaketti(
   kisa: Kisa,
   tunnisteet: { laiteId: string; laiteNimi?: string; versio: number; aika: string },
-  rajaus?: { lajit?: Laji[]; kilpailijaIdt?: string[] },
+  rajaus?: { lajit?: LajiId[]; kilpailijaIdt?: string[] },
 ): Siirtopaketti {
   const lajit = rajaus?.lajit
   const idt = rajaus?.kilpailijaIdt ? new Set(rajaus.kilpailijaIdt) : null
@@ -491,6 +496,7 @@ export function rakennaTayspaketti(
           kisaTyyppi: 'mukautettu' as const,
           mukautetutLajit: kisa.lajit ?? [],
           mukautetutSarjat: kisa.sarjat ?? [],
+          ...(kisa.luokat?.length ? { mukautetutLuokat: kisa.luokat } : {}),
         }
       : {}),
     kisatiedot: kisa.kisatiedot,

@@ -4,7 +4,7 @@ import { useRoute, RouterLink } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useKisaStore } from '@/stores/kisa'
 import { useLaiteStore } from '@/stores/laite'
-import { LAJI_KOODIT } from '@/core/lajit'
+import { kisanLajit } from '@/core/lajit'
 import { naytaLaukaus } from '@/core/laukaus'
 import {
   PalojenKeraaja,
@@ -25,7 +25,7 @@ import { lataaTiedosto, lueTiedosto } from '@/io/lataa'
 import { jaaTiedosto, jakoKaytettavissa, luoTiedosto } from '@/io/jaa'
 import QrKoodi from '@/components/QrKoodi.vue'
 import QrLukija from '@/components/QrLukija.vue'
-import type { Laji } from '@/types/kisa'
+import type { LajiId } from '@/types/kisa'
 
 const route = useRoute()
 const store = useKisaStore()
@@ -42,7 +42,10 @@ const ilmoitus = ref('')
 
 type Sisalto = 'taysi' | 'osa'
 const sisalto = ref<Sisalto>('osa')
-const valitutLajit = ref<Laji[]>([])
+/** Kisan lajit muodosta riippumatta: RESUL-kisassa RA1–RA4, mukautetussa kisan omat. */
+const lajit = computed(() => kisanLajit(kisa.value))
+
+const valitutLajit = ref<LajiId[]>([])
 const palat = ref<string[]>([])
 const palaIndeksi = ref(0)
 
@@ -363,9 +366,13 @@ function laukauksetTekstina(laukaukset: (number | '*' | '-' | null)[]): string {
 
         <fieldset v-if="sisalto === 'osa'" class="lajit">
           <legend>Rajaa lajeihin (valinnainen)</legend>
-          <label v-for="laji in LAJI_KOODIT" :key="laji" class="lajivalinta">
-            <input v-model="valitutLajit" type="checkbox" :value="laji" @change="palat = []" />
-            <span>{{ laji }}</span>
+          <!--
+            Kisan omat lajit, ei RESUL-koodeja: mukautetussa kisassa rajaus tarjosi
+            RA1–RA4:ää, joita kisassa ei ole — valinta ei olisi rajannut mitään.
+          -->
+          <label v-for="laji in lajit" :key="laji.id" class="lajivalinta">
+            <input v-model="valitutLajit" type="checkbox" :value="laji.id" @change="palat = []" />
+            <span>{{ laji.koodi }}</span>
           </label>
           <p class="vihje">Ilman valintaa lähetetään kaikki lajit.</p>
         </fieldset>

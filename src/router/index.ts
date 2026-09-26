@@ -26,6 +26,17 @@ const router = createRouter({
       component: () => import('@/views/KilpailijatView.vue'),
       meta: { otsikko: 'Kilpailijat' },
     },
+    /*
+     * Rosteri on tarkoituksella poissa päävalikosta (`App.vue`): se ei ole kisadataa
+     * vaan tämän laitteen oma nimilista, ja sinne mennään kilpailijalistalta ja
+     * palataan takaisin. Valikossa se näyttäisi kisan osalta.
+     */
+    {
+      path: '/rosteri',
+      name: 'rosteri',
+      component: () => import('@/views/RosteriView.vue'),
+      meta: { otsikko: 'Rosteri' },
+    },
     {
       path: '/syota/:laji',
       name: 'syotto',
