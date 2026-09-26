@@ -212,6 +212,19 @@ function vaihdaRosteri(k: Kilpailija, mukaan: boolean) {
     </p>
 
     <!--
+      Lajiton kisa on umpikuja tällä sivulla, ja se on helppo päätyä huomaamatta:
+      mukautettu kisa alkaa ilman lajeja, ja sarjat ja aseluokat voi nimetä ensin.
+      Osallistuminen ja aseluokka ovat kumpikin lajikohtaisia, joten ilman lajeja
+      kilpailijariville ei jää mitään valittavaa — ennen tätä selitettä tilalla oli
+      tyhjä "Lajit ja aseluokat" -laatikko, joka ei kertonut syytä eikä ratkaisua.
+    -->
+    <p v-if="lajit.length === 0" class="huomio huomio--varoitus">
+      <strong>Kisassa ei ole vielä lajeja.</strong> Osallistumisia ja aseluokkia ei voi valita ennen
+      kuin lajit on määritelty, koska kumpikin valitaan lajikohtaisesti. Määrittele ne
+      <RouterLink to="/kisatiedot">kisatiedoissa</RouterLink>.
+    </p>
+
+    <!--
       Rosteri on omalla sivullaan. Samalla sivulla avattuna samat ihmiset näkyivät
       kahdesti — rosterissa ja alla olevassa kilpailijalistassa — eikä kumpaa listaa
       milloinkin muokkasi erottunut. Tässä näkyy vain rosterin tila ja tie sinne.
@@ -382,7 +395,7 @@ function vaihdaRosteri(k: Kilpailija, mukaan: boolean) {
             </div>
           </div>
 
-          <fieldset class="lajit">
+          <fieldset v-if="lajit.length" class="lajit">
             <legend>Lajit ja aseluokat</legend>
             <div class="lajilista">
               <div v-for="laji in lajit" :key="laji.id" class="laji">
